@@ -1,0 +1,17 @@
+Package: xcore
+Type: Package
+Title: Framework for 5' Gene Expression Analysis
+Version: 0.1.0
+Author: Bogumil Kaczkowski <b.kaczkowski@gmail.com>
+Maintainer: Bogumil Kaczkowski <b.kaczkowski@gmail.com>
+Description: Functions, wrappers and workflows related to
+    Functionaly will be added gradually
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 6.1.1
