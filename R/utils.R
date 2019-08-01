@@ -18,3 +18,21 @@ convert_ctss_to_bigwig = function( ctss_file, genomeInfo ) {
   rtracklayer::export(object = tpm_bed_plus , paste(ctss_file ,   ".plus.bw" , sep = "")  , format = "BigWig" )
   rtracklayer::export(object = tpm_bed_minus, paste(ctss_file ,  ".minus.bw" , sep = "")  , format = "BigWig" )
 }
+
+#' Normalize the count table with edgeR
+#'
+#' @param counts expression table with counts
+#' @param method passed to to edgeR::calcNormFactors see ?edgeR::calcNormFactors
+#' @param log passed on to edgeR::cpm , should the normalized counts be log2 transformed (default FALSE)
+#' @param prior.count average count to be added to each observation to avoid taking log of zero. Used only if log=TRUE.
+#' @param ... other parameter passed on to edgeR::calcNormFactors or edgeR::cpm
+#' @return normalized count table
+#' @import edgeR
+#' @export
+normalize_counts = function( counts, method = c("TMM","TMMwsp","RLE","upperquartile","none") ,
+                             log = FALSE , prior.count = 1 , ...){
+  dge = DGEList(counts)
+  dge = calcNormFactors(dge , method= method , ... )
+  cpm <- cpm( dge , log = log, prior.count = prior.count, ... )
+  cpm
+}
