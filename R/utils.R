@@ -20,7 +20,6 @@ convert_ctss_to_bigwig = function( ctss_file, genomeInfo ) {
 }
 
 #' Normalize the count table with edgeR
-#'
 #' @param counts expression table with counts
 #' @param method passed to to edgeR::calcNormFactors see ?edgeR::calcNormFactors
 #' @param log passed on to edgeR::cpm , should the normalized counts be log2 transformed (default FALSE)
@@ -29,10 +28,10 @@ convert_ctss_to_bigwig = function( ctss_file, genomeInfo ) {
 #' @return normalized count table
 #' @import edgeR
 #' @export
-normalize_counts = function( counts, method = c("TMM","TMMwsp","RLE","upperquartile","none") ,
-                             log = FALSE , prior.count = 1 , ...){
+normalize_counts = function( counts, method = "RLE", log = FALSE , prior.count = 1 , ...){
   dge = DGEList(counts)
   dge = calcNormFactors(dge , method= method , ... )
-  cpm <- cpm( dge , log = log, prior.count = prior.count, ... )
+  cpm = cpm( dge , log = log, prior.count = prior.count, ... )
   cpm
 }
+

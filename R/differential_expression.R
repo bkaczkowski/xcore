@@ -83,7 +83,6 @@ deseq_DE_wrapper = function( counts, sample_annot, adj_pv_threshold = 0.05, log2
   de_results = list()
   for( comparison in comparisons) {
     de_results [[ comparison ]] <- lfcShrink(dds = dds, coef=comparison, type="apeglm")
-    print(comparison)
   }
 
   for (i in 1:length(de_results)){

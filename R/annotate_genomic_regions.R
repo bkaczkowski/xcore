@@ -2,7 +2,7 @@
 #'
 #' Usually used by the gencode_one_direction_annotator function.
 #' @param regions query genomic regions as GRanges object
-#' @param gencode Gencode annotation as GRanges object, usually of one type like gencode[ gencode$type == "exon"]
+#' @param gencode Gencode annotation as GRanges object, usually of one type like gencode$type == "exon"
 #' @param annotatation_label label (character) to mark what annotation was used, e.g. "gene", "exon" or "promoters"
 #' @return GRanges with new columns added to the feature metadata: mcols(regions)
 #' @importFrom GenomicRanges findOverlaps
@@ -17,7 +17,7 @@ gencode_one_direction_findOverlaps = function( regions , gencode, annotatation_l
   if( is.null(regions$gene_type) )    { regions$gene_type    = ""}
   if( is.null(regions$level) )        { regions$level        = ""}
 
-  hits = findOverlaps( regions, gencode , ignore.strand=FALSE)
+  hits = GenomicRanges::findOverlaps( regions, gencode , ignore.strand=FALSE)
   regions$symbol[hits@from]       = gencode$gene_name[hits@to]
   regions$gene_type[hits@from]    = gencode$gene_type[hits@to]
   regions$level[hits@from]        = gencode$level[hits@to]
