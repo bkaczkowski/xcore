@@ -84,3 +84,5 @@ rtracklayer::export.bed(object = all_enh ,
 
 save(all_enh, file ="data-raw/F5_genomic_regions/enhancers/FANTOM5_hg38_and_hg19_enhancers_2019_10_05_GRanges.RData")
 
+enhancers = all_enh
+usethis::use_data( enhancers , internal = FALSE)
