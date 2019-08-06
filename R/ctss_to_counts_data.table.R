@@ -57,6 +57,29 @@ bed_to_anno  = function( bed_file ){
   anno
 }
 
+#' Convert GRanges object to "anno" data.table object
+#' @param granges a GRanges object to be converted to data.table
+#' @return data.table object with genomic coordinates (6 columns)
+#' @importFrom GenomicRanges seqnames start end score strand
+#' @export
+granges_to_anno = function(granges){
+
+  chr   = as.character(GenomicRanges::seqnames(granges))
+  start = GenomicRanges::start(granges) - 1
+  end   = GenomicRanges::end(granges)
+  name  = granges$name
+  score = ifelse ( is.null( GenomicRanges::score(granges))  ,0 , GenomicRanges::score(granges) )
+  strand = GenomicRanges::strand(granges)
+  strand = sub("\\*", ".", strand)
+  anno_df = data.frame( chr = chr, start = start, end = end,name = name, score = score, strand = strand, stringsAsFactors = FALSE )
+
+  anno = data.table::as.data.table(anno_df)
+  data.table::setnames(anno, c("chr", "start", "end", "name" , 'score', "strand"))
+  data.table::setkey(anno, chr, start, end)
+  anno
+}
+
+
 #' Create count table by overlapping CTSS data with genomic coordinates (data.table)
 #' @param ctss_data data.table object with CTSS data, created by "read_in_ctss" function
 #' @param anno data.table object with genomic coordinates, created by "bed_to_anno" function
