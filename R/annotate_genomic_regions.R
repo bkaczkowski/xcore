@@ -56,11 +56,12 @@ gencode_one_direction_annotator = function( regions , gencode ){
 #' @param regions query genomic regions as GRanges object
 #' @param gencode complete Gencode annotation as GRanges object, e.g. obrained by rtracklayer::import.gff(con = "~/projects/resources/gencode/gencode31/gencode.v31.annotation.gff3.gz")
 #' @return GRanges with new columns added to the feature metadata: mcols(regions)
+#' @importFrom GenomicRanges strand invertStrand
 #' @export
 gencode_two_direction_annotator = function(regions , gencode  ){
 
   regions_inverted_strand = regions
-  strand(regions_inverted_strand) = invertStrand(strand(regions))
+  GenomicRanges::strand(regions_inverted_strand) = GenomicRanges::invertStrand(GenomicRanges::strand(regions))
 
   regions  = gencode_one_direction_annotator( regions = regions, gencode = gencode)
   regions_inverted_strand  = gencode_one_direction_annotator( regions = regions_inverted_strand, gencode = gencode)
@@ -85,16 +86,16 @@ gencode_two_direction_annotator = function(regions , gencode  ){
 gencode_strandless_annotator = function( regions, gencode , output_option = 2) {
 
   regions_tmp = regions
-  strand(regions_tmp) = "+"
-  mcols(regions_tmp)= NULL
+  GenomicRanges::strand(regions_tmp) = "+"
+  GenomicRanges::mcols(regions_tmp)= NULL
   regions_annotated_plus  = gencode_one_direction_annotator( regions = regions_tmp, gencode = gencode)
   regions_annotated_plus$level = NULL
-  regions_annotated_plus  = mcols(regions_annotated_plus)
+  regions_annotated_plus  = GenomicRanges::mcols(regions_annotated_plus)
 
-  strand(regions_tmp) = "-"
+  GenomicRanges::strand(regions_tmp) = "-"
   regions_annotated_minus = gencode_one_direction_annotator( regions = regions_tmp, gencode = gencode)
   regions_annotated_minus$level = NULL
-  regions_annotated_minus = mcols(regions_annotated_minus)
+  regions_annotated_minus = GenomicRanges::mcols(regions_annotated_minus)
 
   if( output_option == 1 ){
     regions$strandless_annotatation = paste( regions_annotated_plus$annotatation, "(+);", regions_annotated_minus$annotatation , "(-)", sep = "" )
@@ -104,7 +105,7 @@ gencode_strandless_annotator = function( regions, gencode , output_option = 2) {
   }else if( output_option == 2) {
     colnames(regions_annotated_minus) = paste( colnames(regions_annotated_minus), "_minus",sep = "")
     colnames(regions_annotated_plus)  = paste( colnames(regions_annotated_plus ), "_plus" ,sep = "")
-    mcols(regions) = DataFrame( cbind(mcols(regions) ,  regions_annotated_plus, regions_annotated_minus))
+    GenomicRanges::mcols(regions) = DataFrame( cbind(GenomicRanges::mcols(regions) ,  regions_annotated_plus, regions_annotated_minus))
   }
 
   regions
@@ -142,7 +143,7 @@ gencode_one_direction_distanceToNearest = function( regions , gencode){
 #' @param regions query genomic regions as GRanges object
 #' @param gencode complete Gencode annotation as GRanges object, e.g. obrained by rtracklayer::import.gff(con = "gencode.v31.annotation.gff3.gz") ,  (gencode[ gencode$type == "transcript"] is also OK)
 #' @return GRanges with new columns added to the feature metadata: mcols(regions)
-#' @importFrom GenomicRanges promoters mcols
+#' @importFrom GenomicRanges promoters mcols strand
 #' @importFrom S4Vectors DataFrame
 #' @export
 gencode_nearest_promoter_both_strands = function( regions, gencode ) {
@@ -150,19 +151,19 @@ gencode_nearest_promoter_both_strands = function( regions, gencode ) {
   gencode_promoters   = GenomicRanges::promoters( gencode[ gencode$type == "transcript"] , upstream = 0, downstream = 0, use.names=TRUE)
 
   regions_tmp = regions
-  mcols(regions_tmp)= NULL
+  GenomicRanges::mcols(regions_tmp)= NULL
 
-  strand(regions_tmp) = "+"
+  GenomicRanges::strand(regions_tmp) = "+"
   nearest_promoter_plus  = gencode_one_direction_distanceToNearest( regions = regions_tmp, gencode = gencode_promoters)
-  nearest_promoter_plus  = mcols(nearest_promoter_plus)
+  nearest_promoter_plus  = GenomicRanges::mcols(nearest_promoter_plus)
   colnames(nearest_promoter_plus) = paste( colnames(nearest_promoter_plus), "_plus",sep = "")
 
-  strand(regions_tmp) = "-"
+  GenomicRanges::strand(regions_tmp) = "-"
   nearest_promoter_minus = gencode_one_direction_distanceToNearest( regions = regions_tmp, gencode = gencode_promoters)
-  nearest_promoter_minus = mcols(nearest_promoter_minus)
+  nearest_promoter_minus = GenomicRanges::mcols(nearest_promoter_minus)
   colnames(nearest_promoter_minus) = paste( colnames(nearest_promoter_minus), "_minus",sep = "")
 
-  mcols(regions) = DataFrame( cbind( mcols(regions) , nearest_promoter_plus, nearest_promoter_minus))
+  GenomicRanges::mcols(regions) = DataFrame( cbind( GenomicRanges::mcols(regions) , nearest_promoter_plus, nearest_promoter_minus))
 
   regions
 }
