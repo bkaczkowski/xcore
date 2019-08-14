@@ -71,6 +71,11 @@ all_enh$roadmap[hits@from] = roadmap$name[hits@to]
 all_enh$roadmap_type    =  as.factor( sub("\\|.*" , "" , all_enh$roadmap) )
 rm(roadmap_hg19, roadmap ); gc()
 
+dfam  = rtracklayer::import.bed("data-raw/repeats/hg38_dfam.3.1.nrph.hits.bed.gz" )
+all_enh$repeat_dfam = ""
+hits = findOverlaps(all_enh , dfam )
+all_enh$repeat_dfam [hits@from] = dfam$name[hits@to]
+
 all_enh$genome_call = ""
 all_enh$genome_call[ all_enh$hg19_enhancer != "" & all_enh$hg38_enhancer != ""] = "hg19&hg38"
 all_enh$genome_call[ all_enh$hg19_enhancer != "" & all_enh$hg38_enhancer == ""] = "hg19"
@@ -85,4 +90,4 @@ rtracklayer::export.bed(object = all_enh ,
 save(all_enh, file ="data-raw/F5_genomic_regions/enhancers/FANTOM5_hg38_and_hg19_enhancers_2019_10_05_GRanges.RData")
 
 enhancers = all_enh
-usethis::use_data( enhancers , internal = FALSE)
+usethis::use_data( enhancers , internal = FALSE, overwrite = TRUE)
