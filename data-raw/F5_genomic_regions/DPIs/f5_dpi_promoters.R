@@ -61,21 +61,17 @@ dpi$distance_uscs   = 10^6
 hits = GenomicRanges::distanceToNearest( dpi , uscs_knownGene_promoters , ignore.strand=FALSE)
 dpi$ENTREZID_uscs [hits@from]   =  uscs_knownGene_promoters$Parent [hits@to]
 dpi$distance_uscs [hits@from]   =  hits@elementMetadata$distance
+library(org.Hs.eg.db)
+select_first = function(x) {x[1]}
+dpi$SYMBOL_uscs  =  lapply ( mapIds(org.Hs.eg.db, dpi$ENTREZID_uscs, 'SYMBOL' , 'ENTREZID' ) , select_first)
 
 too_far = dpi$distance_uscs > 500
 
 dpi$ENTREZID_uscs[ too_far ]  = NA
 dpi$distance_uscs[ too_far ]  = NA
+dpi$SYMBOL_uscs  [ too_far ]  = NA
 
-library(org.Hs.eg.db)
-dpi$SYMBOL_uscs  =  mapIds(org.Hs.eg.db, dpi$ENTREZID_uscs, 'SYMBOL' , 'ENTREZID' )
 
 promoters = dpi
 usethis::use_data( promoters , internal = FALSE, overwrite = TRUE)
-
-rtracklayer::export.bed(object = dpi ,
-                        con = "data-raw/F5_genomic_regions/DPIs/FANTOM5_hg38_fair+new_CAGE_peaks_phase1and2_annotated.bed",
-                        format = "bed")
-system( "gzip data-raw/F5_genomic_regions/DPIs/FANTOM5_hg38_fair+new_CAGE_peaks_phase1and2_annotated.bed")
-
 
