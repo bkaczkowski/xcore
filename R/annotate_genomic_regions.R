@@ -167,3 +167,17 @@ gencode_nearest_promoter_both_strands = function( regions, gencode ) {
 
   regions
 }
+
+#' Simplify Gencode Annotation
+#' @param annotation character vector with Gencode annotation that can be used to grep() labels as: "intron", "exon", "three_prime_UTR", "five_prime_UTR", "promoter"
+#' @return character vector with simplified labels
+#' @export
+simplify_gencode_annotation = function( annotation ) {
+  simplified_annotation = rep ( "intergenic", length(annotation))
+  simplified_annotation [ grep( "intron" , annotation)] = "intron"
+  simplified_annotation [ grep( "exon"   , annotation)] = "exon"
+  simplified_annotation [ grep( "three_prime_UTR" , annotation)] = "three_prime_UTR"
+  simplified_annotation [ grep( "five_prime_UTR"  , annotation)] = "five_prime_UTR"
+  simplified_annotation [ grep( "promoter"        , annotation)] = "promoter"
+  simplified_annotation
+}
