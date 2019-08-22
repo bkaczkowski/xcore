@@ -1,3 +1,4 @@
+# A script to Annotate the FANTOM5 promoters/TSS regions
 
 # getting BED files from FANTOM5 website one for the coordinates (bed) and one with official annotation
 dpi_bed_file  = "~/projects/resources/FANTOM5/hg38/hg38_fair+new_CAGE_peaks_phase1and2.bed.gz"
@@ -120,8 +121,6 @@ table( dpi$SYMBOL_gencode != "", dpi$annotation == "promoter")
 s = dpi$SYMBOL_gencode != ""
 table(dpi$SYMBOL_gencode[s]  == dpi$symbol[s])
 
-dpi [ dpi$SYMBOL_gencode  != dpi$symbol & s ]
-
 table(dpi$SYMBOL_F5_annot[s] == dpi$symbol[s])
 table(dpi$SYMBOL_F5_annot[s] == dpi$SYMBOL_gencode[s])
 
@@ -131,4 +130,5 @@ table(dpi$SYMBOL_uscs[s]     == dpi$SYMBOL_gencode[s])
 table(dpi$SYMBOL_uscs[s]     == dpi$SYMBOL_F5_annot[s])
 
 #there are some annotation cases that are confusing
+dpi [ dpi$SYMBOL_gencode  != dpi$symbol & s ,]
 dpi [ dpi$SYMBOL_gencode  != dpi$symbol & s ,c(3,6,10,18)]

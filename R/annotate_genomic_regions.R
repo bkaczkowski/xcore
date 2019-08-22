@@ -3,16 +3,16 @@
 #' Usually used by the gencode_one_direction_annotator function.
 #' @param regions query genomic regions as GRanges object
 #' @param gencode Gencode annotation as GRanges object, usually of one type like gencode$type == "exon"
-#' @param annotatation_label label (character) to mark what annotation was used, e.g. "gene", "exon" or "promoters"
+#' @param annotation_label label (character) to mark what annotation was used, e.g. "gene", "exon" or "promoters"
 #' @return GRanges with new columns added to the feature metadata: mcols(regions)
 #' @importFrom GenomicRanges findOverlaps
 #' @export
-gencode_one_direction_findOverlaps = function( regions , gencode, annotatation_label = " "){
+gencode_one_direction_findOverlaps = function( regions , gencode, annotation_label = " "){
   # ordering so higher level gene annotation will overwrie lower level annotation
   # if multiple genes are annotated to same region
-  gencode = gencode[ order( gencode$level , decreasing = F),]
+  gencode = gencode[ order( gencode$level , decreasing = T),]
 
-  if( is.null(regions$annotatation) ) { regions$annotatation = ""}
+  if( is.null(regions$annotation) )   { regions$annotation = ""}
   if( is.null(regions$symbol) )       { regions$symbol       = ""}
   if( is.null(regions$gene_type) )    { regions$gene_type    = ""}
   if( is.null(regions$level) )        { regions$level        = ""}
@@ -21,7 +21,7 @@ gencode_one_direction_findOverlaps = function( regions , gencode, annotatation_l
   regions$symbol[hits@from]       = gencode$gene_name[hits@to]
   regions$gene_type[hits@from]    = gencode$gene_type[hits@to]
   regions$level[hits@from]        = gencode$level[hits@to]
-  regions$annotatation[hits@from] = annotatation_label
+  regions$annotation[hits@from]   = annotation_label
 
   regions
 }
@@ -40,11 +40,11 @@ gencode_one_direction_annotator = function( regions , gencode ){
   gencode_5_prime_UTR = gencode[ gencode$type == "five_prime_UTR"]
   gencode_promoters   = GenomicRanges::promoters( gencode[ gencode$type == "transcript"] , upstream = 500, downstream = 500, use.names=TRUE)
 
-  regions = gencode_one_direction_findOverlaps( regions , gencode_gene        , annotatation_label = "intron" )
-  regions = gencode_one_direction_findOverlaps( regions , gencode_exon        , annotatation_label = "exon" )
-  regions = gencode_one_direction_findOverlaps( regions , gencode_3_prime_UTR , annotatation_label = "three_prime_UTR" )
-  regions = gencode_one_direction_findOverlaps( regions , gencode_5_prime_UTR , annotatation_label = "five_prime_UTR" )
-  regions = gencode_one_direction_findOverlaps( regions , gencode_promoters   , annotatation_label = "promoter" )
+  regions = gencode_one_direction_findOverlaps( regions , gencode_gene        , annotation_label = "intron" )
+  regions = gencode_one_direction_findOverlaps( regions , gencode_exon        , annotation_label = "exon" )
+  regions = gencode_one_direction_findOverlaps( regions , gencode_3_prime_UTR , annotation_label = "three_prime_UTR" )
+  regions = gencode_one_direction_findOverlaps( regions , gencode_5_prime_UTR , annotation_label = "five_prime_UTR" )
+  regions = gencode_one_direction_findOverlaps( regions , gencode_promoters   , annotation_label = "promoter" )
 
   regions
 }
@@ -66,7 +66,7 @@ gencode_two_direction_annotator = function(regions , gencode  ){
   regions  = gencode_one_direction_annotator( regions = regions, gencode = gencode)
   regions_inverted_strand  = gencode_one_direction_annotator( regions = regions_inverted_strand, gencode = gencode)
 
-  regions$opposite_strand_annotatation = regions_inverted_strand$annotatation
+  regions$opposite_strand_annotation = regions_inverted_strand$annotation
   regions$opposite_strand_symbol = regions_inverted_strand$symbol
   regions$opposite_gene_type = regions_inverted_strand$gene_type
 
@@ -98,7 +98,7 @@ gencode_strandless_annotator = function( regions, gencode , output_option = 2) {
   regions_annotated_minus = GenomicRanges::mcols(regions_annotated_minus)
 
   if( output_option == 1 ){
-    regions$strandless_annotatation = paste( regions_annotated_plus$annotatation, "(+);", regions_annotated_minus$annotatation , "(-)", sep = "" )
+    regions$strandless_annotation = paste( regions_annotated_plus$annotation, "(+);", regions_annotated_minus$annotation , "(-)", sep = "" )
     regions$strandless_symbol = paste( regions_annotated_plus$symbol, "(+);", regions_annotated_minus$symbol , "(-)", sep = "" )
     regions$strandless_gene_type = paste( regions_annotated_plus$gene_type, "(+);", regions_annotated_minus$gene_type , "(-)", sep = "" )
 
@@ -115,7 +115,7 @@ gencode_strandless_annotator = function( regions, gencode , output_option = 2) {
 #'
 #' @param regions query genomic regions as GRanges object
 #' @param gencode Gencode annotation as GRanges object, usually of one type like gencode[ gencode$type == "exon"]
-#' @param annotatation_label label (character) to mark what annotation was used, e.g. "gene", "exon" or "promoters"
+#' @param annotation_label label (character) to mark what annotation was used, e.g. "gene", "exon" or "promoters"
 #' @return GRanges with new columns added to the feature metadata: mcols(regions)
 #' @importFrom GenomicRanges distanceToNearest
 #' @export
