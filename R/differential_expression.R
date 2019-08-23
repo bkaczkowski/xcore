@@ -24,7 +24,7 @@ edgeR_DE_wrapper = function(counts, sample_annot, design, contrasts, robust = TR
   if (sum( rownames(design) != colnames(counts) ) > 0)
     stop ("rownames(design) do not match the colnames of counts")
 
-  dge <- DGEList(enh_counts_filtered,samples = sample_annot)
+  dge <- DGEList(counts,samples = sample_annot)
   dge <- calcNormFactors(dge)
   dge <- estimateDisp(dge, design = design, robust=robust)
   fit <- glmQLFit(dge, design = design , robust=robust)
