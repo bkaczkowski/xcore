@@ -44,14 +44,33 @@ create_intersection_matrix   = function( list_of_granges , pre_defined_regions =
     regions = pre_defined_regions
   }
 
-  intersection_matrix = matrix (0, nrow = length(regions), ncol = length( list_of_granges ) )
+  intersection_matrix = matrix (0L, nrow = length(regions), ncol = length( list_of_granges ) )
   colnames(intersection_matrix) = names(list_of_granges)
   rownames(intersection_matrix) = regions$name
 
   for (i in 1:length( list_of_granges ) ) {
     peaks = list_of_granges[[i]]
     hits = GenomicRanges::findOverlaps(regions ,peaks)
-    intersection_matrix[ hits@from  , i] =  1
+    intersection_matrix[ hits@from  , i] =  1L
   }
   data.frame(intersection_matrix)
+}
+
+
+#' Create Intersection Vector
+#'
+#' @param query GRanges containing query regions e.g. Transcription Factor Chip-Seq data
+#' @param pre_defined_regions a set set of reference regions like known promoters or enhancers
+#'
+#' @return a vector of the same lenght as pre_defined_regions, 0 if no overlap, 1 if there is overlap with query regions
+#' @export
+
+create_intersection_vector   = function( query , pre_defined_regions ) {
+
+  intersection_vector = rep (0L,times =  length( pre_defined_regions ) )
+
+  hits = GenomicRanges::findOverlaps(pre_defined_regions ,query)
+  intersection_vector[ hits@from ] =  1L
+
+  intersection_vector
 }
