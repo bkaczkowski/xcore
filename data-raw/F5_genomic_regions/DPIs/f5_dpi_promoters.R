@@ -96,6 +96,12 @@ promoters_detailed = dpi
 usethis::use_data( promoters_detailed , internal = FALSE, overwrite = TRUE)
 
 # some checks, stats and overview
+s = dpi$SYMBOL_gencode != ""
+table(dpi$SYMBOL_gencode[s]  == dpi$symbol[s]) # the FALSE should be about 1.5%, not 15%!!!!
+# FALSE   TRUE
+# 1432 101294
+
+
 table(dpi$SYMBOL_F5_annot == dpi$SYMBOL_gencode)
 table(dpi$ENTREZID_F5_annot == dpi$ENTREZID_gencode)
 table(dpi$ENTREZID_uscs == dpi$ENTREZID_gencode)
@@ -118,8 +124,7 @@ length(unique(dpi$ENTREZID_uscs))
 
 table( dpi$SYMBOL_gencode != "", dpi$annotation == "promoter")
 
-s = dpi$SYMBOL_gencode != ""
-table(dpi$SYMBOL_gencode[s]  == dpi$symbol[s])
+
 
 table(dpi$SYMBOL_F5_annot[s] == dpi$symbol[s])
 table(dpi$SYMBOL_F5_annot[s] == dpi$SYMBOL_gencode[s])
