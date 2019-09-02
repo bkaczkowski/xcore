@@ -30,9 +30,9 @@ merge_list_of_granges = function( list_of_granges ){
 #' @param list_of_granges a list of GRanges containing regions of intereset, names(x) will be used to name the columns of the output matrix
 #' @param pre_defined_regions a list of predefined regions to be used at rows, if NULL (default), the union of all genomic regions in the list_of_granges will be used.
 #' @return intersection matrix
+#'
 #' @export
 #' @importFrom GenomicRanges reduce findOverlaps
-#'
 create_intersection_matrix   = function( list_of_granges , pre_defined_regions = NULL ) {
 
   if ( is.null( pre_defined_regions) ) {
@@ -61,10 +61,9 @@ create_intersection_matrix   = function( list_of_granges , pre_defined_regions =
 #'
 #' @param query GRanges containing query regions e.g. Transcription Factor Chip-Seq data
 #' @param pre_defined_regions a set set of reference regions like known promoters or enhancers
-#'
 #' @return a vector of the same lenght as pre_defined_regions, 0 if no overlap, 1 if there is overlap with query regions
 #' @export
-
+#' @importFrom GenomicRanges findOverlaps
 create_intersection_vector   = function( query , pre_defined_regions ) {
 
   intersection_vector = rep (0L,times =  length( pre_defined_regions ) )
