@@ -14,7 +14,7 @@ tail -n +2 Oth.ALL.05.AllAg.AllCell_extracted.bed > Oth.ALL.05.AllAg.AllCell_ext
 rm Oth.ALL.05.AllAg.AllCell_extracted.bed
 
 # liftOver to hg38
-./liftOver  Oth.ALL.05.AllAg.AllCell_extracted_hg19.bed hg19ToHg38.over.chain Oth.ALL.05.AllAg.AllCell_extracted_hg19ToHg38_liftOver.bed unMapped
+liftOver  Oth.ALL.05.AllAg.AllCell_extracted_hg19.bed hg19ToHg38.over.chain Oth.ALL.05.AllAg.AllCell_extracted_hg19ToHg38_liftOver.bed unMapped
 
 # create SRX_to_GSM_map.txt
 cut -f 4 Oth.ALL.05.AllAg.AllCell.bed |awk '{gsub(":%20.*","",$1)}1' | awk '{gsub(";Name.*Title=","_",$1)}1' |  awk '{gsub("ID=","",$1)}1' | grep _GSM | sort | uniq > SRX_to_GSM_map.txt &
