@@ -1,5 +1,5 @@
+# OBSOLETE script
 
-cd
 cat remap2018_all_macs2_hg38_v1_2.bed | awk 'OFS="\t" {print $1,$2,$3,$4,$5,$6}' > remap2018_all_macs2_hg38_v1_2.bed6
 
 cut -f 4 remap2018_all_macs2_hg38_v1_2.bed6  | sort | uniq >  Experiment_list.txt &
@@ -15,6 +15,6 @@ done
 mkdir -p split_by_experiment
 for cell_bed in `ls split_by_cell/*.bed`; do
   for exp in `cut -f 4 cell_bed | sort | uniq`; do
-    grep $exp $cell_bed > split_by_experiment/$exp.bed
+    grep -w $exp $cell_bed > split_by_experiment/$exp.bed
   done
 done
