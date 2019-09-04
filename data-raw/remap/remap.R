@@ -8,7 +8,7 @@
 
 # 1b) Get ReMap All peak set
 # wget http://tagc.univ-mrs.fr/remap/download/remap2018/hg38/MACS/remap2018_all_macs2_hg38_v1_2.bed.gz
-# cat remap2018_all_macs2_hg38_v1_2.bed | awk 'OFS="\t" {print $1,$2,$3,$4,$5,$6}' > remap2018_all_macs2_hg38_v1_2.bed6.bed
+# zcat remap2018_all_macs2_hg38_v1_2.bed.gz | awk 'OFS="\t" {print $1,$2,$3,$4,$5,$6}' > remap2018_all_macs2_hg38_v1_2.bed6.bed
 remap = rtracklayer::import("~/projects/resources/remap/remap2018_all_macs2_hg38_v1_2.bed6.bed")
 trans_factors = unique(remap$name)
 
