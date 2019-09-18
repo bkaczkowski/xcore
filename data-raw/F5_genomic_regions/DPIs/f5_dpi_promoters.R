@@ -51,11 +51,32 @@ library(org.Hs.eg.db)
 select_first = function(x) {x[1]}
 dpi$SYMBOL_uscs  = as.character( lapply ( mapIds(org.Hs.eg.db, dpi$ENTREZID_uscs, 'SYMBOL' , 'ENTREZID' ) , select_first))
 dpi$SYMBOL_uscs[ dpi$SYMBOL_uscs =="NULL"] =""
+dpi$SYMBOL_uscs[ is.na(dpi$SYMBOL_uscs) ] = ""
 
 too_far = dpi$distance_uscs > 500
 
 dpi$ENTREZID_uscs[ too_far ]  = ""
 dpi$SYMBOL_uscs  [ too_far ]  = ""
+
+# simplifying/collapsing ENTREZID
+dpi$ENTREZID = dpi$ENTREZID_uscs
+empty = dpi$ENTREZID == ""
+dpi$ENTREZID [ empty ] = dpi$ENTREZID_gencode [empty]
+empty = dpi$ENTREZID == ""
+dpi$ENTREZID [ empty ] = dpi$ENTREZID_F5_annot [empty]
+
+# simplifying/collapsing SYMBOLs
+dpi$SYMBOL = dpi$SYMBOL_uscs
+empty = dpi$SYMBOL == ""
+dpi$SYMBOL [ empty ] = dpi$SYMBOL_gencode [empty]
+empty = dpi$SYMBOL == ""
+dpi$SYMBOL [ empty ] = dpi$SYMBOL_F5_annot [empty]
+
+# some check, stats and overview
+s = dpi$SYMBOL_F5_annot != ""
+table(dpi$SYMBOL_F5_annot[s]    == dpi$SYMBOL[s]) # the FALSE should be about 1.8%, not 15%!!!!
+s = dpi$ENTREZID_F5_annot != ""
+table(dpi$ENTREZID_F5_annot[s]  == dpi$ENTREZID[s]) # the FALSE should be below 1%
 
 promoters = dpi
 promoters$distance_F5_annot = NULL
@@ -77,6 +98,7 @@ ep300  = rtracklayer::import.bed("~/projects/resources/remap/remap2018_EP300_nr_
 hits = findOverlaps(dpi ,ep300)
 dpi$ep300[hits@from] = "EP300"
 dpi$ep300 = as.factor(dpi$ep300)
+rm( roadmap ); gc()
 
 #ENHANCERS
 data("enhancers", package = "xcore")
@@ -90,50 +112,8 @@ dpi$repeat_dfam = ""
 hits = findOverlaps(dpi , dfam )
 dpi$repeat_dfam [hits@from] = dfam$name[hits@to]
 
+# Detailed two direction annotation from Gencode
 dpi = xcore::gencode_two_direction_annotator(regions = dpi, gencode = gencode)
 
 promoters_detailed = dpi
 usethis::use_data( promoters_detailed , internal = FALSE, overwrite = TRUE)
-
-# some checks, stats and overview
-s = dpi$SYMBOL_gencode != ""
-table(dpi$SYMBOL_gencode[s]  == dpi$symbol[s]) # the FALSE should be about 1.5%, not 15%!!!!
-# FALSE   TRUE
-# 1432 101294
-
-
-table(dpi$SYMBOL_F5_annot == dpi$SYMBOL_gencode)
-table(dpi$ENTREZID_F5_annot == dpi$ENTREZID_gencode)
-table(dpi$ENTREZID_uscs == dpi$ENTREZID_gencode)
-
-table(dpi$SYMBOL_F5_annot != "")
-table(dpi$SYMBOL_gencode != "")
-table(dpi$SYMBOL_uscs != "")
-
-table(dpi$ENTREZID_F5_annot != "")
-table(dpi$ENTREZID_gencode != "")
-table(dpi$ENTREZID_uscs    != "")
-
-length(unique(dpi$SYMBOL_F5_annot))
-length(unique(dpi$SYMBOL_gencode))
-length(unique(dpi$SYMBOL_uscs))
-
-length(unique(dpi$ENTREZID_F5_annot))
-length(unique(dpi$ENTREZID_gencode))
-length(unique(dpi$ENTREZID_uscs))
-
-table( dpi$SYMBOL_gencode != "", dpi$annotation == "promoter")
-
-
-
-table(dpi$SYMBOL_F5_annot[s] == dpi$symbol[s])
-table(dpi$SYMBOL_F5_annot[s] == dpi$SYMBOL_gencode[s])
-
-table(dpi$SYMBOL_uscs[s]     == dpi$symbol[s])
-table(dpi$SYMBOL_uscs[s]     == dpi$SYMBOL_gencode[s])
-
-table(dpi$SYMBOL_uscs[s]     == dpi$SYMBOL_F5_annot[s])
-
-#there are some annotation cases that are confusing
-dpi [ dpi$SYMBOL_gencode  != dpi$symbol & s ,]
-dpi [ dpi$SYMBOL_gencode  != dpi$symbol & s ,c(3,6,10,18)]
