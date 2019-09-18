@@ -138,45 +138,55 @@ overlap_mat_entrez = apply( overlap_mat_promoters_for_entrez_collapsing,
 
 save( overlap_mat_symbol, file = "data-raw/chip_atlas/overlap_mat_symbol.rda")
 save( overlap_mat_entrez, file = "data-raw/chip_atlas/overlap_mat_entrez.rda")
-
-# 6) Plotting
 sxr_meta$number_of_geneSymbols_with_peak =  colSums(overlap_mat_symbol >0 )
 sxr_meta$number_of_geneEntrez_with_peak  =  colSums(overlap_mat_entrez >0 )
+sxr_meta$total_number_of_peaks = total_number_of_peaks
+
+# Export data
+chip_atlas_entrez = overlap_mat_entrez
+chip_atlas_symbol = overlap_mat_symbol
+chip_atlas_meta   = sxr_meta
+usethis::use_data( chip_atlas_entrez , internal = FALSE, overwrite = TRUE)
+usethis::use_data( chip_atlas_symbol , internal = FALSE, overwrite = TRUE)
+usethis::use_data( chip_atlas_meta   , internal = FALSE, overwrite = TRUE)
+
+# 6) Plotting
 number_of_chipExp_per_gene      =  rowSums(overlap_mat_symbol >0 )
+number_of_chipExp_per_entrez    =  rowSums(overlap_mat_entrez >0 )
 
 dev.off()
-pdf("data-raw/chip_atlas/NumberOfPeaks_vs_PeaksOverlappingDPIs.pdf", width = 8, height = 6)
-smoothScatter(total_number_of_peaks /1000 , number_of_promoters_with_peak/1000 ,  xlim = c(0,110) )
+pdf("data-raw/chip_atlas/NumberOfPeaks_vs_NumberOfFeatures_with_peaks.pdf", width = 8, height = 6)
+with( sxr_meta , smoothScatter(total_number_of_peaks /1000 , number_of_promoters_with_peak/1000  ,xlim = c(0,110 ), main = "DPIs" ))
+with( sxr_meta , smoothScatter(total_number_of_peaks /1000 , number_of_enhancers_with_peak/1000  ,xlim = c(0,110 ), main = "enhancers"  ))
+with( sxr_meta , smoothScatter(total_number_of_peaks /1000 , number_of_geneSymbols_with_peak/1000,xlim = c(0,110 ), main = "Genes(SYMBOLS)" ))
+with( sxr_meta , smoothScatter(total_number_of_peaks /1000 , number_of_geneEntrez_with_peak/1000 ,xlim = c(0,110 ), main = "Genes(ENTREZID)" ))
 dev.off()
 
-dev.off()
-pdf("data-raw/chip_atlas/NumberOfPeaks_vs_PeaksOverlappingEnhancerss.pdf", width = 8, height = 6)
-smoothScatter(total_number_of_peaks /1000 , number_of_enhancers_with_peak/1000 ,  xlim = c(0,110) )
-dev.off()
-
-dev.off()
-pdf("data-raw/chip_atlas/NumberOfPeaks_vs_Genes_with_peaks.pdf", width = 8, height = 6)
-smoothScatter(total_number_of_peaks /1000 , number_of_geneSymbols_with_peak/1000 ,  xlim = c(0,110) )
+pdf("data-raw/chip_atlas/NumberOfPeaks(Experiments)_per_gene.pdf", width = 8, height = 6)
+plot(sort(number_of_chipExp_per_gene, decreasing = T), type = "l",
+     ylab = "number of peaks", main = "Number of Chip-Seq experiments \nwith peak on given gene promoter ", xlab = "Genes index")
 dev.off()
 
 intersections_gene_level_sel = overlap_mat_symbol [ rowSums( overlap_mat_symbol>0 )>= 100,]
+intersections_gene_level_sel = intersections_gene_level_sel [ rowSums( intersections_gene_level_sel>0 )< 3500,]
 intersections_gene_level_sel = intersections_gene_level_sel [ , colSums(intersections_gene_level_sel > 0) > 500 ]
 intersections_gene_level_sel = ifelse(intersections_gene_level_sel > 0, yes = 1L, no = 0L)
 
 dev.off()
-pdf("data-raw/chip_atlas/upset_top30_freq_chip_q500.pdf", width = 15, height = 10)
+pdf("data-raw/chip_atlas/upset_top30_freq_chip.pdf", width = 15, height = 10)
 UpSetR::upset(data.frame(intersections_gene_level_sel) , nsets = 30, order.by = "freq")
 dev.off()
 
 dev.off()
-pdf("data-raw/chip_atlas/upset_top30_freq_genes_q500.pdf", width = 15, height = 10)
+pdf("data-raw/chip_atlas/upset_top30_freq_genes.pdf", width = 15, height = 10)
 UpSetR::upset(data.frame(t(intersections_gene_level_sel) ), nsets = 30, order.by = "freq")
 dev.off()
 
 intersections_gene_level_sel = overlap_mat_symbol [ rowSums(overlap_mat_symbol>500)>= 500,]
+intersections_gene_level_sel = intersections_gene_level_sel [ rowSums( intersections_gene_level_sel>0 )< 3500,]
 intersections_gene_level_sel = intersections_gene_level_sel [ , colSums(intersections_gene_level_sel >= 500) > 200 ]
-intersections_gene_level_sel = intersections_gene_level_sel [ rowSums(intersections_gene_level_sel>500)>= 1000,]
-intersections_gene_level_sel = intersections_gene_level_sel [ , colSums(intersections_gene_level_sel >= 500) > 300 ]
-pheatmap::pheatmap(t(intersections_gene_level_sel)[seq(1,470, 10),seq(1,370, 5)], cluster_rows = F,cellwidth = 10,cellheight = 10,
+intersections_gene_level_sel = intersections_gene_level_sel [ rowSums(intersections_gene_level_sel>500)>= 900,]
+intersections_gene_level_sel = intersections_gene_level_sel [ , colSums(intersections_gene_level_sel >= 500) > 30 ]
+pheatmap::pheatmap(t(intersections_gene_level_sel)[seq(1,860, 5),], cluster_rows = T,cellwidth = 10,cellheight = 10,
                 file = "data-raw/chip_atlas/heatmap_most_dense_overlap.pdf")
 
