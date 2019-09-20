@@ -10,7 +10,7 @@
 #' @param log2fc_threshold log2 Fold Change threshold for DE testing, 1 by default#'
 #' @return a list of differential expression results, each element of the list corresponds to one row of contrast matrix
 #' @export
-#' @import edgeR
+#' @importFrom  edgeR DGEList calcNormFactors estimateDisp glmQLFit plotBCV plotQLDisp
 edgeR_DE_wrapper = function(counts, sample_annot, design, contrasts, robust = TRUE, plots = TRUE,
                             log2fc_threshold = 1,adj_pv_threshold = 0.05 ){
 
@@ -59,7 +59,7 @@ edgeR_DE_wrapper = function(counts, sample_annot, design, contrasts, robust = TR
 #' @param adj_pv_threshold adjusted p-value significance threshold for DE testing, 0.05 by default
 #' @param log2fc_threshold log2 Fold Change threshold for DE testing, 1 by default
 #' @return a list of differential expression results, each element of the list corresponds to one comparison: each experimental factor level vs control (first factor level)
-#' @import DESeq2
+#' @importFrom  DESeq2 DESeqDataSetFromMatrix DESeq resultsNames lfcShrink
 #' @export
 deseq_DE_wrapper = function( counts, sample_annot, adj_pv_threshold = 0.05, log2fc_threshold = 1){
 
@@ -99,5 +99,38 @@ deseq_DE_wrapper = function( counts, sample_annot, adj_pv_threshold = 0.05, log2
 }
 
 
+
+#' limma differential analysis wrapper
+#' @param data a matrix of expression values or activities, data should be normally distributed (e.g. normalized and log2 transformed)
+#' @param design design matrix
+#' @param contrasts matrix with contrasts
+#' @param adj_pv_threshold adjusted p-value significance threshold for DE testing, 0.05 by default
+#' @param log2fc_threshold log2 Fold Change threshold for DE testing, 1 by default#'
+#' @return a list of differential expression results, each element of the list corresponds to one row of contrast matrix
+#' @export
+#' @importFrom  limma lmFit contrasts.fit eBayes topTable
+limma_DE_wrapper = function( data , design, contrasts, log2fc_threshold = 1,adj_pv_threshold = 0.05 ){
+  fit  = limma::lmFit( data , design )
+  fit2 = limma::contrasts.fit(fit, t(contrasts))
+  fit2 = limma::eBayes(fit2)
+
+  de_results = list()
+  for(i in 1:nrow(contrasts)){
+    de_table = limma::topTable(fit2, coef=i, adjust="BH", number = nrow(data), sort.by = "none")
+    de_table$B = NULL
+    de_table$t = NULL
+    colnames(de_table) = c( "log2FoldChange", "Average", "pvalue", "padj")
+    de_table$padj = p.adjust(de_table$pvalue , method = "BH")
+    de_table$DE = 0
+    de_table$DE [de_table$padj < adj_pv_threshold &
+                   de_table$log2FoldChange >  log2fc_threshold] =  1
+    de_table$DE [de_table$padj < adj_pv_threshold &
+                   de_table$log2FoldChange < -log2fc_threshold] = -1
+
+    de_results[[i]] = de_table
+  }
+  names(de_results) = rownames(contrasts)
+  return(de_results)
+}
 
 
