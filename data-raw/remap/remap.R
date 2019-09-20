@@ -50,7 +50,7 @@ for ( j in 1:length(trans_factors)){
   print( j)
 }
 
-rm(hits, query_tf, j, remap, export_dir) ; gc()
+rm(hits, query_tf, j, remap) ; gc()
 
 save( overlap_mat_enhancers, file = "data-raw/remap/overlap_mat_enhancers.rda")
 save( overlap_mat_promoters, file = "data-raw/remap/overlap_mat_promoters.rda")
@@ -75,6 +75,11 @@ overlap_mat_entrez[ overlap_mat_entrez > 0 ] =1
 # 5) Exporting
 save( overlap_mat_symbol, file = "data-raw/remap/overlap_mat_symbol.rda")
 save( overlap_mat_entrez, file = "data-raw/remap/overlap_mat_entrez.rda")
+
+remap_enhancers = overlap_mat_enhancers
+remap_promoters = overlap_mat_promoters
+usethis::use_data( remap_enhancers , internal = FALSE, overwrite = TRUE)
+usethis::use_data( remap_promoters , internal = FALSE, overwrite = TRUE)
 
 remap_entrez = overlap_mat_entrez
 remap_symbol = overlap_mat_symbol
