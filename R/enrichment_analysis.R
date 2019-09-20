@@ -68,7 +68,6 @@ extract_a_column = function( de_res , column ){
 }
 
 #' Create a list of signatures from 0,1 encoded matrix
-#'
 #' @param int_mat 0,1 encoded matrix with columns representing signatures and rows representing the genes, 1 means that a gene belongs to a pathway
 #' @return a list gene signatures
 #' @export
@@ -81,8 +80,23 @@ matrix_to_list = function( int_mat ){
   names(sig_list) = colnames(int_mat)
   sig_list
 }
+
+#' Create a 0,1 encoded matrix from a list of signatures
+#' @param sig_list a list gene signatures
+#' @return 0,1 encoded matrix with columns representing signatures and rows representing the genes, 1 means that a gene belongs to a pathway
+#' @export
+list_to_matrix = function( sig_list ) {
+  unique_features = sort( unique ( do.call(c, msigdb) ) )
+  overlap_mat = matrix (0L, nrow = length(unique_features), ncol = length(msigdb) )
+  colnames(overlap_mat) = names(msigdb)
+  rownames(overlap_mat) = unique_features
+  for ( j in 1:ncol(overlap_mat) ) {
+    overlap_mat[ unique_features  %in% msigdb[[j]]  , j ] = 1L
+  }
+  overlap_mat
+}
+
 #' Create list of ranks from table of FoldChanges
-#'
 #' @param fc_table a table of FoldChanges
 #' @return list of rank vectors, each rank vector can be used as input to fgsea() function
 #' @export
@@ -119,7 +133,6 @@ run_fgsea = function( ranks , pathways, nperm = 1){
 #' @param score choose between two enrichment scores: "NES" or "ES"
 #' @return a matrix with enrichment scores ("NES" or "ES"), each column represents DE comparison, each row represents a pathway/signature
 #' @export
-#' @examples
 make_enrichment_score_matrix= function( fgseaRes, score = c("NES", "ES") ) {
   FUN = function(x) {x[[score]]}
   scores = do.call( cbind , ( lapply(  fgseaRes, FUN )))
