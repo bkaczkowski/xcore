@@ -146,9 +146,15 @@ sxr_meta$total_number_of_peaks = total_number_of_peaks
 chip_atlas_entrez = overlap_mat_entrez
 chip_atlas_symbol = overlap_mat_symbol
 chip_atlas_meta   = sxr_meta
-usethis::use_data( chip_atlas_entrez , internal = FALSE, overwrite = TRUE)
-usethis::use_data( chip_atlas_symbol , internal = FALSE, overwrite = TRUE)
-usethis::use_data( chip_atlas_meta   , internal = FALSE, overwrite = TRUE)
+
+chip_atlas_promoters   =overlap_mat_promoters
+chip_atlas_enhancers   =overlap_mat_enhancers
+
+usethis::use_data( chip_atlas_entrez   , internal = FALSE, overwrite = TRUE)
+usethis::use_data( chip_atlas_symbol   , internal = FALSE, overwrite = TRUE)
+usethis::use_data( chip_atlas_meta     , internal = FALSE, overwrite = TRUE)
+usethis::use_data( chip_atlas_promoters, internal = FALSE, overwrite = TRUE)
+usethis::use_data( chip_atlas_enhancers, internal = FALSE, overwrite = TRUE)
 
 # 6) Plotting
 number_of_chipExp_per_gene      =  rowSums(overlap_mat_symbol >0 )
