@@ -143,12 +143,21 @@ sxr_meta$number_of_geneEntrez_with_peak  =  colSums(overlap_mat_entrez >0 )
 sxr_meta$total_number_of_peaks = total_number_of_peaks
 
 # Export data
-chip_atlas_entrez = overlap_mat_entrez
-chip_atlas_symbol = overlap_mat_symbol
+load( "data-raw/chip_atlas/overlap_mat_entrez.rda")
+load( "data-raw/chip_atlas/overlap_mat_symbol.rda")
+chip_atlas_entrez = Matrix::drop0( overlap_mat_entrez )
+chip_atlas_symbol = Matrix::drop0( overlap_mat_symbol )
 chip_atlas_meta   = sxr_meta
 
-chip_atlas_promoters   =overlap_mat_promoters
-chip_atlas_enhancers   =overlap_mat_enhancers
+load( "data-raw/chip_atlas/overlap_mat_promoters.rda")
+load( "data-raw/chip_atlas/overlap_mat_enhancers.rda")
+chip_atlas_promoters = Matrix::sparseMatrix (dims = c(nrow(overlap_mat_promoters), ncol(overlap_mat_promoters ) ), i={}, j={} )
+colnames(chip_atlas_promoters) = colnames(overlap_mat_promoters)
+rownames(chip_atlas_promoters) = rownames(overlap_mat_promoters)
+for ( j in 1:ncol(chip_atlas_promoters) ) {
+  chip_atlas_promoters[  , j ] = as.logical( overlap_mat_promoters[,j])
+}
+chip_atlas_enhancers   = Matrix::drop0( overlap_mat_enhancers )
 
 usethis::use_data( chip_atlas_entrez   , internal = FALSE, overwrite = TRUE)
 usethis::use_data( chip_atlas_symbol   , internal = FALSE, overwrite = TRUE)
