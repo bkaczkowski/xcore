@@ -76,12 +76,17 @@ overlap_mat_entrez[ overlap_mat_entrez > 0 ] =1
 save( overlap_mat_symbol, file = "data-raw/remap/overlap_mat_symbol.rda")
 save( overlap_mat_entrez, file = "data-raw/remap/overlap_mat_entrez.rda")
 
-remap_enhancers = overlap_mat_enhancers
-remap_promoters = overlap_mat_promoters
+load( "data-raw/remap/overlap_mat_enhancers.rda")
+load( "data-raw/remap/overlap_mat_promoters.rda")
+remap_enhancers = Matrix::drop0( overlap_mat_enhancers)
+remap_promoters = Matrix::drop0( overlap_mat_promoters)
 usethis::use_data( remap_enhancers , internal = FALSE, overwrite = TRUE)
 usethis::use_data( remap_promoters , internal = FALSE, overwrite = TRUE)
 
-remap_entrez = overlap_mat_entrez
-remap_symbol = overlap_mat_symbol
+load( "data-raw/remap/overlap_mat_symbol.rda")
+load( "data-raw/remap/overlap_mat_entrez.rda")
+
+remap_entrez = Matrix::drop0( overlap_mat_entrez)
+remap_symbol = Matrix::drop0( overlap_mat_symbol)
 usethis::use_data( remap_entrez , internal = FALSE, overwrite = TRUE)
 usethis::use_data( remap_symbol , internal = FALSE, overwrite = TRUE)
