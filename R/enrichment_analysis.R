@@ -96,6 +96,23 @@ list_to_matrix = function( sig_list ) {
   overlap_mat
 }
 
+#' Create a sparseMatrix from a list of signatures
+#' @param sig_list a list gene signatures
+#' @return a sparseMatrix, columns represent signatures and rows represent the genes, TRUE means that a gene belongs to a pathway
+#' @export
+#' @importFrom Matrix sparseMatrix
+list_to_sparse_matrix = function( sig_list ) {
+  unique_features = sort( unique ( do.call(c, msigdb) ) )
+  overlap_mat = Matrix::sparseMatrix (dims = c(length(unique_features), length(msigdb) ), i={}, j={} )
+  colnames(overlap_mat) = names(msigdb)
+  rownames(overlap_mat) = unique_features
+  for ( j in 1:ncol(overlap_mat) ) {
+    overlap_mat[ unique_features  %in% msigdb[[j]]  , j ] = TRUE
+  }
+  overlap_mat
+}
+
+
 #' Create list of ranks from table of FoldChanges
 #' @param fc_table a table of FoldChanges
 #' @return list of rank vectors, each rank vector can be used as input to fgsea() function
