@@ -51,7 +51,7 @@ get_fc_matrix = function( de_res){
   fc_list = lapply( de_res, extract_fc)
   fc_matrix = do.call(what = cbind, fc_list)
   rownames(fc_matrix) = rownames(de_res[[1]])
-  return(extract_fc)
+  return(fc_matrix)
 }
 
 #' Extract a column of interest from list of data.frame's
@@ -158,3 +158,26 @@ make_enrichment_score_matrix= function( fgseaRes, score = c("NES", "ES") ) {
   scores
 }
 
+#' Calculate Activity Scores (as Mean FC of Singature Features)
+#' @param signature_mat a sparseMatrix, columns represent signatures and rows represent the genes, 1 means that a gene belongs to a pathway
+#' @param de_res list of data.frame objects, e.g. DE results
+#' @param min_genes_per_sig minimum number of genes per signature, signatures with fewer genes are discarded
+#' @return a matrix of activities, rows represent signatures and columns represent the DE comparisons
+#' @export
+de_res_to_activity_scores = function( signature_mat ,de_res , min_genes_per_sig = 10 ) {
+  library(Matrix)
+  fc_matrix = xcore::get_fc_matrix( de_res )
+  fc_matrix = fc_matrix [ rownames(fc_matrix) %in% rownames( signature_mat ) , ]
+  fc_matrix = fc_matrix [ order( rownames(fc_matrix) ) , ]
+
+  signature_mat = signature_mat [ rownames(signature_mat) %in% rownames(fc_matrix), ]
+  signature_mat = signature_mat [ order( rownames(signature_mat) ) , ]
+  signature_mat = signature_mat [ , Matrix::colSums(signature_mat) >= min_genes_per_sig]
+
+  signature_mat_scaled  = t(t(signature_mat) / colSums(signature_mat ))
+
+  if ( sum (rownames(fc_matrix) != rownames(signature_mat_scaled) ) > 0 ) {
+    stop ("DE results and count table features don't match")
+  }
+  t(signature_mat_scaled) %*% data.matrix( fc_matrix  )
+}
