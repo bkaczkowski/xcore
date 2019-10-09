@@ -39,7 +39,7 @@ for ( j in 1:length(unique_factors)){
   query_tf = tfbs[tfbs$name == unique_factors [j] ]
   total_number_of_peaks [j] = length(query_tf)
 
-  hits = GenomicRanges::findOverlaps(promoters_ext500 ,query_tf)
+  hits = GenomicRanges::findOverlaps(promoters_ext500 ,query_tf, ignore.strand=TRUE )
   hits = S4Vectors::DataFrame(from =hits@from , to = hits@to,  score = query_tf$score[ hits@to])
   hits = hits [ order ( hits$score , decreasing = T) , ]
   hits = hits [ !duplicated(hits$from) ,]
@@ -57,13 +57,9 @@ for ( j in 1:length(unique_factors)){
 rm(hits, query_tf, j, tfbs)
 gc()
 
-save( overlap_mat_enhancers, file = "data-raw/chip_atlas/overlap_mat_enhancers.rda")
-save( overlap_mat_promoters, file = "data-raw/chip_atlas/overlap_mat_promoters.rda")
-
 MotEvo_meta = data.frame( total_number_of_peaks = total_number_of_peaks,
                           number_of_promoters_with_peak   =  colSums(overlap_mat_promoters >0),
                           number_of_enhancers_with_peak   =  colSums(overlap_mat_enhancers >0) )
-  )
 
 # 5) Gene level summarization
 
@@ -121,6 +117,11 @@ plot(sort(number_of_TFBS_per_gene, decreasing = T), type = "l",
      ylab = "number of TFBS", main = "Number of TF that have TFBS on given gene's promoter ", xlab = "Genes index")
 dev.off()
 
+pdf("data-raw/predicted_tfbs/MotEvo_NumberOfTarget_genes_per_TF.pdf", width = 8, height = 6)
+plot(sort( Matrix::colSums(MotEvo_symbol), decreasing = T), type = "l",
+     ylab = "number of TFBS", main = "Number of Targets genes per TF", xlab = "TF index")
+dev.off()
+
 intersections_gene_level_sel = overlap_mat_symbol [ rowSums( overlap_mat_symbol>0 )>= 10 ,]
 intersections_gene_level_sel = intersections_gene_level_sel [ , colSums(intersections_gene_level_sel > 0) > 500 ]
 intersections_gene_level_sel = ifelse(intersections_gene_level_sel > 0, yes = 1L, no = 0L)
@@ -130,9 +131,9 @@ pdf("data-raw/predicted_tfbs/MotEvo_upset_top30_freq_chip.pdf", width = 15, heig
 UpSetR::upset(data.frame(intersections_gene_level_sel) , nsets = 30, order.by = "freq")
 dev.off()
 
-intersections_gene_level_sel = overlap_mat_symbol [ rowSums( overlap_mat_symbol>0 )>= 20 ,]
+intersections_gene_level_sel = overlap_mat_symbol [ rowSums( overlap_mat_symbol>0 )>= 40 ,]
 intersections_gene_level_sel = intersections_gene_level_sel [ , colSums(intersections_gene_level_sel > 0) > 200 ]
-intersections_gene_level_sel = intersections_gene_level_sel [ rowSums( intersections_gene_level_sel>0 )>= 35 ,]
+intersections_gene_level_sel = intersections_gene_level_sel [ rowSums( intersections_gene_level_sel>0 )>= 50 ,]
 
 pheatmap::pheatmap(t(intersections_gene_level_sel), cluster_rows = T,cellwidth = 10,cellheight = 10,
                 file = "data-raw/predicted_tfbs/MotEvo_heatmap_most_dense_overlap.pdf")
