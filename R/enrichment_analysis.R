@@ -164,22 +164,24 @@ make_enrichment_score_matrix= function( fgseaRes, score = c("NES", "ES") ) {
 #' @param min_genes_per_sig minimum number of genes per signature, signatures with fewer genes are discarded
 #' @return a matrix of activities, rows represent signatures and columns represent the DE comparisons
 #' @export
+#' @importFrom Matrix t colSums crossprod
 de_res_to_activity_scores = function( signature_mat ,de_res , min_genes_per_sig = 10 ) {
-  library(Matrix)
+
   fc_matrix = xcore::get_fc_matrix( de_res )
   fc_matrix = fc_matrix [ rownames(fc_matrix) %in% rownames( signature_mat ) , ]
   fc_matrix = fc_matrix [ order( rownames(fc_matrix) ) , ]
+  fc_matrix = data.matrix( fc_matrix  )
 
   signature_mat = signature_mat [ rownames(signature_mat) %in% rownames(fc_matrix), ]
   signature_mat = signature_mat [ order( rownames(signature_mat) ) , ]
   signature_mat = signature_mat [ , Matrix::colSums(signature_mat) >= min_genes_per_sig]
 
-  signature_mat_scaled  = t(t(signature_mat) / colSums(signature_mat ))
+  signature_mat_scaled  = Matrix::t(Matrix::t(signature_mat) / Matrix::colSums(signature_mat ))
 
   if ( sum (rownames(fc_matrix) != rownames(signature_mat_scaled) ) > 0 ) {
     stop ("DE results and count table features don't match")
   }
-  t(signature_mat_scaled) %*% data.matrix( fc_matrix  )
+  Matrix::crossprod( signature_mat_scaled ,fc_matrix  )
 }
 
 #' Calculate Activity Scores for Expressim Matrix
@@ -190,15 +192,18 @@ de_res_to_activity_scores = function( signature_mat ,de_res , min_genes_per_sig 
 #' @param control_samples vector of indices of control samples to be used as reference, NULL by default
 #' @return a matrix of activities, rows represent signatures and columns represent the samples
 #' @export
+#' @importFrom Matrix t colSums crossprod
 counts_to_activity_scores = function( signature_mat ,counts , min_genes_per_sig = 10 , prior.count = 4 , control_samples = NULL) {
-  library(Matrix)
+
   signature_mat = signature_mat [ rownames(signature_mat) %in% rownames(counts), ]
   signature_mat = signature_mat [ order( rownames(signature_mat) ) , ]
   signature_mat = signature_mat [ , Matrix::colSums(signature_mat > 0) >= min_genes_per_sig]
-  signature_mat_scaled  = t(t(signature_mat) / colSums(signature_mat ))
+  signature_mat_scaled  = Matrix::t(Matrix::t(signature_mat) / Matrix::colSums(signature_mat ))
 
   tpm = xcore::normalize_counts(counts, method = "RLE", prior.count = prior.count, log = TRUE)
   tpm = tpm [ rownames(tpm) %in% rownames(signature_mat_scaled) , ]
+  tpm = tpm [ order( rownames(tpm) ) , ]
+  tpm = data.matrix( tpm  )
 
   if( is.null (control_samples) ){
     tpm = tpm - rowMeans(tpm)
@@ -209,5 +214,5 @@ counts_to_activity_scores = function( signature_mat ,counts , min_genes_per_sig 
   if ( sum (rownames(tpm) != rownames(signature_mat_scaled) ) > 0 ) {
     stop ("Signature mat and count table features don't match")
   }
-  t(signature_mat_scaled) %*% data.matrix( tpm  )
+  Matrix::crossprod( signature_mat_scaled , tpm  )
 }
