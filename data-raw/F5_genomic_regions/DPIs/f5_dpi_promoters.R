@@ -8,6 +8,14 @@ dpi   = rtracklayer::import.bed( dpi_bed_file )
 dpi$itemRgb  = NULL ; dpi$thick  = NULL
 dpi = dpi [  order(dpi$name),]
 
+seqinfo_hg38  =  rtracklayer::SeqinfoForUCSCGenome("hg38")
+seqinfo_hg38 = seqinfo_hg38[
+  names(seqinfo_hg38) [names(seqinfo_hg38) %in% seqnames(dpi)]
+  ]
+seqinfo_hg38 = seqinfo_hg38[ names(seqinfo_hg38) [c( 1:22,25, 23, 24 ) ] ]
+
+seqinfo(dpi) = seqinfo_hg38
+
 dpi_annot   = data.frame( data.table::fread(dpi_annot_file, header = T, sep = "\t"), stringsAsFactors = F)
 dpi_annot   = dpi_annot [dpi_annot$X.CAGE_Peak_ID %in% dpi$name , ]
 dpi_annot   = dpi_annot [ order( dpi_annot$X.CAGE_Peak_ID) , ]
