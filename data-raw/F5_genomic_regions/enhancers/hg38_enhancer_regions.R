@@ -42,6 +42,14 @@ hg19_enh_reduced$name = paste( "hg19_" , hg19_enh_reduced$name , sep = "")
 
 # merging hg38 enhancers with lifted-over and adjusted hg19-only enhancer
 all_enh = c(hg38_enh ,hg19_enh_reduced )
+all_enh <- sortSeqlevels(all_enh)
+all_enh <- sort(all_enh)
+
+seqinfo_hg38  =  rtracklayer::SeqinfoForUCSCGenome("hg38")
+seqinfo_hg38 = seqinfo_hg38[
+  names(seqinfo_hg38) [names(seqinfo_hg38) %in% seqnames(all_enh)]
+  ]
+seqinfo(all_enh) = seqinfo_hg38
 
 #.... hg19 enhancers...
 all_enh$hg19_enhancer = ""
