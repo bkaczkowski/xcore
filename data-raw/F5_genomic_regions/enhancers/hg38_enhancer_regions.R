@@ -91,11 +91,11 @@ all_enh$genome_call[ all_enh$hg19_enhancer == "" & all_enh$hg38_enhancer != ""] 
 
 #EXPORTING the bed file
 rtracklayer::export.bed(object = all_enh ,
-                        con = "data-raw/F5_genomic_regions/enhancers/FANTOM5_hg38_and_hg19_enhancers_2019_10_05.bed",
+                        con = "data-raw/F5_genomic_regions/enhancers/FANTOM5_hg38_and_hg19_enhancers.bed",
                         format = "bed")
 
 
-save(all_enh, file ="data-raw/F5_genomic_regions/enhancers/FANTOM5_hg38_and_hg19_enhancers_2019_10_05_GRanges.RData")
+save(all_enh, file ="data-raw/F5_genomic_regions/enhancers/FANTOM5_hg38_and_hg19_enhancers_GRanges.RData")
 
 enhancers = all_enh
 usethis::use_data( enhancers , internal = FALSE, overwrite = TRUE)
