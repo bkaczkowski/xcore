@@ -1,7 +1,7 @@
 library(GenomicRanges)
 library(PWMEnrich)
 library( parallel)
-registerCoresPWMEnrich(10)
+registerCoresPWMEnrich(20)
 
 load("promoters_1.1kb_seq.rda")
 jaspar = PWMEnrich::readMotifs("JASPAR2020_CORE_vertebrates_redundant_pfms_jaspar.txt")
@@ -29,13 +29,12 @@ min(width(promoters_1.1kb_seq)) == max(width(promoters_1.1kb_seq))
 bins = sort( rep( seq(1, 220, 1), 10) )
 collapse_bins = function( x ) { tapply( x, INDEX =bins, FUN = max , na.rm = TRUE)}
 
-for ( i in length(jaspar)){
-  promoters_jaspar_scores = PWMEnrich::motifScores( sequences = promoters_1.1kb_seq ,motifs = jaspar[i],  raw.scores = TRUE )
-  promoters_jaspar_scores_binned = mclapply( promoters_jaspar_scores, FUN = collapse_bins, mc.cores = 10)
-  rm(promoters_jaspar_scores) ; gc()
-  print( i )
-  print(names(jaspar)[i])
-  promoters_jaspar_mat = t(do.call(cbind , promoters_jaspar_scores_binned))
-  promoters_jaspar_mat = promoters_jaspar_mat[ , c(6:105,116:215) ]
-  write.csv( promoters_jaspar_mat , file = paste( "/work/bogumil/jaspar_raw_scores_promoters/", names(jaspar)[i], ".csv", sep = ""))
+for ( i in 1:length(jaspar)){
+  jaspar_scores = PWMEnrich::motifScores( sequences = promoters_1.1kb_seq ,motifs = jaspar[i],  raw.scores = TRUE )
+  jaspar_scores_binned = mclapply( jaspar_scores, FUN = collapse_bins, mc.cores = 20)
+  rm(jaspar_scores) ; gc()
+  jaspar_mat = t(do.call(cbind , jaspar_scores_binned))
+  jaspar_mat = jaspar_mat[ , c(6:105,116:215) ]
+  write.csv( jaspar_mat , file = paste( "/work/bogumil/jaspar_raw_scores_promoters/", names(jaspar)[i], ".csv", sep = ""))
 }
+
