@@ -25,10 +25,10 @@ bins = sort( rep( seq(1, 220, 1), 10) )
 collapse_bins = function( x ) { tapply( x, INDEX =bins, FUN = max , na.rm = TRUE)}
 
 for ( i in 1:length(jaspar)){
-  enhancers_jaspar_scores = PWMEnrich::motifScores( sequences = enhancers_1.1kb_seq ,motifs = jaspar[i],  raw.scores = TRUE )
-  enhancers_jaspar_scores_binned = mclapply( enhancers_jaspar_scores, FUN = collapse_bins, mc.cores = 10)
+  jaspar_scores = PWMEnrich::motifScores( sequences = enhancers_1.1kb_seq ,motifs = jaspar[i],  raw.scores = TRUE )
+  jaspar_scores_binned = mclapply( jaspar_scores, FUN = collapse_bins, mc.cores = 10)
   rm(enhancers_jaspar_scores) ; gc()
-  enhancers_jaspar_mat = t(do.call(cbind , enhancers_jaspar_scores_binned))
-  enhancers_jaspar_mat = enhancers_jaspar_mat[ , c(6:105,116:215) ]
-  write.csv( enhancers_jaspar_mat , file = paste( "/work/bogumil/jaspar_raw_scores_enhancers/", names(jaspar)[i], ".csv", sep = ""))
+  jaspar_mat = t(do.call(cbind , jaspar_scores_binned))
+  jaspar_mat = jaspar_mat[ , c(6:105,116:215) ]
+  write.csv( jaspar_mat , file = paste( "/work/bogumil/jaspar_raw_scores_enhancers/", names(jaspar)[i], ".csv", sep = ""))
 }
