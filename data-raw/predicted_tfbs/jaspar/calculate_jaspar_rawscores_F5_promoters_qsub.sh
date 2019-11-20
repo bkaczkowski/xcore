@@ -3,7 +3,7 @@
 # request the queue (enter the possible names, if omitted, serial is the default)
 #PBS -q serial
 # request 1 node
-#PBS -l nodes=1:ppn=30:lm4.q
+#PBS -l nodes=1:ppn=20:lm4.q
 # request 240 hours and 30 minutes of cpu time
 #PBS -l cput=240:30:00
 
