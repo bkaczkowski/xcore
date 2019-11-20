@@ -40,11 +40,9 @@ bins = sort( rep( seq(1, 100, 1), 10) )
 conservation_promoters_1kb = t(rowsum( x = t(dpi_cons_mat), group = bins)) / 10
 conservation_enhancers_1kb = t(rowsum( x = t(enh_cons_mat), group = bins)) / 10
 
-plot ( colMeans(conservation_promoters_1kb) , ylim = c(0,.35), type = "l", xaxt = 'n')
+plot ( colMeans(conservation_promoters_1kb) , ylim = c(0,.35), type = "l", xaxt = 'n', ylab = "Mean Conservation" )
 axis(side=1,at=seq( 0, 100, 10),labels=seq( 0, 1000, 100) - 500 )
-
-plot ( colMeans(conservation_enhancers_1kb) , ylim = c(0,.35), type = "l", xaxt = 'n')
-axis(side=1,at=seq( 0, 100, 10),labels=seq( 0, 1000, 100) - 500 )
+lines ( colMeans(conservation_enhancers_1kb) , ylim = c(0,.35), type = "l", col = "blue")
 
 plot( x = 1:1000 - 500 , y = colMeans(dpi_cons_mat),
       xlab = "position", col = "black",
