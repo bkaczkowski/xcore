@@ -1,7 +1,7 @@
 Package: xcore
 Type: Package
 Title: Framework for 5' Gene Expression Analysis
-Version: 0.1.0
+Version: 0.1.1
 Author: Bogumil Kaczkowski <b.kaczkowski@gmail.com>
 Maintainer: Bogumil Kaczkowski <b.kaczkowski@gmail.com>
 Description: Functions, wrappers and workflows related to
@@ -14,4 +14,4 @@ Suggests:
     rmarkdown
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 6.1.1
+RoxygenNote: 7.1.1
