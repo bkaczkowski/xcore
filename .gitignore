@@ -1,3 +1,7 @@
 !inst/extdata/download.sh
 inst/extdata/*
-/data
+data/
+.RData
+.Rbuildignore
+.Rhistory
+.Rproj.user/
