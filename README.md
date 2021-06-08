@@ -30,6 +30,10 @@ The goal of xcore is to ...
     - read in the MARA output and plot the most variant TFs
     - do DE analysis on MARA scores using limma and plot to differentially active TFs
 * Chia-PET workflow
+* recount2 interface (based on FANTOM CAT gene IDs)
+
+
+
 
     
     
