@@ -1,0 +1,3 @@
+!inst/extdata/download.sh
+inst/extdata/*
+/data
