@@ -18,3 +18,4 @@ data-raw/*/*.fasta
 .Rhistory
 *.Rproj
 .Rproj.user/
+*.swp
