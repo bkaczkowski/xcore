@@ -35,3 +35,11 @@ normalize_counts = function( counts, method = "RLE", log = FALSE , prior.count =
   cpm
 }
 
+#' Simple wrapper to order data by variance
+#' @param x table to be ordered
+#' @return table with most variant features (rows) on top
+#' @export
+order_by_variance = function(x){
+  x [ order ( apply( x, 1, sd) , decreasing = TRUE) , ]
+}
+
