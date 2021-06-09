@@ -168,6 +168,7 @@ make_enrichment_score_matrix= function( fgseaRes, score = c("NES", "ES") ) {
 de_res_to_activity_scores = function( signature_mat ,de_res , min_genes_per_sig = 10 ) {
 
   fc_matrix = xcore::get_fc_matrix( de_res )
+  fc_matrix [ is.na (fc_matrix)] = 0
   fc_matrix = fc_matrix [ rownames(fc_matrix) %in% rownames( signature_mat ) , ]
   fc_matrix = fc_matrix [ order( rownames(fc_matrix) ) , ]
   fc_matrix = data.matrix( fc_matrix  )
