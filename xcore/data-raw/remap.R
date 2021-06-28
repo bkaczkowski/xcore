@@ -79,6 +79,6 @@ usethis::use_data(remap_promoters, internal = FALSE, overwrite = TRUE)
 
 remap_entrez <- Matrix::drop0(overlap_mat_entrez)
 remap_symbol <- Matrix::drop0(overlap_mat_symbol)
-usethis::use_data(remap_entrez ,internal = FALSE, overwrite = TRUE)
-usethis::use_data(remap_symbol ,internal = FALSE, overwrite = TRUE)
+usethis::use_data(remap_entrez, internal = FALSE, overwrite = TRUE)
+usethis::use_data(remap_symbol, internal = FALSE, overwrite = TRUE)
 
