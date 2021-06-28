@@ -2,9 +2,9 @@
 # getting BED files from FANTOM5 website one for the coordinates (bed) and one with official annotation
 devtools::load_all()
 
-dpi_bed_file  <- 
+dpi_bed_file  <-
   system.file("inst", "extdata", "hg38_fair+new_CAGE_peaks_phase1and2.bed.gz", package = "xcore")
-dpi_annot_file <-  
+dpi_annot_file <- 
   system.file("inst", "extdata", "hg38_fair+new_CAGE_peaks_phase1and2_ann.txt.gz", package = "xcore")
 
 dpi <- rtracklayer::import.bed(dpi_bed_file)
@@ -37,22 +37,24 @@ dpi$SYMBOL_F5_annot <- gsub("\\.*", "", gsub(".*@", "", dpi_annot$short_descript
 # in $short_description we have a lot of hg_1234... which are not symbols acctually
 dpi$SYMBOL_F5_annot <- gsub("hg_[0-9]+", "", dpi$SYMBOL_F5_annot)
 dpi$ENTREZID_F5_annot <- sub(" .*", "", dpi_annot$entrezgene_id)
+dpi$ENTREZID_F5_annot[is.na(dpi$ENTREZID_F5_annot)] <- ""
 dpi$distance_F5_annot <- as.integer(gsub("bp_to_.*", "", dpi_annot$association_with_transcript)) # dpi_annot$Distance
+dpi$distance_F5_annot[is.na(dpi$distance_F5_annot)] <- ""
 
 # GENCODE 38 annotation
 gencode_file <- system.file("inst", "extdata", "gencode.v38.annotation.gff3.gz", package = "xcore")
 gencode <- rtracklayer::import.gff(con = gencode_file)
-dpi_gencode <- xcore::gencode_nearest_promoter_same_strand(regions = dpi, 
-	        					   gencode = gencode, 
+dpi_gencode <- xcore::gencode_nearest_promoter_same_strand(regions = dpi,
+	        					   gencode = gencode,
 							   cut_off_distance = 500)
 dpi$SYMBOL_gencode <- dpi_gencode$nearest_symbol
-select_first <- function(x) { x[1] } 
+select_first <- function(x) { x[1] }
 dpi$ENTREZID_gencode <- as.character(lapply(
   X = AnnotationDbi::mapIds(
-    x = org.Hs.eg.db::org.Hs.eg.db, 
-    keys = dpi$SYMBOL_gencode, 
-    column = 'ENTREZID', 
-    keytype = 'SYMBOL'), 
+    x = org.Hs.eg.db::org.Hs.eg.db,
+    keys = dpi$SYMBOL_gencode,
+    column = 'ENTREZID',
+    keytype = 'SYMBOL'),
   FUN = select_first))
 dpi$ENTREZID_gencode[dpi$ENTREZID_gencode == "NULL"] <- ""
 dpi$ENTREZID_gencode[is.na(dpi$ENTREZID_gencode)] <- ""
@@ -60,45 +62,45 @@ dpi$gene_type_gencode <- as.factor(dpi_gencode$nearest_gene_type)
 dpi$distance_gencode <- dpi_gencode$nearest_distance
 
 # UCSC.hg38.knownGene annotation
-uscs_knownGene <- 
+ucsc_knownGene <-
   GenomicFeatures::asGFF(TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene)
-uscs_knownGene <- uscs_knownGene[uscs_knownGene$type == "mRNA"]
-uscs_knownGene_promoters <- GenomicRanges::promoters(uscs_knownGene, upstream = 0, downstream = 0, use.names=TRUE)
-uscs_knownGene_promoters$Parent <- drop(uscs_knownGene_promoters$Parent)
-uscs_knownGene_promoters <- uscs_knownGene_promoters [! is.na(uscs_knownGene_promoters$Parent)]
-uscs_knownGene_promoters$Parent <- sub("GeneID:", "", uscs_knownGene_promoters$Parent)
+ucsc_knownGene <- ucsc_knownGene[ucsc_knownGene$type == "mRNA"]
+ucsc_knownGene_promoters <- GenomicRanges::promoters(ucsc_knownGene, upstream = 0, downstream = 0, use.names=TRUE)
+ucsc_knownGene_promoters$Parent <- drop(ucsc_knownGene_promoters$Parent)
+ucsc_knownGene_promoters <- ucsc_knownGene_promoters [! is.na(ucsc_knownGene_promoters$Parent)]
+ucsc_knownGene_promoters$Parent <- sub("GeneID:", "", ucsc_knownGene_promoters$Parent)
 
-dpi$SYMBOL_uscs <- ""
-dpi$ENTREZID_uscs <- ""
-dpi$distance_uscs <- 10^6
+dpi$SYMBOL_ucsc <- ""
+dpi$ENTREZID_ucsc <- ""
+dpi$distance_ucsc <- 10^6
 
-hits <- GenomicRanges::distanceToNearest(dpi, uscs_knownGene_promoters, ignore.strand=FALSE)
-dpi$ENTREZID_uscs[hits@from] <- uscs_knownGene_promoters$Parent[hits@to]
-dpi$distance_uscs[hits@from] <- hits@elementMetadata$distance
+hits <- GenomicRanges::distanceToNearest(dpi, ucsc_knownGene_promoters, ignore.strand=FALSE)
+dpi$ENTREZID_ucsc[hits@from] <- ucsc_knownGene_promoters$Parent[hits@to]
+dpi$distance_ucsc[hits@from] <- hits@elementMetadata$distance
 select_first <- function(x) { x[1] }
-dpi$SYMBOL_uscs  = as.character(lapply(
+dpi$SYMBOL_ucsc  = as.character(lapply(
   X = AnnotationDbi::mapIds(
-    x = org.Hs.eg.db::org.Hs.eg.db, 
-    keys = dpi$ENTREZID_uscs, 
-    column = 'SYMBOL', 
-    keytype = 'ENTREZID'), 
+    x = org.Hs.eg.db::org.Hs.eg.db,
+    keys = dpi$ENTREZID_ucsc,
+    column = 'SYMBOL',
+    keytype = 'ENTREZID'),
   FUN = select_first))
-dpi$SYMBOL_uscs[dpi$SYMBOL_uscs == "NULL"] <- ""
-dpi$SYMBOL_uscs[is.na(dpi$SYMBOL_uscs)] <- ""
+dpi$SYMBOL_ucsc[dpi$SYMBOL_ucsc == "NULL"] <- ""
+dpi$SYMBOL_ucsc[is.na(dpi$SYMBOL_ucsc)] <- ""
 
-too_far <- dpi$distance_uscs > 500
-dpi$ENTREZID_uscs[too_far] <- ""
-dpi$SYMBOL_uscs[too_far] <- ""
+too_far <- dpi$distance_ucsc > 500
+dpi$ENTREZID_ucsc[too_far] <- ""
+dpi$SYMBOL_ucsc[too_far] <- ""
 
 # simplifying/collapsing ENTREZID
-dpi$ENTREZID <- dpi$ENTREZID_uscs
+dpi$ENTREZID <- dpi$ENTREZID_ucsc
 empty <- dpi$ENTREZID == ""
 dpi$ENTREZID[empty] <- dpi$ENTREZID_gencode[empty]
 empty <- dpi$ENTREZID == ""
 dpi$ENTREZID[empty] <- dpi$ENTREZID_F5_annot[empty]
 
 # simplifying/collapsing SYMBOLs
-dpi$SYMBOL <- dpi$SYMBOL_uscs
+dpi$SYMBOL <- dpi$SYMBOL_ucsc
 empty <- dpi$SYMBOL == ""
 dpi$SYMBOL[empty] <- dpi$SYMBOL_gencode[empty]
 empty <- dpi$SYMBOL == ""
@@ -119,7 +121,7 @@ table(dpi$ENTREZID_F5_annot[s] == dpi$ENTREZID[s]) # the FALSE should be below 1
 promoters <- dpi
 promoters$distance_F5_annot <- NULL
 promoters$distance_gencode <- NULL
-promoters$distance_uscs <- NULL
+promoters$distance_ucsc <- NULL
 
 usethis::use_data(promoters ,internal = FALSE, overwrite = TRUE)
 
