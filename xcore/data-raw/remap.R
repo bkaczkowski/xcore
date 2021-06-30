@@ -21,7 +21,7 @@ trans_factors <- trans_factors[order(trans_factors)]
 data("promoters", package = "xcore")
 promoters_ext500 <- promoters
 GenomicRanges::start(promoters_ext500) <- GenomicRanges::start(promoters) - 500
-GenomicRanges::end  (promoters_ext500) <- GenomicRanges::end(promoters) + 500
+GenomicRanges::end(promoters_ext500) <- GenomicRanges::end(promoters) + 500
 
 data("enhancers", package = "xcore")
 enhancers_ext500 <- enhancers
