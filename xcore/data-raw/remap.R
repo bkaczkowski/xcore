@@ -13,6 +13,7 @@ devtools::load_all()
 remap_input <- 
   system.file("inst", "extdata", "remap2020_all_macs2_hg38_v1_0.bed.gz", package = "xcore") 
 remap <- rtracklayer::import(remap_input)
+remap$name <- gsub("\\s+", "", remap$name) # remove white spaces from features names 
 trans_factors <- unique(remap$name)
 trans_factors <- trans_factors[order(trans_factors)]
 
