@@ -132,7 +132,7 @@
 #'         symbols, column names are formatted as TranscriptionFactor_Origin_Cell_ExperimentID
 #'	   (eg. PARK7_Neural_SH-SY5Y_DRX000550, MLL-AF6_Blood_ML-2_DRX001460).
 #'
-"chip_atlas_entrez"
+"chip_atlas_symbol"
 
 #' ChIP-Atlas metadata
 #'
