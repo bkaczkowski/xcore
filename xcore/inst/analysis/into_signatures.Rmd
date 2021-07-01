@@ -1,0 +1,113 @@
+---
+title: "Maciej Migdał"
+author: "Anonymous"
+output: pdf_document
+---
+
+```{r include=FALSE, cache=TRUE}
+library(magrittr)
+devtools::load_all()
+```
+
+
+# Deeper look into the “signatures”
+
+## Technical biases and noise vs biological signal.
+
+1. Observation made by Bogumil is that some promoters always give a signal 
+   regardless on the transcription factor we look at. The reverse can be also
+   observed - TF gives signal regardless of the promoter we look at. The aim
+   here is to show this observation.
+
+```{r}
+# looking at remap_promoters promoter wise (row wise)
+dim(remap_promoters)
+# 209911   5728
+
+remap_promoters_counts <- remap_promoters %>%
+    Matrix::rowSums()
+
+remap_promoters_counts %>%
+    summary()
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+#    0       0       0      40       0    3233
+
+remap_promoters_counts %>%
+    graphics::hist(breaks = 100, plot = FALSE)
+
+(remap_promoters_counts <= 50) %>% table() / length(remap_promoters_counts)
+#    FALSE     TRUE
+# 0.046324 0.953676
+
+(remap_promoters_counts == 0) %>% table() / length(remap_promoters_counts)
+#    FALSE     TRUE
+# 0.054761 0.945239
+# !!! only 5% of promoters are occupied by TFs in any biological context !!!
+
+# Lets look into promoters with the highest number of transcription factors,
+# how many of those are shared?
+
+getSharedColumns <- function(mat) {
+    stopifnot(nrow(mat) > 0)
+    Matrix::colSums(mat) == nrow(mat)
+}
+
+remap_promoters_highest <- remap_promoters[remap_promoters_counts > 3200, ]
+shared_cols_m <- getSharedColumns(remap_promoters_highest)
+sum(shared_cols_m)
+# 2436
+# 2436 out of (at max) 3233 TFs are shared among top 6 occupied promoters
+
+# How does the number of shared TFs depends on how many top factors we are
+# looking at?
+shared_tf <- c()
+shared_tf_nprom <- c()
+x <- seq(from = 1, to = 3233, by = 50)
+for (n in x) {
+    sel <- remap_promoters[remap_promoters_counts >= n, ]
+    shared_tf_nprom <- c(shared_tf_nprom, nrow(sel))
+    n_tf <- sel %>%
+        getSharedColumns() %>%
+        sum()
+    shared_tf <- c(shared_tf, n_tf)
+}
+plot(x, shared_tf)
+plot(shared_tf_nprom, shared_tf)
+```
+
+```{r}
+# looking at chip_atlas_promoters promoter wise (row wise)
+dim(chip_atlas_promoters)
+# 209911   15133
+
+chip_atlas_promoters_counts <- chip_atlas_promoters %>%
+    Matrix::rowSums()
+
+chip_atlas_promoters_counts %>%
+    summary()
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+#    0      42     244     740    1131   14869
+
+chip_atlas_promoters_counts %>%
+    graphics::hist(breaks = 100, plot = FALSE)
+
+(chip_atlas_promoters_counts <= 50) %>%
+    table() / length(chip_atlas_promoters_counts)
+#    FALSE     TRUE
+#  0.72691  0.27309
+
+(chip_atlas_promoters_counts == 0) %>%
+    table() / length(chip_atlas_promoters_counts)
+#     FALSE      TRUE
+# 0.9938926 0.0061074
+
+# Lets look into promoters with the highest number of transcription factors,
+# how many of those are shared?
+
+chip_atlas_promoters_highest <-
+    chip_atlas_promoters[chip_atlas_promoters_counts == 14869, ]
+shared_cols_m <- getSharedColumns(chip_atlas_promoters_highest)
+sum(shared_cols_m)
+# 14869
+# 14869 out of (at max) 14869 TFs are shared among top 15 occupied promoters
+```
