@@ -184,7 +184,7 @@
 #' @format A \code{data.frame} with 15133 rows and 11 columns.
 #' \describe{
 #'   \item{id}{String specifying ExperimentID.}
-#'   \item{TF}{String specifying TranscriptionFactor.}}
+#'   \item{TF}{String specifying TranscriptionFactor.}
 #'   \item{origin}{String specifying experiment biological origin.}
 #'   \item{cell}{String specifying cell line in which the experiment was conducted.}
 #'   \item{description}{String giving descriptions of primary tissue and tissue diganosis.}
