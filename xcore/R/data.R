@@ -3,7 +3,7 @@
 #' A dataset containing FANTOM5's hg38 enhancers overlapped with EP300 peaks
 #' from ReMap2020 and dyadic regions from Dfam database.
 #'
-#' @format A GenomicRanges object of length 63285, with 4 metadata columns:
+#' @format A \code{GenomicRanges} object of length 63285, with 4 metadata columns:
 #' \describe{
 #'   \item{name}{Feature name.}
 #'   \item{hg38_enhancer}{FANTOM5's hg38 enhancer name.}
@@ -19,7 +19,7 @@
 #' Additionally this dataset was also annotated to nearest features in GENCODE 
 #' ver. 38 annotation and UCSC hg38 knownGene annotation ver. 3.13.0.
 #'
-#' @format A GenomicRanges object of length 209911, with 11 metadata columns:
+#' @format A \code{GenomicRanges} object of length 209911, with 11 metadata columns:
 #' \describe{
 #'   \item{name}{Promotor name.}
 #'   \item{score}{Numeric vector.}
@@ -47,7 +47,7 @@
 #' and dyadic regions from Dfam database. Moreover the dataset is overlapped with GENCODE annotation
 #' on both strands.
 #'
-#' @format A GenomicRanges object of length 209911, with 24 metadata columns:
+#' @format A \code{GenomicRanges} object of length 209911, with 24 metadata columns:
 #' \describe{
 #'   \item{name}{Promotor name.}
 #'   \item{score}{Numeric vector.}
