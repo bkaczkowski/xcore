@@ -72,15 +72,58 @@
 #'   \item{symbol}{Gene symbol of associated gene as defined by overlapp with GENCODE annotation.}
 #'   \item{gene_type}{Gene type of associated gene as defined by overlapp with GENCODE annotation.}
 #'   \item{level}{Character vector.}
-#'   \item{opposite_strand_annotation}{Feature annotation type as defined by opposite strand 
+#'   \item{opposite_strand_annotation}{Feature annotation type as defined by opposite strand
 #'                                     overlapp with GENCODE annotation.}
-#'   \item{opposite_strand_symbol}{Gene symbol of associated gene as defined by opposite strand 
+#'   \item{opposite_strand_symbol}{Gene symbol of associated gene as defined by opposite strand
 #'                                 overlapp with GENCODE annotation.}
-#'   \item{opposite_gene_type}{Gene type of associated gene as defined by opposite strand overlapp 
+#'   \item{opposite_gene_type}{Gene type of associated gene as defined by opposite strand overlapp
 #'                             with GENCODE annotation.}
 #' }
 #'
 "promoters_detailed"
+
+#' ReMap2020 and FANTOM5 promoters intersection matrix
+#'
+#' An intersection matrix describing overlaps between ReMap2020's ChIP-seq tracks
+#' and \code{\link{promoters}}. To find overlapping regions promoters were extended
+#' by 500bp in both directions.
+#'
+#' @format A Matrix with 209911 rows and 5728 columns. Row names corresponds to promoters
+#'         names, column names are formatted as ExperimentID.TranscriptionFactor.Biotype.
+"remap_promoters"
+
+#' ReMap2020 and FANTOM5 enhancers intersection matrix
+#'
+#' An intersection matrix describing overlaps between ReMap2020's ChIP-seq tracks
+#' and \code{\link{enhancers}}. To find overlapping regions enhancers were extended
+#' by 500bp in both directions.
+#'
+#' @format A Matrix with 63285 rows and 5728 columns. Row names corresponds to enhancers
+#'         names, column names are formatted as ExperimentID.TranscriptionFactor.Biotype.
+"remap_enhancers"
+
+#' ReMap2020 gene level interaction matrix
+#'
+#' An matrix describing interactions between ReMap2020's ChIP-seq tracks
+#' and human genes (hg38) as defined by \code{\link{promoters}}. The interaction score
+#' for each gene and transcription factor is a sum of transcription factor occurences
+#' in the gene promoter. Promoters were assigned to thier target genes based on ENTREZ
+#' IDs.
+#'
+#' @format A Matrix with 23274 rows and 5728 columns. Row names corresponds to gene's
+#'         ENTREZ IDs, column names are formatted as ExperimentID.TranscriptionFactor.Biotype.
+"remap_entrez"
+
+#' ReMap2020 gene level interaction matrix
+#'
+#' An matrix describing interactions between ReMap2020's ChIP-seq tracks
+#' and human genes (hg38) as defined by \code{\link{promoters}}. The interaction score
+#' for each gene and transcription factor is a sum of transcription factor occurences
+#' in the gene promoter. Promoters were assigned to thier target genes based on gene symbols.
+#'
+#' @format A Matrix with 25925 rows and 5728 columns. Row names corresponds to gene's
+#'         symbols, column names are formatted as ExperimentID.TranscriptionFactor.Biotype.
+"remap_symbol"
 
 #' ChIP-Atlas FANTOM5 promoters intersection matrix
 #'
