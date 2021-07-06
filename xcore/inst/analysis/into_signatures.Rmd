@@ -4,9 +4,48 @@ author: "Anonymous"
 output: pdf_document
 ---
 
-```{r include=FALSE, cache=TRUE}
+```{r include=FALSE}
 library(magrittr)
 devtools::load_all()
+
+# Function return logical vector indicating columns populated in all rows
+# mat - object of class dgCMatrix with only 1 and 0 values
+getSharedColumns <- function(mat) {
+    stopifnot(is(mat, "dgCMatrix"))
+    stopifnot(nrow(mat) > 0)
+
+    Matrix::colSums(mat) == nrow(mat)
+}
+
+# Funtion return features from subject overlapped by query
+# where subject, query are GRanges objects
+# ... other arguments internally passed to GenomicRanges::findOverlaps
+intersectGr <- function(subject, query, ...) {
+    stopifnot(is(subject, "GRanges"))
+    stopifnot(is(query, "GRanges"))
+
+    hits <- GenomicRanges::findOverlaps(query = query, subject = subject, ...)
+    i <- S4Vectors::subjectHits(hits)
+    subject[i, ]
+
+# ENCODE blacklist list 636 regions spanning ~7% of human genome
+blacklist <- rtracklayer::import(system.file("inst",
+                                             "extdata",
+                                             "hg38-blacklist.v2.bed.gz",
+                                             package = "xcore"))
+blacklisted_promoters <- intersectGr(promoters_f5, blacklist, type = "any") %>%
+    GenomicRanges::mcols() %>%
+    `[[`("name")
+
+# ENSEMBL soft mask list 4725854 regions spanning ~50% of human genome
+ensembl_sm <- rtracklayer::import(system.file("inst",
+                                              "extdata",
+                                              "hg38_ensembl_sm.bed.gz",
+                                              package = "xcore"))
+ensembl_sm_promoters <- intersectGr(promoters_f5, ensembl_sm, type = "any") %>%
+    GenomicRanges::mcols() %>%
+    `[[`("name")
+}
 ```
 
 
@@ -14,100 +53,262 @@ devtools::load_all()
 
 ## Technical biases and noise vs biological signal.
 
-1. Observation made by Bogumil is that some promoters always give a signal 
+1. Observation made by Bogumil is that some promoters always give a signal
    regardless on the transcription factor we look at. The reverse can be also
    observed - TF gives signal regardless of the promoter we look at. The aim
    here is to show this observation.
 
-```{r}
-# looking at remap_promoters promoter wise (row wise)
-dim(remap_promoters)
-# 209911   5728
+### Looking at promoter TF interaction matrix row wise (promoter wise)
 
+Number of promoters: `r nrow(remap_promoters)`
+
+ReMap2020 TFs: `r ncol(remap_promoters)`
+
+ChIP-Atlas TFs: `r ncol(chip_atlas_promoters)`
+
+```{r promoters_coverage_remap}
 remap_promoters_counts <- remap_promoters %>%
     Matrix::rowSums()
 
 remap_promoters_counts %>%
     summary()
-# Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
-#    0       0       0      40       0    3233
 
 remap_promoters_counts %>%
-    graphics::hist(breaks = 100, plot = FALSE)
+    graphics::hist(breaks = 100,
+                   plot = TRUE,
+                   main = "ReMap2020 promoter coverage")
 
 (remap_promoters_counts <= 50) %>% table() / length(remap_promoters_counts)
-#    FALSE     TRUE
-# 0.046324 0.953676
 
 (remap_promoters_counts == 0) %>% table() / length(remap_promoters_counts)
-#    FALSE     TRUE
-# 0.054761 0.945239
-# !!! only 5% of promoters are occupied by TFs in any biological context !!!
+(m <- remap_promoters_counts == 0) %>% sum()
+
+# What genes are those 0 promoters assigned to?
+zero_promoters <- names(m)[m]
+zero_promoters <- promoters_f5[promoters_f5$name %in% zero_promoters, ]
+zero_promoters_symbol <- zero_promoters$SYMBOL %>% table()
+zero_promoters_symbol[zero_promoters_symbol > 5]
 
 # Lets look into promoters with the highest number of transcription factors,
 # how many of those are shared?
-
-getSharedColumns <- function(mat) {
-    stopifnot(nrow(mat) > 0)
-    Matrix::colSums(mat) == nrow(mat)
-}
-
-remap_promoters_highest <- remap_promoters[remap_promoters_counts > 3200, ]
+remap_promoters_highest <- remap_promoters[remap_promoters_counts >= 3250, ]
 shared_cols_m <- getSharedColumns(remap_promoters_highest)
 sum(shared_cols_m)
-# 2436
-# 2436 out of (at max) 3233 TFs are shared among top 6 occupied promoters
+highest_promoters <- remap_promoters_highest %>% rownames()
+highest_promoters
+promoters_f5[promoters_f5$name %in% highest_promoters, ]$SYMBOL
 
-# How does the number of shared TFs depends on how many top factors we are
+# How does the number of shared TFs depends on how many top promoters we are
 # looking at?
 shared_tf <- c()
 shared_tf_nprom <- c()
-x <- seq(from = 1, to = 3233, by = 50)
+x <- seq(from = 1, to = 3322, by = 50)
 for (n in x) {
-    sel <- remap_promoters[remap_promoters_counts >= n, ]
+    sel <- remap_promoters[remap_promoters_counts >= n, , drop = FALSE]
     shared_tf_nprom <- c(shared_tf_nprom, nrow(sel))
     n_tf <- sel %>%
         getSharedColumns() %>%
         sum()
     shared_tf <- c(shared_tf, n_tf)
 }
-plot(x, shared_tf)
-plot(shared_tf_nprom, shared_tf)
+plot(x = x,
+     y = shared_tf,
+     main = "ReMap2020 promoters coverage vs number of shared TFs",
+     xlab = "promoter coverage >= x",
+     ylab = "number of shared TFs")
+plot(x = shared_tf_nprom,
+     y = shared_tf,
+     main = "ReMap2020 number of promoters vs number of shared TFs",
+     xlab = "number of promoters",
+     ylab = "number of shared TFs")
+
+# Blacklisted promoters vs TFs coverage
+blk <- remap_promoters_counts[
+        names(remap_promoters_counts) %in% blacklisted_promoters]
+length(blk)
+nonblk <- remap_promoters_counts[
+        ! names(remap_promoters_counts) %in% blacklisted_promoters]
+graphics::boxplot(blk,
+                  nonblk,
+                  main = "Blacklisted regions vs TF count",
+                  names = c("blacklisted", "non blacklisted"))
+
+# Ensembl soft masked promoters vs TFs coverage
+sm <- remap_promoters_counts[
+        names(remap_promoters_counts) %in% ensembl_sm_promoters]
+length(sm)
+nonsm <- remap_promoters_counts[
+        ! names(remap_promoters_counts) %in% ensembl_sm_promoters]
+graphics::boxplot(sm,
+                  nonsm,
+                  main = "Ensembl soft masked regions vs TF count",
+                  names = c("soft masked", "non soft masked"))
 ```
 
-```{r}
-# looking at chip_atlas_promoters promoter wise (row wise)
-dim(chip_atlas_promoters)
-# 209911   15133
+```{r promoters_coverage_chip_atlas}
+# TODO set chip_atlas_promoters class to  dgCMatrix
+chip_atlas_promoters <- as(chip_atlas_promoters, "dgCMatrix")
 
 chip_atlas_promoters_counts <- chip_atlas_promoters %>%
     Matrix::rowSums()
 
 chip_atlas_promoters_counts %>%
     summary()
-# Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
-#    0      42     244     740    1131   14869
 
 chip_atlas_promoters_counts %>%
-    graphics::hist(breaks = 100, plot = FALSE)
+    graphics::hist(breaks = 100,
+                   plot = TRUE,
+                   main = "ChIP-Atlas promoter coverage")
 
 (chip_atlas_promoters_counts <= 50) %>%
     table() / length(chip_atlas_promoters_counts)
-#    FALSE     TRUE
-#  0.72691  0.27309
 
 (chip_atlas_promoters_counts == 0) %>%
     table() / length(chip_atlas_promoters_counts)
-#     FALSE      TRUE
-# 0.9938926 0.0061074
+
+(m <- chip_atlas_promoters_counts == 0) %>% sum()
+
+# What genes are those 0 promoters assigned to?
+zero_promoters <- names(m)[m]
+zero_promoters <- promoters_f5[promoters_f5$name %in% zero_promoters, ]
+zero_promoters_symbol <- zero_promoters$SYMBOL %>% table()
+zero_promoters_symbol[zero_promoters_symbol > 5]
 
 # Lets look into promoters with the highest number of transcription factors,
 # how many of those are shared?
-
 chip_atlas_promoters_highest <-
     chip_atlas_promoters[chip_atlas_promoters_counts == 14869, ]
 shared_cols_m <- getSharedColumns(chip_atlas_promoters_highest)
 sum(shared_cols_m)
-# 14869
-# 14869 out of (at max) 14869 TFs are shared among top 15 occupied promoters
+highest_promoters <- chip_atlas_promoters_highest %>% rownames()
+highest_promoters
+promoters[promoters_f5$name %in% highest_promoters, ]$SYMBOL
+
+# How does the number of shared TFs depends on how many top promoters we are
+# looking at?
+shared_tf <- c()
+shared_tf_nprom <- c()
+x <- seq(from = 1, to = 14869, by = 50)
+for (n in x) {
+    sel <-
+        chip_atlas_promoters[chip_atlas_promoters_counts >= n, , drop = FALSE]
+    shared_tf_nprom <- c(shared_tf_nprom, nrow(sel))
+    n_tf <- sel %>%
+        getSharedColumns() %>%
+        sum()
+    shared_tf <- c(shared_tf, n_tf)
+}
+plot(x = x,
+     y = shared_tf,
+     main = "ChIP-Atlas promoters coverage vs number of shared TFs",
+     xlab = "promoter coverage >= x",
+     ylab = "number of shared TFs")
+plot(x = shared_tf_nprom,
+     y = shared_tf,
+     main = "ChIP-Atlas number of promoters vs number of shared TFs",
+     xlab = "number of promoters",
+     ylab = "number of shared TFs")
+
+# Blacklisted promoters vs TFs coverage
+blk <- chip_atlas_promoters_counts[
+        names(chip_atlas_promoters_counts) %in% blacklisted_promoters]
+length(blk)
+nonblk <- chip_atlas_promoters_counts[
+        ! names(chip_atlas_promoters_counts) %in% blacklisted_promoters]
+graphics::boxplot(blk,
+                  nonblk,
+                  main = "Blacklisted regions vs TF count",
+                  names = c("blacklisted", "non blacklisted"))
+
+# Ensembl soft masked promoters vs TFs coverage
+sm <- chip_atlas_promoters_counts[
+        names(chip_atlas_promoters_counts) %in% ensembl_sm_promoters]
+length(sm)
+nonsm <- chip_atlas_promoters_counts[
+        ! names(chip_atlas_promoters_counts) %in% ensembl_sm_promoters]
+graphics::boxplot(sm,
+                  nonsm,
+                  main = "Ensembl soft masked regions vs TF count",
+                  names = c("soft masked", "non soft masked"))
 ```
+
+### Looking at promoter TF interaction matrix column wise (TF wise)
+
+```{r tf_coverage_remap}
+remap_tf_counts <- remap_promoters %>%
+    Matrix::colSums()
+
+remap_tf_counts %>%
+    summary()
+
+remap_tf_counts %>%
+    `/`(nrow(remap_promoters)) %>%
+    summary()
+
+remap_tf_counts %>%
+    graphics::hist(breaks = 100,
+                   plot = TRUE,
+                   main = "ReMap2020 TFs coverage")
+
+(remap_tf_counts <= 50) %>% table() / length(remap_tf_counts)
+
+(remap_tf_counts == 0) %>% table() / length(remap_tf_counts)
+(m <- remap_tf_counts == 0) %>% sum()
+
+# How many TFs overlapp X% or more promoters
+vapply(X = seq(from = 0, to = 1, by = 0.1),
+       FUN = function(x) sum(remap_tf_counts >= (nrow(remap_promoters) * x)),
+       FUN.VALUE = numeric(1L)) %>%
+    stats::setNames(nm = seq(from = 0, to = 100, by = 10))
+# what are the top TFs?
+remap_tf_counts[remap_tf_counts >= (nrow(remap_promoters) * 0.5)] %>% names()
+
+# what is the top TF
+max(remap_tf_counts)
+remap_tf_counts[which.max(remap_tf_counts)] %>% names()
+
+zfx <- colnames(remap_promoters) %>% grep(pattern = ".ZFX.", value = TRUE)
+remap_tf_counts[names(remap_tf_counts) %in% zfx] %>% graphics::boxplot()
+```
+
+```{r tf_coverage_chip_atlas}
+chip_atlas_tf_counts <- chip_atlas_promoters %>%
+    Matrix::colSums()
+
+chip_atlas_tf_counts %>%
+    summary()
+
+chip_atlas_tf_counts %>%
+    `/`(nrow(chip_atlas_promoters)) %>%
+    summary()
+
+chip_atlas_tf_counts %>%
+    graphics::hist(breaks = 100,
+                   plot = TRUE,
+                   main = "ChIP-Atlas TFs coverage")
+
+(chip_atlas_tf_counts <= 50) %>% table() / length(chip_atlas_tf_counts)
+
+(chip_atlas_tf_counts == 0) %>% table() / length(chip_atlas_tf_counts)
+(m <- chip_atlas_tf_counts == 0) %>% sum()
+
+# How many TFs overlapp X% or more promoters
+vapply(X = seq(from = 0, to = 1, by = 0.1),
+       FUN = function(x) {
+           sum(chip_atlas_tf_counts >= (nrow(chip_atlas_promoters) * x))
+       },
+       FUN.VALUE = numeric(1L)) %>%
+    stats::setNames(nm = seq(from = 0, to = 100, by = 10))
+# what are the top TFs?
+chip_atlas_tf_counts[
+    chip_atlas_tf_counts >= (nrow(chip_atlas_promoters) * 0.4)] %>%
+    names()
+
+# what is the top TF
+max(chip_atlas_tf_counts)
+chip_atlas_tf_counts[which.max(chip_atlas_tf_counts)] %>% names()
+# "Epitope.tags_Kidney_293_SRX4892338"
+# !!! this is ZfSp5a in HEK293T -- were Zf is zebrafish, this protein was
+# overexpressed via transfection
+```
+
