@@ -21,9 +21,9 @@ downloadDataset https://fantom.gsc.riken.jp/5/datafiles/reprocessed/hg38_v8/extr
 
 # Download ReMap
 # all peaks hg38
-downloadDataset http://remap.univ-amu.fr/storage/remap2020/hg38/MACS2/remap2020_all_macs2_hg38_v1_0.bed.gz
+downloadDataset https://remap.univ-amu.fr/storage/remap2020/hg38/MACS2/remap2020_all_macs2_hg38_v1_0.bed.gz
 # merged (non redundant) peaks hg38
-downloadDataset http://remap.univ-amu.fr/storage/remap2020/hg38/MACS2/remap2020_nr_macs2_hg38_v1_0.bed.gz
+downloadDataset https://remap.univ-amu.fr/storage/remap2020/hg38/MACS2/remap2020_nr_macs2_hg38_v1_0.bed.gz
 # EP300 hg38
 downloadDataset https://remap.univ-amu.fr/storage/remap2020/hg38/MACS2/TF/EP300/remap2020_EP300_nr_macs2_hg38_v1_0.bed.gz
 
@@ -46,3 +46,6 @@ fi
 
 # Download GENCODE annotation
 downloadDataset http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_38/gencode.v38.annotation.gff3.gz
+
+# Download ENCODE Blacklist for hg38
+downloadDataset https://github.com/Boyle-Lab/Blacklist/raw/master/lists/hg38-blacklist.v2.bed.gz
