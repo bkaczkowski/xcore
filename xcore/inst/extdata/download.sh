@@ -46,3 +46,6 @@ fi
 
 # Download GENCODE annotation
 downloadDataset http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_38/gencode.v38.annotation.gff3.gz
+
+# Download ENCODE Blacklist for hg38
+downloadDataset https://github.com/Boyle-Lab/Blacklist/raw/master/lists/hg38-blacklist.v2.bed.gz
