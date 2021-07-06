@@ -14,7 +14,7 @@ chip_atlas_symbol
 }
 \description{
 A matrix describing interactions between ChIP-Atlas's ChIP-seq tracks
-and human genes (hg38) as defined by \code{\link{promoters}}. The interaction score
+and human genes (hg38) as defined by \code{\link{promoters_f5}}. The interaction score
 for each gene and transcription factor is a \emph{maximum} of transcription factor occurences
 among the promoters associated with a given gene. Promoters were assigned to thier target
 genes based on gene's symbols.

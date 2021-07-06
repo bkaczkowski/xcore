@@ -36,7 +36,7 @@
 #'                 Prevalence of annotations: UCSC > GENCODE > FANTOM5.}
 #' }
 #'
-"promoters"
+"promoters_f5"
 
 #' Detailed promoters GenomicRanges object
 #'
@@ -85,7 +85,7 @@
 #' ReMap2020 and FANTOM5 promoters intersection matrix
 #'
 #' An intersection matrix describing overlaps between ReMap2020's ChIP-seq tracks
-#' and \code{\link{promoters}}. To find overlapping regions promoters were extended
+#' and \code{\link{promoters_f5}}. To find overlapping regions promoters were extended
 #' by 500bp in both directions.
 #'
 #' @format A Matrix with 209911 rows and 5728 columns. Row names corresponds to promoters
@@ -105,7 +105,7 @@
 #' ReMap2020 gene level interaction matrix
 #'
 #' An matrix describing interactions between ReMap2020's ChIP-seq tracks
-#' and human genes (hg38) as defined by \code{\link{promoters}}. The interaction score
+#' and human genes (hg38) as defined by \code{\link{promoters_f5}}. The interaction score
 #' for each gene and transcription factor is a sum of transcription factor occurences
 #' in the gene promoter. Promoters were assigned to thier target genes based on ENTREZ
 #' IDs.
@@ -117,7 +117,7 @@
 #' ReMap2020 gene level interaction matrix
 #'
 #' An matrix describing interactions between ReMap2020's ChIP-seq tracks
-#' and human genes (hg38) as defined by \code{\link{promoters}}. The interaction score
+#' and human genes (hg38) as defined by \code{\link{promoters_f5}}. The interaction score
 #' for each gene and transcription factor is a sum of transcription factor occurences
 #' in the gene promoter. Promoters were assigned to thier target genes based on gene symbols.
 #'
@@ -128,7 +128,7 @@
 #' ChIP-Atlas FANTOM5 promoters intersection matrix
 #'
 #' An intersection matrix describing overlaps between ChIP-Atlas's ChIP-seq tracks
-#' and \code{\link{promoters}}. To find overlapping regions promoters were extended
+#' and \code{\link{promoters_f5}}. To find overlapping regions promoters were extended
 #' by 500bp in both directions.
 #'
 #' @format A \code{Matrix} with 209911 rows and 15133 columns. Row names corresponds to promoters
@@ -152,7 +152,7 @@
 #' ChIP-Atlas gene level interaction matrix
 #'
 #' A matrix describing interactions between ChIP-Atlas's ChIP-seq tracks
-#' and human genes (hg38) as defined by \code{\link{promoters}}. The interaction score
+#' and human genes (hg38) as defined by \code{\link{promoters_f5}}. The interaction score
 #' for each gene and transcription factor is a *maximum* of transcription factor occurences
 #' among the promoters associated with a given gene. Promoters were assigned to thier target 
 #' genes based on ENTREZ IDs.
@@ -166,7 +166,7 @@
 #' ChIP-Atlas gene level interaction matrix
 #'
 #' A matrix describing interactions between ChIP-Atlas's ChIP-seq tracks
-#' and human genes (hg38) as defined by \code{\link{promoters}}. The interaction score
+#' and human genes (hg38) as defined by \code{\link{promoters_f5}}. The interaction score
 #' for each gene and transcription factor is a *maximum* of transcription factor occurences
 #' among the promoters associated with a given gene. Promoters were assigned to thier target 
 #' genes based on gene's symbols.

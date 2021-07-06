@@ -22,17 +22,17 @@ unique_srxIDs <- unique(chip_atlas$name)
 unique_srxIDs <- unique_srxIDs[order(unique_srxIDs)]
 
 # 2) get F5 promoter region
-data("promoters", package = "xcore")
-promoters_ext500 <- promoters
-GenomicRanges::start(promoters_ext500) <- GenomicRanges::start (promoters) - 500
-GenomicRanges::end(promoters_ext500) <- GenomicRanges::end(promoters) + 500
+data("promoters_f5", package = "xcore")
+promoters_ext500 <- promoters_f5
+GenomicRanges::start(promoters_ext500) <- GenomicRanges::start(promoters_f5) - 500
+GenomicRanges::end(promoters_ext500) <- GenomicRanges::end(promoters_f5) + 500
 
 data("enhancers", package = "xcore")
 enhancers_ext500 <- enhancers
 GenomicRanges::start(enhancers_ext500) <- GenomicRanges::start(enhancers) - 500
 GenomicRanges::end(enhancers_ext500) <- GenomicRanges::end(enhancers) + 500
 
-rm(enhancers, promoters)
+rm(enhancers, promoters_f5)
 gc()
 
 # 3) create intersection matrises

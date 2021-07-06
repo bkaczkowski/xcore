@@ -13,7 +13,7 @@ remap_promoters
 }
 \description{
 An intersection matrix describing overlaps between ReMap2020's ChIP-seq tracks
-and \code{\link{promoters}}. To find overlapping regions promoters were extended
+and \code{\link{promoters_f5}}. To find overlapping regions promoters were extended
 by 500bp in both directions.
 }
 \keyword{datasets}

@@ -118,12 +118,12 @@ table(dpi$ENTREZID_F5_annot[s] == dpi$ENTREZID[s]) # the FALSE should be below 1
 #   969 96786
 # FALSE = 0.99125%
 
-promoters <- dpi
-promoters$distance_F5_annot <- NULL
-promoters$distance_gencode <- NULL
-promoters$distance_ucsc <- NULL
+promoters_f5 <- dpi
+promoters_f5$distance_F5_annot <- NULL
+promoters_f5$distance_gencode <- NULL
+promoters_f5$distance_ucsc <- NULL
 
-usethis::use_data(promoters ,internal = FALSE, overwrite = TRUE)
+usethis::use_data(promoters_f5 ,internal = FALSE, overwrite = TRUE)
 
 # # ROADMAP
 # roadmap = rtracklayer::import.bed("~/projects/resources/roadmap/EpigenomeRoadmapDHS_hg38.bed", colnames = c("chrom", "start", "end", "name", "score"))
