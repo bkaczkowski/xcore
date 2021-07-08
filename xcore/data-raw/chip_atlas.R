@@ -18,6 +18,24 @@ chip_atlas_file <-
   system.file("inst", "extdata", "chip_atlas_hg38.Oth.ALL.05.AllAg.AllCell_SRX_only.bed.gz", package = "xcore")
 chip_atlas <- rtracklayer::import(chip_atlas_file)
 chip_atlas$score <- as.integer(chip_atlas$score)
+
+# remove ambiguous records
+ambiguous_tf <- c("5-hmC", "5-mC", "8-Hydroxydeoxyguanosine", "Biotin", "BMI",
+                  "BrdU", "Cas9", "Cyclobutane", "MethylCap", "O-GlcNAc",
+                  "Pan-acetyllysine", "pFM2", "RTA", "SVS-1", "EBNA1", "EBNA2",
+                  "EBNA3", "EBV-ZEBRA", "AML1-ETO", "VSV-G", "MLL-AF4",
+                  "MLL-AF6", "Hepatitis", "HIV", "KSHV", "MCPV", "Epitope tags",
+                  "GFP")
+ambiguous_srx <-
+  read.delim(
+    file = system.file("inst", "extdata", "experimentList_TF_hg38.txt", package = "xcore"),
+    sep = "\t",
+    header = FALSE,
+    quote = "\"") %>%
+  dplyr::filter(V4 %in% ambiguous_tf) %>% # V4 == TF column
+  dplyr::pull(V1) # V1 == experiment ID
+chip_atlas <- chip_atlas[! chip_atlas$name %in% ambiguous_srx, ]
+
 unique_srxIDs <- unique(chip_atlas$name)
 unique_srxIDs <- unique_srxIDs[order(unique_srxIDs)]
 
