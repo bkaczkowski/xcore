@@ -5,7 +5,6 @@ output: pdf_document
 ---
 
 ```{r include=FALSE}
-library(magrittr)
 devtools::load_all()
 
 # Function return logical vector indicating columns populated in all rows
@@ -27,6 +26,7 @@ intersectGr <- function(subject, query, ...) {
     hits <- GenomicRanges::findOverlaps(query = query, subject = subject, ...)
     i <- S4Vectors::subjectHits(hits)
     subject[i, ]
+}
 
 # ENCODE blacklist list 636 regions spanning ~7% of human genome
 blacklist <- rtracklayer::import(system.file("inst",
@@ -45,9 +45,42 @@ ensembl_sm <- rtracklayer::import(system.file("inst",
 ensembl_sm_promoters <- intersectGr(promoters_f5, ensembl_sm, type = "any") %>%
     GenomicRanges::mcols() %>%
     `[[`("name")
-}
 ```
 
+```{r core_promoters}
+# only protein coding genes as per GENCODE annotation
+promoters_f5_core <- 
+    promoters_f5[promoters_f5$gene_type_gencode == "protein_coding", ]
+
+# ENCODE ROADMAP confirmation
+roadmap_promoters <- rtracklayer::import.bed(
+    con = system.file(
+        "inst",
+        "extdata",
+        "Epigenome5DRoadmapDHS_promoter_hg38_liftOver.bed",
+        package = "xcore"
+    )
+)
+GenomeInfoDb::seqlevels(roadmap_promoters, pruning.mode = "coarse") <-
+    GenomeInfoDb::seqlevels(promoters_f5_core)
+promoters_f5_core <- intersectGr(promoters_f5_core, roadmap_promoters)
+
+# Select best promoter per gene
+best_promoters <- GenomicRanges::mcols(promoters_f5_core) %>%
+    as.data.frame() %>%
+    dplyr::group_by(SYMBOL) %>%
+    dplyr::slice(which.max(score)) %>%
+    dplyr::pull(name)
+promoters_f5_core <-
+    promoters_f5_core[promoters_f5_core$name %in% best_promoters, ]
+
+# restrict interaction matrices to core promoters only
+remap_promoters_core <- remap_promoters[promoters_f5_core$name, ]
+chip_atlas_promoters_core <- chip_atlas_promoters[promoters_f5_core$name, ]
+```
+
+promoters_f5 unique SYMBOLS: `r promoters_f5$SYMBOL %>% unique() %>% length()`
+core promoters: `r promoters_f5_core %>% length()`
 
 # Deeper look into the “signatures”
 
@@ -60,14 +93,14 @@ ensembl_sm_promoters <- intersectGr(promoters_f5, ensembl_sm, type = "any") %>%
 
 ### Looking at promoter TF interaction matrix row wise (promoter wise)
 
-Number of promoters: `r nrow(remap_promoters)`
+Number of promoters: `r length(promoters_f5_core)`
 
-ReMap2020 TFs: `r ncol(remap_promoters)`
+ReMap2020 TFs: `r ncol(remap_promoters_core)`
 
-ChIP-Atlas TFs: `r ncol(chip_atlas_promoters)`
+ChIP-Atlas TFs: `r ncol(chip_atlas_promoters_core)`
 
 ```{r promoters_coverage_remap}
-remap_promoters_counts <- remap_promoters %>%
+remap_promoters_counts <- remap_promoters_core %>%
     Matrix::rowSums()
 
 remap_promoters_counts %>%
@@ -78,25 +111,23 @@ remap_promoters_counts %>%
                    plot = TRUE,
                    main = "ReMap2020 promoter coverage")
 
-(remap_promoters_counts <= 50) %>% table() / length(remap_promoters_counts)
-
 (remap_promoters_counts == 0) %>% table() / length(remap_promoters_counts)
 (m <- remap_promoters_counts == 0) %>% sum()
 
 # What genes are those 0 promoters assigned to?
 zero_promoters <- names(m)[m]
-zero_promoters <- promoters_f5[promoters_f5$name %in% zero_promoters, ]
-zero_promoters_symbol <- zero_promoters$SYMBOL %>% table()
-zero_promoters_symbol[zero_promoters_symbol > 5]
+zero_promoters <- promoters_f5_core[promoters_f5_core$name %in% zero_promoters, ]
+zero_promoters$SYMBOL
 
 # Lets look into promoters with the highest number of transcription factors,
 # how many of those are shared?
-remap_promoters_highest <- remap_promoters[remap_promoters_counts >= 3250, ]
+remap_promoters_highest <-
+    remap_promoters_core[remap_promoters_counts >= 3000, , drop = FALSE]
 shared_cols_m <- getSharedColumns(remap_promoters_highest)
 sum(shared_cols_m)
 highest_promoters <- remap_promoters_highest %>% rownames()
 highest_promoters
-promoters_f5[promoters_f5$name %in% highest_promoters, ]$SYMBOL
+promoters_f5_core[promoters_f5_core$name %in% highest_promoters, ]$SYMBOL
 
 # How does the number of shared TFs depends on how many top promoters we are
 # looking at?
@@ -104,7 +135,7 @@ shared_tf <- c()
 shared_tf_nprom <- c()
 x <- seq(from = 1, to = 3322, by = 50)
 for (n in x) {
-    sel <- remap_promoters[remap_promoters_counts >= n, , drop = FALSE]
+    sel <- remap_promoters_core[remap_promoters_counts >= n, , drop = FALSE]
     shared_tf_nprom <- c(shared_tf_nprom, nrow(sel))
     n_tf <- sel %>%
         getSharedColumns() %>%
@@ -131,7 +162,10 @@ nonblk <- remap_promoters_counts[
 graphics::boxplot(blk,
                   nonblk,
                   main = "Blacklisted regions vs TF count",
-                  names = c("blacklisted", "non blacklisted"))
+                  names = c(
+                      sprintf("blacklisted (%i)", length(blk)), 
+                      sprintf("non blacklisted (%i)", length(nonblk)))
+)
 
 # Ensembl soft masked promoters vs TFs coverage
 sm <- remap_promoters_counts[
@@ -142,14 +176,70 @@ nonsm <- remap_promoters_counts[
 graphics::boxplot(sm,
                   nonsm,
                   main = "Ensembl soft masked regions vs TF count",
-                  names = c("soft masked", "non soft masked"))
+                  names = c(
+                      sprintf("soft masked (%i)", length(sm)), 
+                      sprintf("non soft masked (%i)", length(nonsm)))
+)
+
+# Promoters coverage vs length
+graphics::smoothScatter(
+     x = remap_promoters_counts,
+     y = GenomicRanges::width(promoters_f5_core),
+     main = sprintf("ReMap2020 promoters coverage vs length\nPearson: %f",
+                    cor(x = remap_promoters_counts,
+                        y = GenomicRanges::width(promoters_f5_core),
+                        method = "pearson")),
+     xlab = "promoter coverage",
+     ylab = "promoter length")
+
+# Promoters coverage vs score
+graphics::smoothScatter(
+     x = remap_promoters_counts,
+     y = log10(promoters_f5_core$score),
+     main = sprintf("ReMap2020 promoters coverage vs score\nPearson: %f",
+                    cor(x = remap_promoters_counts,
+                        y = log10(promoters_f5_core$score),
+                        method = "pearson")),
+     xlab = "promoter counts",
+     ylab = "log10(promoter score)")
+
+# Promoters score vs length
+graphics::smoothScatter(
+     x = log10(promoters_f5_core$score),
+     y = GenomicRanges::width(promoters_f5_core),
+     main = sprintf("ReMap2020 promoters coverage vs score\nPearson: %f",
+                    cor(x = log10(promoters_f5_core$score),
+                        y = GenomicRanges::width(promoters_f5_core),
+                        method = "pearson")),
+     xlab = "log10(promoter score)",
+     ylab = "promoter length")
+
+# Protein Atlas gene specificity classification
+protein_atlas <-
+    data.table::fread(
+        file = system.file("inst", "extdata", "proteinatlas.tsv.gz", package = "xcore"),
+        header = TRUE
+    )
+promoters_meta <- GenomicRanges::mcols(promoters_f5_core) %>%
+    as.data.frame() %>%
+    dplyr::left_join(y = protein_atlas[, c("Gene", 
+                                           "RNA tissue specificity",
+                                           "RNA single cell type specificity")],
+                     by = c("SYMBOL" = "Gene"))
+promoters_meta$counts <- remap_promoters_counts[promoters_meta$name]
+graphics::boxplot(counts ~ `RNA tissue specificity`, 
+                  data = promoters_meta,
+                  main = "ReMap2020 promoter coverage vs Protein Atlas tissue specificity")
+graphics::boxplot(counts ~ `RNA single cell type specificity`, 
+                  data = promoters_meta,
+                  main = "ReMap2020 promoter coverage vs Protein Atlas single cell type specificity")
 ```
 
 ```{r promoters_coverage_chip_atlas}
 # TODO set chip_atlas_promoters class to  dgCMatrix
-chip_atlas_promoters <- as(chip_atlas_promoters, "dgCMatrix")
+chip_atlas_promoters_core <- as(chip_atlas_promoters_core, "dgCMatrix")
 
-chip_atlas_promoters_counts <- chip_atlas_promoters %>%
+chip_atlas_promoters_counts <- chip_atlas_promoters_core %>%
     Matrix::rowSums()
 
 chip_atlas_promoters_counts %>%
@@ -160,38 +250,35 @@ chip_atlas_promoters_counts %>%
                    plot = TRUE,
                    main = "ChIP-Atlas promoter coverage")
 
-(chip_atlas_promoters_counts <= 50) %>%
-    table() / length(chip_atlas_promoters_counts)
-
 (chip_atlas_promoters_counts == 0) %>%
     table() / length(chip_atlas_promoters_counts)
 
 (m <- chip_atlas_promoters_counts == 0) %>% sum()
 
 # What genes are those 0 promoters assigned to?
+# TODO comapre zero promoters between remap and chip-atlas
 zero_promoters <- names(m)[m]
-zero_promoters <- promoters_f5[promoters_f5$name %in% zero_promoters, ]
-zero_promoters_symbol <- zero_promoters$SYMBOL %>% table()
-zero_promoters_symbol[zero_promoters_symbol > 5]
+zero_promoters <- promoters_f5_core[promoters_f5_core$name %in% zero_promoters, ]
+zero_promoters$SYMBOL %>% table()
 
 # Lets look into promoters with the highest number of transcription factors,
 # how many of those are shared?
 chip_atlas_promoters_highest <-
-    chip_atlas_promoters[chip_atlas_promoters_counts == 14869, ]
+    chip_atlas_promoters_core[chip_atlas_promoters_counts >= 4500, ]
 shared_cols_m <- getSharedColumns(chip_atlas_promoters_highest)
 sum(shared_cols_m)
 highest_promoters <- chip_atlas_promoters_highest %>% rownames()
 highest_promoters
-promoters[promoters_f5$name %in% highest_promoters, ]$SYMBOL
+promoters_f5_core[promoters_f5_core$name %in% highest_promoters, ]$SYMBOL
 
 # How does the number of shared TFs depends on how many top promoters we are
 # looking at?
 shared_tf <- c()
 shared_tf_nprom <- c()
-x <- seq(from = 1, to = 14869, by = 50)
+x <- seq(from = 1, to = 5000, by = 50)
 for (n in x) {
     sel <-
-        chip_atlas_promoters[chip_atlas_promoters_counts >= n, , drop = FALSE]
+        chip_atlas_promoters_core[chip_atlas_promoters_counts >= n, , drop = FALSE]
     shared_tf_nprom <- c(shared_tf_nprom, nrow(sel))
     n_tf <- sel %>%
         getSharedColumns() %>%
@@ -218,7 +305,10 @@ nonblk <- chip_atlas_promoters_counts[
 graphics::boxplot(blk,
                   nonblk,
                   main = "Blacklisted regions vs TF count",
-                  names = c("blacklisted", "non blacklisted"))
+                  names = c(
+                      sprintf("blacklisted (%i)", length(blk)), 
+                      sprintf("non blacklisted (%i)", length(nonblk)))
+)
 
 # Ensembl soft masked promoters vs TFs coverage
 sm <- chip_atlas_promoters_counts[
@@ -229,20 +319,79 @@ nonsm <- chip_atlas_promoters_counts[
 graphics::boxplot(sm,
                   nonsm,
                   main = "Ensembl soft masked regions vs TF count",
-                  names = c("soft masked", "non soft masked"))
+                  names = c(
+                      sprintf("soft masked (%i)", length(sm)), 
+                      sprintf("non soft masked (%i)", length(nonsm)))
+)
+
+# Promoters coverage vs length
+graphics::smoothScatter(
+     x = chip_atlas_promoters_counts,
+     y = GenomicRanges::width(promoters_f5_core),
+     main = sprintf("ReMap2020 promoters coverage vs length\nPearson: %f",
+                    cor(x = chip_atlas_promoters_counts,
+                        y = GenomicRanges::width(promoters_f5_core),
+                        method = "pearson")),
+     xlab = "promoter coverage",
+     ylab = "promoter length")
+
+# Promoters coverage vs score
+graphics::smoothScatter(
+     x = chip_atlas_promoters_counts,
+     y = log10(promoters_f5_core$score),
+     main = sprintf("ReMap2020 promoters coverage vs score\nPearson: %f",
+                    cor(x = chip_atlas_promoters_counts,
+                        y = log10(promoters_f5_core$score),
+                        method = "pearson")),
+     xlab = "promoter counts",
+     ylab = "log10(promoter score)")
+
+# Promoters score vs length
+graphics::smoothScatter(
+     x = log10(promoters_f5_core$score),
+     y = GenomicRanges::width(promoters_f5_core),
+     main = sprintf("ReMap2020 promoters coverage vs score\nPearson: %f",
+                    cor(x = log10(promoters_f5_core$score),
+                        y = GenomicRanges::width(promoters_f5_core),
+                        method = "pearson")),
+     xlab = "log10(promoter score)",
+     ylab = "promoter length")
+
+# Protein Atlas gene specificity classification
+protein_atlas <-
+    data.table::fread(
+        file = system.file("inst", "extdata", "proteinatlas.tsv.gz", package = "xcore"),
+        header = TRUE
+    )
+promoters_meta <- GenomicRanges::mcols(promoters_f5_core) %>%
+    as.data.frame() %>%
+    dplyr::left_join(y = protein_atlas[, c("Gene", 
+                                           "RNA tissue specificity",
+                                           "RNA single cell type specificity")],
+                     by = c("SYMBOL" = "Gene"))
+promoters_meta$counts <- chip_atlas_promoters_counts[promoters_meta$name]
+graphics::boxplot(counts ~ `RNA tissue specificity`, 
+                  data = promoters_meta,
+                  main = "ReMap2020 promoter coverage vs Protein Atlas tissue specificity")
+graphics::boxplot(counts ~ `RNA single cell type specificity`, 
+                  data = promoters_meta,
+                  main = "ReMap2020 promoter coverage vs Protein Atlas single cell type specificity")
+
+promoters_meta[promoters_meta$name %in% zero_promoters$name, "RNA tissue specificity"]
+promoters_meta[promoters_meta$name %in% highest_promoters, "RNA tissue specificity"] %>% table()
 ```
 
 ### Looking at promoter TF interaction matrix column wise (TF wise)
 
 ```{r tf_coverage_remap}
-remap_tf_counts <- remap_promoters %>%
+remap_tf_counts <- remap_promoters_core %>%
     Matrix::colSums()
 
 remap_tf_counts %>%
     summary()
 
 remap_tf_counts %>%
-    `/`(nrow(remap_promoters)) %>%
+    `/`(nrow(remap_promoters_core)) %>%
     summary()
 
 remap_tf_counts %>%
@@ -250,36 +399,30 @@ remap_tf_counts %>%
                    plot = TRUE,
                    main = "ReMap2020 TFs coverage")
 
-(remap_tf_counts <= 50) %>% table() / length(remap_tf_counts)
-
 (remap_tf_counts == 0) %>% table() / length(remap_tf_counts)
 (m <- remap_tf_counts == 0) %>% sum()
 
 # How many TFs overlapp X% or more promoters
 vapply(X = seq(from = 0, to = 1, by = 0.1),
-       FUN = function(x) sum(remap_tf_counts >= (nrow(remap_promoters) * x)),
+       FUN = function(x) sum(remap_tf_counts >= (nrow(remap_promoters_core) * x)),
        FUN.VALUE = numeric(1L)) %>%
     stats::setNames(nm = seq(from = 0, to = 100, by = 10))
 # what are the top TFs?
-remap_tf_counts[remap_tf_counts >= (nrow(remap_promoters) * 0.5)] %>% names()
-
-# what is the top TF
-max(remap_tf_counts)
-remap_tf_counts[which.max(remap_tf_counts)] %>% names()
-
-zfx <- colnames(remap_promoters) %>% grep(pattern = ".ZFX.", value = TRUE)
-remap_tf_counts[names(remap_tf_counts) %in% zfx] %>% graphics::boxplot()
+remap_tf_counts %>%
+    sort(decreasing = TRUE) %>%
+    as.data.frame() %>%
+    head(30)
 ```
 
 ```{r tf_coverage_chip_atlas}
-chip_atlas_tf_counts <- chip_atlas_promoters %>%
+chip_atlas_tf_counts <- chip_atlas_promoters_core %>%
     Matrix::colSums()
 
 chip_atlas_tf_counts %>%
     summary()
 
 chip_atlas_tf_counts %>%
-    `/`(nrow(chip_atlas_promoters)) %>%
+    `/`(nrow(chip_atlas_promoters_core)) %>%
     summary()
 
 chip_atlas_tf_counts %>%
@@ -287,28 +430,19 @@ chip_atlas_tf_counts %>%
                    plot = TRUE,
                    main = "ChIP-Atlas TFs coverage")
 
-(chip_atlas_tf_counts <= 50) %>% table() / length(chip_atlas_tf_counts)
-
 (chip_atlas_tf_counts == 0) %>% table() / length(chip_atlas_tf_counts)
 (m <- chip_atlas_tf_counts == 0) %>% sum()
 
 # How many TFs overlapp X% or more promoters
 vapply(X = seq(from = 0, to = 1, by = 0.1),
        FUN = function(x) {
-           sum(chip_atlas_tf_counts >= (nrow(chip_atlas_promoters) * x))
+           sum(chip_atlas_tf_counts >= (nrow(chip_atlas_promoters_core) * x))
        },
        FUN.VALUE = numeric(1L)) %>%
     stats::setNames(nm = seq(from = 0, to = 100, by = 10))
 # what are the top TFs?
-chip_atlas_tf_counts[
-    chip_atlas_tf_counts >= (nrow(chip_atlas_promoters) * 0.4)] %>%
-    names()
-
-# what is the top TF
-max(chip_atlas_tf_counts)
-chip_atlas_tf_counts[which.max(chip_atlas_tf_counts)] %>% names()
-# "Epitope.tags_Kidney_293_SRX4892338"
-# !!! this is ZfSp5a in HEK293T -- were Zf is zebrafish, this protein was
-# overexpressed via transfection
+chip_atlas_tf_counts %>%
+    sort(decreasing = TRUE) %>%
+    as.data.frame() %>%
+    head(30)
 ```
-
