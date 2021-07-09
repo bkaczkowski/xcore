@@ -49,3 +49,11 @@ downloadDataset http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release
 
 # Download ENCODE Blacklist for hg38
 downloadDataset https://github.com/Boyle-Lab/Blacklist/raw/master/lists/hg38-blacklist.v2.bed.gz
+
+# Protein Atlas data
+downloadDataset https://www.proteinatlas.org/download/proteinatlas.tsv.zip
+
+# CAGE peaks expression tables
+# The format is weird so I reprocessed it a bit
+downloadDataset https://fantom.gsc.riken.jp/5/datafiles/reprocessed/hg38_v8/extra/CAGE_peaks_expression/hg38.fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz
+zcat hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz | grep -v -e "^##" -e "^01STAT" -e "^02STAT" | gzip > t && mv t hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz
