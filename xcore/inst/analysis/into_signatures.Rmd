@@ -5,8 +5,15 @@ output: pdf_document
 ---
 
 ```{r include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+
 devtools::load_all()
 library(data.table)
+```
+
+```{r functions_data, cache=TRUE, echo=FALSE, message=FALSE}
+# Internally used variables
+opar <- par()
 
 # Internally used functions
 
@@ -69,9 +76,10 @@ summaryString <- function(...) {
 
 # Function calculates TF or Context coverage based on interaction matrix
 # col to use for grouping
-getCoverage <- function(mat, col = c(2, 3), sep = ".") {
+getCoverage <- function(mat, col = c(2, 3), sep = "\\.") {
+    n <- stringr::str_count(colnames(mat)[1], sep)
     colnm <- colnames(mat) %>% 
-        gsub(pattern = paste0("(.*)\\", sep, "(.*)\\", sep, "(.*)"),
+        gsub(pattern = paste(c("(.*)", rep(c(sep, "(.*)"), n)), collapse = ""),
              replacement = paste0("\\", col))
     DelayedArray::colsum(x = mat, group = colnm %>% as.factor()) %>%
         `>`(1) %>%
@@ -79,11 +87,12 @@ getCoverage <- function(mat, col = c(2, 3), sep = ".") {
 }
 
 # Function plot coverage histogram
-coverageHist<- function(x, breaks = 40, cex = 0.7, ...) {
+coverageHist<- function(x, breaks = 40, cex = 0.7, xlab = "", ...) {
     par(mar = c(5, 5, 6, 2))
     graphics::hist(x = x, 
                    breaks = breaks,
                    cex = 0.7,
+                   xlab = xlab,
                    ...)
     mtext(text = summaryString(x), 
           side = 3,
@@ -128,7 +137,7 @@ protein_atlas <-
     data.table::fread(
         file = system.file("inst", "extdata", "proteinatlas.tsv.gz", package = "xcore"),
         header = TRUE
-    )
+    )[! duplicated(Gene), ]
 
 # FANTOM5 promoter expression table
 # Matrix of promoters normalized expression across datasets in FANTOM5, 
@@ -141,22 +150,81 @@ promoters_f5_expression <-
                            package = "xcore"),
         header = TRUE
     )
+
+# tau calculation from on https://academic.oup.com/bib/article/18/2/205/2562739
+#Function require a vector with expression of one gene in different tissues.
+#If expression for one tissue is not known, gene specificity for this gene is NA
+#Minimum 2 tissues
+fTau <- function(x)
+{
+	if(all(!is.na(x)))
+ 	{
+ 		if(min(x, na.rm=TRUE) >= 0)
+		{
+ 			if(max(x)!=0)
+ 			{
+ 				x <- (1-(x/max(x)))
+ 				res <- sum(x, na.rm=TRUE)
+ 				res <- res/(length(x)-1)
+ 			} else {
+ 				res <- 0
+ 			}
+ 		} else {
+ 		res <- NA
+ 		#print("Expression values have to be positive!")
+ 		} 
+ 	} else {
+ 		res <- NA
+ 		#print("No data for this gene avalable.")
+ 	} 
+ 	return(res)
+}
+
+#Hg entropy calculation from on https://academic.oup.com/bib/article/18/2/205/2562739
+#Function require a vector with expression of one gene in different tissues.
+#If expression for one tissue is not known, gene specificity for this gene is NA
+fHg <- function(x)
+{	
+	if(all(!is.na(x)))
+ 	{
+ 		if(min(x, na.rm=TRUE) >= 0)
+		{
+ 			if(sum(x) !=0)
+ 			{
+ 				p <- x / sum(x)
+ 				res <- -sum(p*log2(p), na.rm=TRUE)
+ 				res <- 1 - (res/log2(length(p))) #Modification: To bring to normalized scale
+ 			} else {
+ 				res <- 0
+ 			} 		
+ 		} else {
+ 		res <- NA
+ 		#print("Expression values have to be positive!")
+ 		}
+ 	} else {
+ 		res <- NA
+ 		#print("No data for this gene avalable.")
+ 	}
+ 	return(res)
+}
+
 promoters_f5_expression <-
     data.table::melt(data = promoters_f5_expression,
-                     id.vars = "00Annotation")[, .(
-                                               mean = mean(value, na.rm = TRUE),
-                                               min = min(value, na.rm = TRUE),
-                                               max = max(value, na.rm = TRUE),
-                                               sd = sd(value, na.rm = TRUE)
-                                               ),
-                                               by = "00Annotation"
-                     ]
+                     id.vars = "00Annotation")
+promoters_f5_expression <- promoters_f5_expression[, .(
+                         mean = mean(value, na.rm = TRUE),
+                         min = min(value, na.rm = TRUE),
+                         max = max(value, na.rm = TRUE),
+                         sd = sd(value, na.rm = TRUE),
+                         tau = fTau(log(value + 1)),
+                         hg = fHg(log(value + 1)),
+                         count = sum(value > 0.2)
+                     ),
+                     by = "00Annotation"]
 
 gc()
 ```
-# Deeper look into the “signatures”
-
-## Technical biases and noise vs biological signal.
+# Technical biases and noise vs biological signal.
 
 Based on the Bogumil's observation that some promoters always give a signal
 regardless on the transcription factor we look at. As well as, some TF gives 
@@ -207,28 +275,29 @@ chip_atlas_promoters_core <- chip_atlas_promoters[promoters_f5_core$name, ]
 ```
 
 This give us an interaction matrix with `r nrow(remap_promoters_core)` promoters
-(rows) and `r ncol(remap_promoters_core)`, `r ncol(chip_atlas_promoters_core` 
+(rows) and `r ncol(remap_promoters_core)`, `r ncol(chip_atlas_promoters_core)` 
 ChIP-seq experiments (columns) for ReMap2020, ChIP-Atlas respectively.
 
-### Looking at promoter TF interaction matrix row wise (promoter wise)
+## Looking at promoter TF interaction matrix row wise (promoter wise)
 
-#### Promoter coverage
+### Promoter coverage
 
 For each promoter we calculate coverage which is equal to the number
 of ChIP-seq experiment the promoter intersect with. Additionally we calculate 
-the TF coverage equal to the number of ChIP-seq for different TF promoter 
-intersect with. And biological context coverage which is equal to the number of
-different biological contexts (eg. tissue, cell) promoter intersect with. 
+the TF coverage equal to the number of different TFs the promoter intersect 
+with. And biological context coverage which is equal to the number of different 
+biological contexts (eg. tissue, cell) promoter intersect with. 
 
 <!-- TODO experiment coverage -->
 
 ```{r promoters_coverage}
+chip_atlas_promoters_core <- as(chip_atlas_promoters_core, "dgCMatrix")
 promoters <- list(
     remap = data.table::data.table(
         nm = remap_promoters_core %>% rownames(),
         coverage = remap_promoters_core %>% Matrix::rowSums(),
-        tf_coverage = remap_promoters_core %>% getCoverage(col = 2, sep = "."),
-        con_coverage = remap_promoters_core %>% getCoverage(col = 3, sep = ".")
+        tf_coverage = remap_promoters_core %>% getCoverage(col = 2, sep = "\\."),
+        con_coverage = remap_promoters_core %>% getCoverage(col = 3, sep = "\\.")
     ),
     chip_atlas = data.table::data.table(
         nm = chip_atlas_promoters_core %>% rownames(),
@@ -236,10 +305,12 @@ promoters <- list(
         tf_coverage = chip_atlas_promoters_core %>%
             getCoverage(col = 1, sep = "_"),
         con_coverage = chip_atlas_promoters_core %>%
-            getCoverage(col = 2, sep = "_")
+            getCoverage(col = 3, sep = "_")
     )
 )
+```
 
+```{r promoters_coverage_hist}
 # Promoter coverage histogram
 par(mfrow = c(1, 2), cex = 0.7, pty = "s")
 coverageHist(x = promoters[["remap"]][["coverage"]],
@@ -262,15 +333,22 @@ coverageHist(x = promoters[["chip_atlas"]][["con_coverage"]],
              main = "ChIP-Atlas promoter context coverage")
 ```
 
-For some promoters we can observe no coverage at all 
+For some promoters we observe no coverage at all:
 `r sum(promoters[["remap"]][["coverage"]] == 0)`,
 `r sum(promoters[["chip_atlas"]][["coverage"]] == 0)`
-for ReMap2020, ChIP-Atlas.
+for ReMap2020, ChIP-Atlas respectively.
 
-#### ENCODE blacklist
+### ENCODE blacklist
 
-We investigate differences in promoters coverage by overlapping the promoters
-with ENCODE's list of blacklisted regions.
+We investigate promoters coverage by overlapping the promoters with ENCODE's 
+list of blacklisted regions.
+
+>  ENCODE blacklist is a comprehensive set of regions in the human and other 
+genomes that have anomalous, unstructured, or high signal in next-generation 
+sequencing experiments independent of cell line or experiment. The removal of 
+the ENCODE blacklist is an essential quality measure when analyzing functional 
+genomics data.
+[ENCODE blacklist](https://github.com/Boyle-Lab/Blacklist)
 
 ```{r blacklisted_promoters}
 par(mfrow = c(1, 2), cex = 0.7, pty = "s")
@@ -290,12 +368,16 @@ blacklistBoxPlot(coverage = promoters[["chip_atlas"]][["coverage"]],
                  ylab = "promoter coverage")
 ```
 
-#### Ensembl soft masked regions
+### Ensembl soft masked regions
 
-We investigate differences in promoters coverage by overlapping the promoters
-with Ensembl's list of soft masked regions.
+We investigate promoters coverage by overlapping the promoters with Ensembl's 
+list of soft masked regions.
 
-```{r}
+> Repetitive sequence is found throughout genomes. Ensembl mask repeats using 
+Repeat Masker and Dust. 
+[assembly repeats](https://www.ensembl.org/info/genome/genebuild/assembly_repeats.html)
+
+```{r soft_masked_promoters}
 par(mfrow = c(1, 2), cex = 0.7, pty = "s")
 blacklistBoxPlot(coverage = promoters[["remap"]][["coverage"]],
                  cov_names = promoters[["remap"]][["nm"]],
@@ -313,62 +395,314 @@ blacklistBoxPlot(coverage = promoters[["chip_atlas"]][["coverage"]],
                  ylab = "promoter coverage")
 ```
 
-# Promoters coverage vs length
-graphics::smoothScatter(
-     x = remap_promoters_counts,
-     y = GenomicRanges::width(promoters_f5_core),
-     main = sprintf("ReMap2020 promoters coverage vs length\nPearson: %f",
-                    cor(x = remap_promoters_counts,
-                        y = GenomicRanges::width(promoters_f5_core),
-                        method = "pearson")),
-     xlab = "promoter coverage",
-     ylab = "promoter length")
+### Promoters "phisical" properties
+
+We investigate promoters coverage by looking at the relations between promoter
+coverage and promoter FANTOM5 score, or width.
+
+```{r promoter_score_length}
+stopifnot(all(promoters_f5_core$name == promoters[["remap"]][["nm"]]))
+stopifnot(all(promoters_f5_core$name == promoters[["chip_atlas"]][["nm"]]))
+
+promoter_score <- log10(promoters_f5_core$score)
+promoter_width <- GenomicRanges::width(promoters_f5_core)
 
 # Promoters coverage vs score
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
 graphics::smoothScatter(
-     x = remap_promoters_counts,
-     y = log10(promoters_f5_core$score),
-     main = sprintf("ReMap2020 promoters coverage vs score\nPearson: %f",
-                    cor(x = remap_promoters_counts,
-                        y = log10(promoters_f5_core$score),
+     x = promoters[["remap"]][["coverage"]],
+     y = promoter_score,
+     main = sprintf("ReMap2020\npromoters coverage vs F5 score\nPearson: %f",
+                    cor(x = promoters[["remap"]][["coverage"]],
+                        y = promoter_score,
                         method = "pearson")),
-     xlab = "promoter counts",
+     xlab = "promoter coverage",
+     ylab = "log10(promoter score)")
+graphics::smoothScatter(
+     x = promoters[["chip_atlas"]][["coverage"]],
+     y = promoter_score,
+     main = sprintf("ChIP-Atlas\npromoters coverage vs F5 score\nPearson: %f",
+                    cor(x = promoters[["chip_atlas"]][["coverage"]],
+                        y = promoter_score,
+                        method = "pearson")),
+     xlab = "promoter coverage",
      ylab = "log10(promoter score)")
 
-# Promoters score vs length
+# Promoters coverage vs width
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
 graphics::smoothScatter(
-     x = log10(promoters_f5_core$score),
-     y = GenomicRanges::width(promoters_f5_core),
-     main = sprintf("ReMap2020 promoters coverage vs score\nPearson: %f",
-                    cor(x = log10(promoters_f5_core$score),
-                        y = GenomicRanges::width(promoters_f5_core),
+     x = promoters[["remap"]][["coverage"]],
+     y = promoter_width,
+     main = sprintf("ReMap2020\npromoters coverage vs width\nPearson: %f",
+                    cor(x = promoters[["remap"]][["coverage"]],
+                        y = promoter_width,
                         method = "pearson")),
-     xlab = "log10(promoter score)",
-     ylab = "promoter length")
+     xlab = "promoter coverage",
+     ylab = "promoter width")
+graphics::smoothScatter(
+     x = promoters[["chip_atlas"]][["coverage"]],
+     y = promoter_width,
+     main = sprintf("ChIP-Atlas\npromoters coverage vs width\nPearson: %f",
+                    cor(x = promoters[["chip_atlas"]][["coverage"]],
+                        y = promoter_width,
+                        method = "pearson")),
+     xlab = "promoter coverage",
+     ylab = "promoter width")
+```
 
-# Protein Atlas gene specificity classification
-# Category 	Description
-# Enriched 	NX level in a particular tissue/region/cell type at least four times any other tissue/region/cell type
-# Group enriched 	NX levels of a group (of 2-5 tissues or 2-10 cell types or 2-5 brain regions) at least four times any other tissue/region/cell type
-# Enhanced 	NX levels of a group (of 1-5 tissues or 1-10 cell types or 1-5 brain regions) at least four times the mean of other tissue/region/cell types
-# Low specificity 	NX >= 1 in at least one tissue/region/cell type but not elevated in any tissue/region/cell type
-# Not detected 	NX < 1 in all tissue/cell/region types
+### Protein Atlas gene specificity classification
+
+We investigate promoters coverage by looking at their target genes 
+classification in terms of tissue/cell type specificity as defined by Protein 
+Atlas.
+
+> The RNA specificity category is based on mRNA expression levels in a 
+combination of data from HPA, GTEX and FANTOM5. The categories include: tissue enriched, group enriched, tissue enhanced, low tissue specificity and not 
+detected.
+
+>
++ Enriched - NX level in a particular tissue/region/cell type at least four 
+times any other tissue/cell type.
++ Group enriched - NX levels of a group (2-5 tissues or 2-10 cell types) at 
+least four times any other tissue/cell type.
++ Enhanced - NX levels of a group (1-5 tissues or 1-10 cell types) at least four 
+times the mean of other tissue/cell types.
++ Low specificity - NX >= 1 in at least one tissue/cell type but not elevated in 
+any tissue/cell type.
++ Not detected - NX < 1 in all tissue/cell types.
+
+[Protein Atlas](https://www.proteinatlas.org/about/assays+annotation#classification_rna)
+
+```{r protein_atlas_promoters}
 promoters_meta <- GenomicRanges::mcols(promoters_f5_core) %>%
     as.data.frame() %>%
-    dplyr::left_join(y = protein_atlas[, c("Gene", 
-                                           "RNA tissue specificity",
-                                           "RNA single cell type specificity")],
-                     by = c("SYMBOL" = "Gene"))
-promoters_meta$counts <- remap_promoters_counts[promoters_meta$name]
-graphics::boxplot(counts ~ `RNA tissue specificity`, 
-                  data = promoters_meta,
-                  main = "ReMap2020 promoter coverage vs Protein Atlas tissue specificity",
-                  cex.axis = 0.7)
-graphics::boxplot(counts ~ `RNA single cell type specificity`, 
-                  data = promoters_meta,
-                  main = "ReMap2020 promoter coverage vs Protein Atlas single cell type specificity",
-                  cex.axis = 0.5)
+    dplyr::left_join(y = protein_atlas[, c(
+        "Gene",
+        "RNA tissue specificity",
+        "RNA single cell type specificity"
+    )],
+    by = c("SYMBOL" = "Gene"))
+stopifnot(all(promoters_meta$name == promoters[["remap"]][["nm"]]))
+stopifnot(all(promoters_meta$name == promoters[["chip_atlas"]][["nm"]]))
+promoters_meta$remap_coverage <- promoters[["remap"]][["coverage"]]
+promoters_meta$chip_atlas_coverage <- promoters[["chip_atlas"]][["coverage"]]
 
+# RNA tissue specificity
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+graphics::boxplot(remap_coverage ~ `RNA tissue specificity`, 
+                  data = promoters_meta,
+                  main = "ReMap2020\nProtein Atlas tissue specificity",
+                  ylab = "promoter coverage",
+                  xlab = "",
+                  las=2,
+                  cex.names = 0.4)
+graphics::boxplot(chip_atlas_coverage ~ `RNA tissue specificity`, 
+                  data = promoters_meta,
+                  main = "ChIP-Atlas\nProtein Atlas tissue specificity",
+                  ylab = "promoter coverage",
+                  xlab = "",
+                  las=2,
+                  cex.names = 0.4)
+
+# RNA single cell type specificity
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+graphics::boxplot(remap_coverage ~ `RNA single cell type specificity`, 
+                  data = promoters_meta,
+                  main = "ReMap2020\nProtein Atlas single cell type specificity",
+                  ylab = "promoter coverage",
+                  xlab = "",
+                  las=2,
+                  cex.names = 0.4)
+graphics::boxplot(chip_atlas_coverage ~ `RNA single cell type specificity`, 
+                  data = promoters_meta,
+                  main = "ChIP-Atlas\nProtein Atlas single cell type specificity",
+                  ylab = "promoter coverage",
+                  xlab = "",
+                  las=2,
+                  cex.names = 0.4)
+```
+
+### FANTOM5 promoter specificity
+
+To generalize the idea of promoter tissue/cell type specificity to promoters 
+outside Protein Atlas annotation we define specificity score based on the 
+FANTOM5 CAGE data.
+
+The expression based specificity score can be defined in multiple ways. Here I
+explore three of such definitions: counts, $\tau$ and $H_g$ based on a 
+[reference](https://academic.oup.com/bib/article/18/2/205/2562739#119555186).
+
+```{r promoter_f5_specificity}
+promoters_f5_core_expression <- 
+    promoters_f5_expression[`00Annotation` %in% promoters_f5_core$name, ]
+promoters_f5_core_expression[promoters[["remap"]],
+                             remap_coverage := coverage,
+                             on = c("00Annotation" = "nm")]
+promoters_f5_core_expression[promoters[["chip_atlas"]],
+                             chip_atlas_coverage := coverage,
+                             on = c("00Annotation" = "nm")]
+data.table::setDT(promoters_meta)
+promoters_f5_core_expression[promoters_meta,
+                             tissue_specificity := `RNA tissue specificity`,
+                             on = c("00Annotation" = "name")]
+```
+
+#### Counts 
+are defined as a count of in how many tissues each gene is expressed.
+The expression of a gene is decided based on a threshold. Here it is $0.2$ TPM.
+
+$\sum_{i}^{b} [x_i > th]$, where $th$ is threshold
+
+
+```{r promoter_f5_specificity_counts_boxplot}
+# count (sum([Xi > 0.2]))
+graphics::boxplot(count ~ tissue_specificity, 
+                  data = promoters_f5_core_expression,
+                  main = "Tissue specificity by count vs Protein Atlass classififcation",
+                  ylab = expression(sum(x[i] > 0.2)),
+                  xlab = "",
+                  cex.axis = 0.4)
+```
+
+```{r promoter_f5_specificity_counts_scatter}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1,0))
+with(
+  promoters_f5_core_expression,
+  graphics::smoothScatter(
+    x = count,
+    y = remap_coverage,
+    main = sprintf(
+      "ReMap2020\npromoter specificity by counts\nPearson: %f",
+      cor(x = remap_coverage,
+          y = count,
+          method = "pearson")
+    ),
+    ylab = expression(sum(x[i] > 0.2)),
+    xlab = "promoter coverage"
+  )
+)
+with(
+  promoters_f5_core_expression,
+  graphics::smoothScatter(
+    x = count,
+    y = chip_atlas_coverage,
+    main = sprintf(
+      "ChIP-Atlas\npromoter specificity by counts\nPearson: %f",
+      cor(x = chip_atlas_coverage,
+          y = count,
+          method = "pearson")
+    ),
+    ylab = expression(sum(x[i] > 0.2)),
+    xlab = "promoter coverage"
+  )
+)
+```
+
+#### Tau 
+is defined as
+
+$\tau = \frac{\sum_{i=1}^{n} (1-\hat{x_i})}{n-1}; \hat{x_i} = \frac{x_i}{max(x)}$
+
+It has been shown to be the most robust metric.
+
+
+```{r promoter_f5_specificity_tau_boxplot}
+# tau
+graphics::boxplot(tau ~ tissue_specificity, 
+                  data = promoters_f5_core_expression,
+                  main = "Tissue specificity by tau vs Protein Atlass classififcation",
+                  ylab = expression(tau),
+                  xlab = "",
+                  cex.axis = 0.4)
+```
+
+```{r promoter_f5_specificity_tau_scatter}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1,0))
+with(
+  promoters_f5_core_expression,
+  graphics::smoothScatter(
+    x = tau,
+    y = remap_coverage,
+    main = sprintf(
+      "ReMap2020\npromoter specificity by tau\nPearson: %f",
+      cor(x = remap_coverage,
+          y = tau,
+          method = "pearson")
+    ),
+    ylab = expression(tau),
+    xlab = "promoter coverage"
+  )
+)
+with(
+  promoters_f5_core_expression,
+  graphics::smoothScatter(
+    x = tau,
+    y = chip_atlas_coverage,
+    main = sprintf(
+      "ChIP-Atlas\npromoter specificity by tau\nPearson: %f",
+      cor(x = chip_atlas_coverage,
+          y = tau,
+          method = "pearson")
+    ),
+    ylab = expression(tau),
+    xlab = "promoter coverage"
+  )
+)
+```
+
+#### $H_g$ 
+is a Shannon Entropy based tissue specificity metric, defined as
+
+$-\sum_{i=1}^{n} p_{i} * log_{2} (p_{i}); p_{i} = \frac{x_i}{\sum_{i=1}^{n} x_i}$
+
+
+```{r promoter_f5_specificity_hg_boxplot}
+# Hg
+graphics::boxplot(hg ~ tissue_specificity, 
+                  data = promoters_f5_core_expression,
+                  main = "Tissue specificity by Hg vs Protein Atlass classififcation",
+                  ylab = expression(H[g]),
+                  xlab = "",
+                  cex.axis = 0.4)
+
+
+```
+
+```{r promoter_f5_specificity_hg_scatter}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1,0))
+with(
+  promoters_f5_core_expression,
+  graphics::smoothScatter(
+    x = hg,
+    y = remap_coverage,
+    main = sprintf(
+      "ReMap2020\npromoter specificity by Hg\nPearson: %f",
+      cor(x = remap_coverage,
+          y = hg,
+          method = "pearson")
+    ),
+    ylab = expression(H[g]),
+    xlab = "promoter coverage"
+  )
+)
+with(
+  promoters_f5_core_expression,
+  graphics::smoothScatter(
+    x = hg,
+    y = chip_atlas_coverage,
+    main = sprintf(
+      "ChIP-Atlas\npromoter specificity by Hg\nPearson: %f",
+      cor(x = chip_atlas_coverage,
+          y = hg,
+          method = "pearson")
+    ),
+    ylab = expression(H[g]),
+    xlab = "promoter coverage"
+  )
+)
+```
+
+```{r}
 # shared_pairs_remap <- lapply(
 #     X = 1:100, 
 #     FUN = function(i) {
@@ -380,200 +714,30 @@ graphics::boxplot(counts ~ `RNA single cell type specificity`,
 
 # How does the number of shared TFs depends on how many top promoters we are
 # looking at?
-shared_tf <- c()
-shared_tf_nprom <- c()
-x <- seq(from = 1, to = 3322, by = 50)
-for (n in x) {
-    sel <- remap_promoters_core[remap_promoters_counts >= n, , drop = FALSE]
-    shared_tf_nprom <- c(shared_tf_nprom, nrow(sel))
-    n_tf <- sel %>%
-        getSharedColumns() %>%
-        sum()
-    shared_tf <- c(shared_tf, n_tf)
-}
-plot(x = x,
-     y = shared_tf,
-     main = "ReMap2020 promoters coverage vs number of shared TFs",
-     xlab = "promoter coverage >= x",
-     ylab = "number of shared TFs")
-plot(x = shared_tf_nprom,
-     y = shared_tf,
-     main = "ReMap2020 number of promoters vs number of shared TFs",
-     xlab = "number of promoters",
-     ylab = "number of shared TFs")
+# shared_tf <- c()
+# shared_tf_nprom <- c()
+# x <- seq(from = 1, to = 3322, by = 50)
+# for (n in x) {
+#     sel <- remap_promoters_core[remap_promoters_counts >= n, , drop = FALSE]
+#     shared_tf_nprom <- c(shared_tf_nprom, nrow(sel))
+#     n_tf <- sel %>%
+#         getSharedColumns() %>%
+#         sum()
+#     shared_tf <- c(shared_tf, n_tf)
+# }
+# plot(x = x,
+#      y = shared_tf,
+#      main = "ReMap2020 promoters coverage vs number of shared TFs",
+#      xlab = "promoter coverage >= x",
+#      ylab = "number of shared TFs")
+# plot(x = shared_tf_nprom,
+#      y = shared_tf,
+#      main = "ReMap2020 number of promoters vs number of shared TFs",
+#      xlab = "number of promoters",
+#      ylab = "number of shared TFs")
 ```
 
-```{r promoters_coverage_chip_atlas}
-# TODO set chip_atlas_promoters class to  dgCMatrix
-chip_atlas_promoters_core <- as(chip_atlas_promoters_core, "dgCMatrix")
-
-chip_atlas_promoters_counts <- chip_atlas_promoters_core %>%
-    Matrix::rowSums()
-
-chip_atlas_promoters_counts %>%
-    summary()
-
-chip_atlas_promoters_counts %>%
-    graphics::hist(breaks = 100,
-                   plot = TRUE,
-                   main = "ChIP-Atlas promoter coverage")
-
-(chip_atlas_promoters_counts == 0) %>%
-    table() / length(chip_atlas_promoters_counts)
-
-(m <- chip_atlas_promoters_counts == 0) %>% sum()
-
-# What genes are those 0 promoters assigned to?
-# TODO comapre zero promoters between remap and chip-atlas
-zero_promoters <- names(m)[m]
-zero_promoters <- promoters_f5_core[promoters_f5_core$name %in% zero_promoters, ]
-zero_promoters$SYMBO
-boxplot(log10(promoters_f5_core$score), 
-        log10(zero_promoters$score),
-        names = c("all", "zero"),
-        main = "Zero coverage promoters scores")
-(zero_promoters$name %in% blacklist) %>% table()
-protein_atlas %>%
-    dplyr::filter(Gene %in% zero_promoters$SYMBOL) %>%
-    dplyr::pull(`RNA tissue specificity`) %>%
-    table()
-
-# Lets look into promoters with the highest number of transcription factors,
-# how many of those are shared?
-chip_atlas_promoters_highest <-
-    chip_atlas_promoters_core[chip_atlas_promoters_counts >= 4500, ]
-shared_cols_m <- getSharedColumns(chip_atlas_promoters_highest)
-sum(shared_cols_m)
-highest_promoters <- chip_atlas_promoters_highest %>% rownames()
-highest_promoters <- 
-    promoters_f5_core[promoters_f5_core$name %in% highest_promoters, ]
-boxplot(log10(promoters_f5_core$score), 
-        log10(highest_promoters$score),
-        names = c("all", "highest"),
-        main = "Highest coverage promoters scores")
-(highest_promoters$name %in% blacklist) %>% table()
-protein_atlas %>%
-    dplyr::filter(Gene %in% highest_promoters$SYMBOL) %>%
-    dplyr::pull(`RNA tissue specificity`) %>%
-    table()
-
-# How does the number of shared TFs depends on how many top promoters we are
-# looking at?
-shared_tf <- c()
-shared_tf_nprom <- c()
-x <- seq(from = 1, to = 5000, by = 50)
-for (n in x) {
-    sel <-
-        chip_atlas_promoters_core[chip_atlas_promoters_counts >= n, , drop = FALSE]
-    shared_tf_nprom <- c(shared_tf_nprom, nrow(sel))
-    n_tf <- sel %>%
-        getSharedColumns() %>%
-        sum()
-    shared_tf <- c(shared_tf, n_tf)
-}
-plot(x = x,
-     y = shared_tf,
-     main = "ChIP-Atlas promoters coverage vs number of shared TFs",
-     xlab = "promoter coverage >= x",
-     ylab = "number of shared TFs")
-plot(x = shared_tf_nprom,
-     y = shared_tf,
-     main = "ChIP-Atlas number of promoters vs number of shared TFs",
-     xlab = "number of promoters",
-     ylab = "number of shared TFs")
-
-# Blacklisted promoters vs TFs coverage
-blk <- chip_atlas_promoters_counts[
-        names(chip_atlas_promoters_counts) %in% blacklist]
-length(blk)
-nonblk <- chip_atlas_promoters_counts[
-        ! names(chip_atlas_promoters_counts) %in% blacklist]
-graphics::boxplot(blk,
-                  nonblk,
-                  main = "Blacklisted regions vs TF count",
-                  names = c(
-                      sprintf("blacklisted (%i)", length(blk)), 
-                      sprintf("non blacklisted (%i)", length(nonblk)))
-)
-
-# Ensembl soft masked promoters vs TFs coverage
-sm <- chip_atlas_promoters_counts[
-        names(chip_atlas_promoters_counts) %in% ensembl_sm]
-length(sm)
-nonsm <- chip_atlas_promoters_counts[
-        ! names(chip_atlas_promoters_counts) %in% ensembl_sm]
-graphics::boxplot(sm,
-                  nonsm,
-                  main = "Ensembl soft masked regions vs TF count",
-                  names = c(
-                      sprintf("soft masked (%i)", length(sm)), 
-                      sprintf("non soft masked (%i)", length(nonsm)))
-)
-
-# Promoters coverage vs length
-graphics::smoothScatter(
-     x = chip_atlas_promoters_counts,
-     y = GenomicRanges::width(promoters_f5_core),
-     main = sprintf("ChIP-Atlas promoters coverage vs length\nPearson: %f",
-                    cor(x = chip_atlas_promoters_counts,
-                        y = GenomicRanges::width(promoters_f5_core),
-                        method = "pearson")),
-     xlab = "promoter coverage",
-     ylab = "promoter length")
-
-# Promoters coverage vs score
-graphics::smoothScatter(
-     x = chip_atlas_promoters_counts,
-     y = log10(promoters_f5_core$score),
-     main = sprintf("ChIP-Atlas promoters coverage vs score\nPearson: %f",
-                    cor(x = chip_atlas_promoters_counts,
-                        y = log10(promoters_f5_core$score),
-                        method = "pearson")),
-     xlab = "promoter counts",
-     ylab = "log10(promoter score)")
-
-# Promoters score vs length
-graphics::smoothScatter(
-     x = log10(promoters_f5_core$score),
-     y = GenomicRanges::width(promoters_f5_core),
-     main = sprintf("ChIP-Atlas promoters coverage vs score\nPearson: %f",
-                    cor(x = log10(promoters_f5_core$score),
-                        y = GenomicRanges::width(promoters_f5_core),
-                        method = "pearson")),
-     xlab = "log10(promoter score)",
-     ylab = "promoter length")
-
-# Protein Atlas gene specificity classification
-# Category 	Description
-# Enriched 	NX level in a particular tissue/region/cell type at least four times any other tissue/region/cell type
-# Group enriched 	NX levels of a group (of 2-5 tissues or 2-10 cell types or 2-5 brain regions) at least four times any other tissue/region/cell type
-# Enhanced 	NX levels of a group (of 1-5 tissues or 1-10 cell types or 1-5 brain regions) at least four times the mean of other tissue/region/cell types
-# Low specificity 	NX >= 1 in at least one tissue/region/cell type but not elevated in any tissue/region/cell type
-# Not detected 	NX < 1 in all tissue/cell/region types
-
-protein_atlas <-
-    data.table::fread(
-        file = system.file("inst", "extdata", "proteinatlas.tsv.gz", package = "xcore"),
-        header = TRUE
-    )
-promoters_meta <- GenomicRanges::mcols(promoters_f5_core) %>%
-    as.data.frame() %>%
-    dplyr::left_join(y = protein_atlas[, c("Gene", 
-                                           "RNA tissue specificity",
-                                           "RNA single cell type specificity")],
-                     by = c("SYMBOL" = "Gene"))
-promoters_meta$counts <- chip_atlas_promoters_counts[promoters_meta$name]
-graphics::boxplot(counts ~ `RNA tissue specificity`, 
-                  data = promoters_meta,
-                  main = "ChIP-Atlas promoter coverage vs Protein Atlas tissue specificity",
-                  cex.axis = 0.7)
-graphics::boxplot(counts ~ `RNA single cell type specificity`, 
-                  data = promoters_meta,
-                  main = "ChIP-Atlas promoter coverage vs Protein Atlas single cell type specificity",
-                  cex.axis = 0.5)
-```
-
-### Looking at promoter TF interaction matrix column wise (TF wise)
+## Looking at promoter TF interaction matrix column wise (TF wise)
 
 ```{r tf_coverage_remap}
 remap_tf_counts <- remap_promoters_core %>%
