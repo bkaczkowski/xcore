@@ -569,8 +569,8 @@ par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1
 with(
   promoters_f5_core_expression,
   graphics::smoothScatter(
-    x = count,
-    y = remap_coverage,
+    x = remap_coverage,
+    y = count,
     main = sprintf(
       "ReMap2020\npromoter specificity by counts\nPearson: %f",
       cor(x = remap_coverage,
@@ -584,8 +584,8 @@ with(
 with(
   promoters_f5_core_expression,
   graphics::smoothScatter(
-    x = count,
-    y = chip_atlas_coverage,
+    x = chip_atlas_coverage,
+    y = count,
     main = sprintf(
       "ChIP-Atlas\npromoter specificity by counts\nPearson: %f",
       cor(x = chip_atlas_coverage,
@@ -621,8 +621,8 @@ par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1
 with(
   promoters_f5_core_expression,
   graphics::smoothScatter(
-    x = tau,
-    y = remap_coverage,
+    x = remap_coverage,
+    y = tau,
     main = sprintf(
       "ReMap2020\npromoter specificity by tau\nPearson: %f",
       cor(x = remap_coverage,
@@ -636,8 +636,8 @@ with(
 with(
   promoters_f5_core_expression,
   graphics::smoothScatter(
-    x = tau,
-    y = chip_atlas_coverage,
+    x = chip_atlas_coverage,
+    y = tau,
     main = sprintf(
       "ChIP-Atlas\npromoter specificity by tau\nPearson: %f",
       cor(x = chip_atlas_coverage,
@@ -673,8 +673,8 @@ par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1
 with(
   promoters_f5_core_expression,
   graphics::smoothScatter(
-    x = hg,
-    y = remap_coverage,
+    x = remap_coverage,
+    y = hg,
     main = sprintf(
       "ReMap2020\npromoter specificity by Hg\nPearson: %f",
       cor(x = remap_coverage,
@@ -688,8 +688,8 @@ with(
 with(
   promoters_f5_core_expression,
   graphics::smoothScatter(
-    x = hg,
-    y = chip_atlas_coverage,
+    x = chip_atlas_coverage,
+    y = hg,
     main = sprintf(
       "ChIP-Atlas\npromoter specificity by Hg\nPearson: %f",
       cor(x = chip_atlas_coverage,
