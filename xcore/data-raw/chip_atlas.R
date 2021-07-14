@@ -159,6 +159,7 @@ chip_atlas_entrez <- Matrix::drop0(overlap_mat_entrez)
 chip_atlas_symbol <- Matrix::drop0(overlap_mat_symbol)
 chip_atlas_meta <- sxr_meta
 
+# promters to absence/presence matrix
 chip_atlas_promoters <- Matrix::sparseMatrix(
   dims = c(nrow(overlap_mat_promoters), ncol(overlap_mat_promoters)),
   i = {},
@@ -168,11 +169,23 @@ rownames(chip_atlas_promoters) <- rownames(overlap_mat_promoters)
 for (j in 1:ncol(chip_atlas_promoters)) {
   chip_atlas_promoters[, j] <- as.logical(overlap_mat_promoters[, j])
 }
-chip_atlas_enhancers <- Matrix::drop0(overlap_mat_enhancers)
+chip_atlas_promoters <- as(chip_atlas_promoters, "dgCMatrix") # how remap is stored
 
+# enhancers to absence/presence matrix
+chip_atlas_enhancers <- Matrix::sparseMatrix(
+  dims = c(nrow(overlap_mat_enhancers), ncol(overlap_mat_enhancers)),
+  i = {},
+  j = {})
+colnames(chip_atlas_enhancers) <- colnames(overlap_mat_enhancers)
+rownames(chip_atlas_enhancers) <- rownames(overlap_mat_enhancers)
+for (j in 1:ncol(chip_atlas_enhancers)) {
+  chip_atlas_enhancers[, j] <- as.logical(overlap_mat_enhancers[, j])
+}
+chip_atlas_enhancers <- as(chip_atlas_enhancers, "dgCMatrix") # how remap is stored
+
+# usethis::use_data
 usethis::use_data(chip_atlas_entrez, internal = FALSE, overwrite = TRUE)
 usethis::use_data(chip_atlas_symbol, internal = FALSE, overwrite = TRUE)
 usethis::use_data(chip_atlas_meta, internal = FALSE, overwrite = TRUE)
 usethis::use_data(chip_atlas_promoters, internal = FALSE, overwrite = TRUE)
 usethis::use_data(chip_atlas_enhancers, internal = FALSE, overwrite = TRUE)
-
