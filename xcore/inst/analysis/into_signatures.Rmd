@@ -12,9 +12,6 @@ library(data.table)
 ```
 
 ```{r functions_data, cache=TRUE, echo=FALSE, message=FALSE}
-# Internally used variables
-opar <- par()
-
 # Internally used functions
 
 # Function return logical vector indicating columns populated in all rows
@@ -118,7 +115,8 @@ blacklist <- rtracklayer::import(system.file("inst",
                                              "extdata",
                                              "hg38-blacklist.v2.bed.gz",
                                              package = "xcore")) %>%
-    intersectGr(subject = promoters_f5, type = "any") %>%
+    intersectGr(subject = c(xcore::promoters_f5, xcore::enhancers), 
+                type = "any") %>%
     GenomicRanges::mcols() %>%
     `[[`("name")
     
@@ -128,7 +126,8 @@ ensembl_sm <- rtracklayer::import(system.file("inst",
                                               "extdata",
                                               "hg38_ensembl_sm.bed.gz",
                                               package = "xcore")) %>%
-    intersectGr(subject = promoters_f5, type = "any") %>%
+    intersectGr(subject = c(xcore::promoters_f5, xcore::enhancers), 
+                type = "any") %>%
     GenomicRanges::mcols() %>%
     `[[`("name")
 
@@ -222,6 +221,30 @@ promoters_f5_expression <- promoters_f5_expression[, .(
                      ),
                      by = "00Annotation"]
 
+# enhancers expression
+enhancers_f5_expression <-
+    data.table::fread(
+        file = system.file("inst",
+                           "extdata",
+                           "F5.hg38.enhancers.expression.tpm.matrix.gz",
+                           package = "xcore"),
+        header = TRUE
+    )
+
+enhancers_f5_expression <-
+    data.table::melt(data = enhancers_f5_expression,
+                     id.vars = "V1")
+enhancers_f5_expression <- enhancers_f5_expression[, .(
+                         mean = mean(value, na.rm = TRUE),
+                         min = min(value, na.rm = TRUE),
+                         max = max(value, na.rm = TRUE),
+                         sd = sd(value, na.rm = TRUE),
+                         tau = fTau(log(value + 1)),
+                         hg = fHg(log(value + 1)),
+                         count = sum(value > 0.2)
+                     ),
+                     by = "V1"]
+
 gc()
 ```
 # Technical biases and noise vs biological signal.
@@ -230,6 +253,8 @@ Based on the Bogumil's observation that some promoters always give a signal
 regardless on the transcription factor we look at. As well as, some TF gives 
 signal regardless of the promoter we look at. We set out with an exploratory 
 data analysis on the ReMap2020 and ChIP-Atlas data sets.
+
+## Looking at promoter TF interaction matrix row wise (promoter wise)
 
 ReMap2020 and ChIP-Atlas were intersected with FANTOM5 promoters into 
 interaction matrices with ChIP-seq experiment as a columns and promoters as a
@@ -277,8 +302,6 @@ chip_atlas_promoters_core <- chip_atlas_promoters[promoters_f5_core$name, ]
 This give us an interaction matrix with `r nrow(remap_promoters_core)` promoters
 (rows) and `r ncol(remap_promoters_core)`, `r ncol(chip_atlas_promoters_core)` 
 ChIP-seq experiments (columns) for ReMap2020, ChIP-Atlas respectively.
-
-## Looking at promoter TF interaction matrix row wise (promoter wise)
 
 ### Promoter coverage
 
@@ -412,19 +435,19 @@ par(mfrow = c(1, 2), cex = 0.7, pty = "s")
 graphics::smoothScatter(
      x = promoters[["remap"]][["coverage"]],
      y = promoter_score,
-     main = sprintf("ReMap2020\npromoters coverage vs F5 score\nPearson: %f",
+     main = sprintf("ReMap2020\npromoters coverage vs F5 score\nSpearman: %f",
                     cor(x = promoters[["remap"]][["coverage"]],
                         y = promoter_score,
-                        method = "pearson")),
+                        method = "spearman")),
      xlab = "promoter coverage",
      ylab = "log10(promoter score)")
 graphics::smoothScatter(
      x = promoters[["chip_atlas"]][["coverage"]],
      y = promoter_score,
-     main = sprintf("ChIP-Atlas\npromoters coverage vs F5 score\nPearson: %f",
+     main = sprintf("ChIP-Atlas\npromoters coverage vs F5 score\nSpearman: %f",
                     cor(x = promoters[["chip_atlas"]][["coverage"]],
                         y = promoter_score,
-                        method = "pearson")),
+                        method = "spearman")),
      xlab = "promoter coverage",
      ylab = "log10(promoter score)")
 
@@ -433,19 +456,19 @@ par(mfrow = c(1, 2), cex = 0.7, pty = "s")
 graphics::smoothScatter(
      x = promoters[["remap"]][["coverage"]],
      y = promoter_width,
-     main = sprintf("ReMap2020\npromoters coverage vs width\nPearson: %f",
+     main = sprintf("ReMap2020\npromoters coverage vs width\nSpearman: %f",
                     cor(x = promoters[["remap"]][["coverage"]],
                         y = promoter_width,
-                        method = "pearson")),
+                        method = "spearman")),
      xlab = "promoter coverage",
      ylab = "promoter width")
 graphics::smoothScatter(
      x = promoters[["chip_atlas"]][["coverage"]],
      y = promoter_width,
-     main = sprintf("ChIP-Atlas\npromoters coverage vs width\nPearson: %f",
+     main = sprintf("ChIP-Atlas\npromoters coverage vs width\nSpearman: %f",
                     cor(x = promoters[["chip_atlas"]][["coverage"]],
                         y = promoter_width,
-                        method = "pearson")),
+                        method = "spearman")),
      xlab = "promoter coverage",
      ylab = "promoter width")
 ```
@@ -528,8 +551,13 @@ To generalize the idea of promoter tissue/cell type specificity to promoters
 outside Protein Atlas annotation we define specificity score based on the 
 FANTOM5 CAGE data.
 
-The expression based specificity score can be defined in multiple ways. Here I
-explore three of such definitions: counts, $\tau$ and $H_g$ based on a 
+The  can be defined in multiple ways. Here we calculate expression based 
+specificity score using $\tau$ metric defined as
+
+$\tau = \frac{\sum_{i=1}^{n} (1-\hat{x_i})}{n-1}; \hat{x_i} = \frac{x_i}{max(x)}$
+
+Tau varies from 0 to 1, where 0 means broadly expressed, and 1 is specific.
+
 [reference](https://academic.oup.com/bib/article/18/2/205/2562739#119555186).
 
 ```{r promoter_f5_specificity}
@@ -547,67 +575,7 @@ promoters_f5_core_expression[promoters_meta,
                              on = c("00Annotation" = "name")]
 ```
 
-#### Counts 
-are defined as a count of in how many tissues each gene is expressed.
-The expression of a gene is decided based on a threshold. Here it is $0.2$ TPM.
-
-$\sum_{i}^{b} [x_i > th]$, where $th$ is threshold
-
-
-```{r promoter_f5_specificity_counts_boxplot}
-# count (sum([Xi > 0.2]))
-graphics::boxplot(count ~ tissue_specificity, 
-                  data = promoters_f5_core_expression,
-                  main = "Tissue specificity by count vs Protein Atlass classififcation",
-                  ylab = expression(sum(x[i] > 0.2)),
-                  xlab = "",
-                  cex.axis = 0.4)
-```
-
-```{r promoter_f5_specificity_counts_scatter}
-par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1,0))
-with(
-  promoters_f5_core_expression,
-  graphics::smoothScatter(
-    x = remap_coverage,
-    y = count,
-    main = sprintf(
-      "ReMap2020\npromoter specificity by counts\nPearson: %f",
-      cor(x = remap_coverage,
-          y = count,
-          method = "pearson")
-    ),
-    ylab = expression(sum(x[i] > 0.2)),
-    xlab = "promoter coverage"
-  )
-)
-with(
-  promoters_f5_core_expression,
-  graphics::smoothScatter(
-    x = chip_atlas_coverage,
-    y = count,
-    main = sprintf(
-      "ChIP-Atlas\npromoter specificity by counts\nPearson: %f",
-      cor(x = chip_atlas_coverage,
-          y = count,
-          method = "pearson")
-    ),
-    ylab = expression(sum(x[i] > 0.2)),
-    xlab = "promoter coverage"
-  )
-)
-```
-
-#### Tau 
-is defined as
-
-$\tau = \frac{\sum_{i=1}^{n} (1-\hat{x_i})}{n-1}; \hat{x_i} = \frac{x_i}{max(x)}$
-
-It has been shown to be the most robust metric.
-
-
-```{r promoter_f5_specificity_tau_boxplot}
-# tau
+```{r promoter_f5_specificity_boxplot}
 graphics::boxplot(tau ~ tissue_specificity, 
                   data = promoters_f5_core_expression,
                   main = "Tissue specificity by tau vs Protein Atlass classififcation",
@@ -616,7 +584,13 @@ graphics::boxplot(tau ~ tissue_specificity,
                   cex.axis = 0.4)
 ```
 
-```{r promoter_f5_specificity_tau_scatter}
+
+```{r promoters_f5_tau_hist}
+coverageHist(x = promoters_f5_core_expression$tau,
+             main = expression(paste("core promoters ", tau, " distribution")))
+```
+
+```{r promoter_f5_specificity_scatter}
 par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1,0))
 with(
   promoters_f5_core_expression,
@@ -624,10 +598,10 @@ with(
     x = remap_coverage,
     y = tau,
     main = sprintf(
-      "ReMap2020\npromoter specificity by tau\nPearson: %f",
+      "ReMap2020\npromoter specificity by tau\nSpearman: %f",
       cor(x = remap_coverage,
           y = tau,
-          method = "pearson")
+          method = "spearman")
     ),
     ylab = expression(tau),
     xlab = "promoter coverage"
@@ -639,10 +613,10 @@ with(
     x = chip_atlas_coverage,
     y = tau,
     main = sprintf(
-      "ChIP-Atlas\npromoter specificity by tau\nPearson: %f",
+      "ChIP-Atlas\npromoter specificity by tau\nSpearman: %f",
       cor(x = chip_atlas_coverage,
           y = tau,
-          method = "pearson")
+          method = "spearman")
     ),
     ylab = expression(tau),
     xlab = "promoter coverage"
@@ -650,59 +624,39 @@ with(
 )
 ```
 
-#### $H_g$ 
-is a Shannon Entropy based tissue specificity metric, defined as
+### Promoters co-correlation
 
-$-\sum_{i=1}^{n} p_{i} * log_{2} (p_{i}); p_{i} = \frac{x_i}{\sum_{i=1}^{n} x_i}$
-
-
-```{r promoter_f5_specificity_hg_boxplot}
-# Hg
-graphics::boxplot(hg ~ tissue_specificity, 
-                  data = promoters_f5_core_expression,
-                  main = "Tissue specificity by Hg vs Protein Atlass classififcation",
-                  ylab = expression(H[g]),
-                  xlab = "",
-                  cex.axis = 0.4)
-
-
-```
-
-```{r promoter_f5_specificity_hg_scatter}
-par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1,0))
-with(
-  promoters_f5_core_expression,
-  graphics::smoothScatter(
-    x = remap_coverage,
-    y = hg,
-    main = sprintf(
-      "ReMap2020\npromoter specificity by Hg\nPearson: %f",
-      cor(x = remap_coverage,
-          y = hg,
-          method = "pearson")
-    ),
-    ylab = expression(H[g]),
-    xlab = "promoter coverage"
-  )
-)
-with(
-  promoters_f5_core_expression,
-  graphics::smoothScatter(
-    x = chip_atlas_coverage,
-    y = hg,
-    main = sprintf(
-      "ChIP-Atlas\npromoter specificity by Hg\nPearson: %f",
-      cor(x = chip_atlas_coverage,
-          y = hg,
-          method = "pearson")
-    ),
-    ylab = expression(H[g]),
-    xlab = "promoter coverage"
-  )
-)
-```
+???
 
 ```{r}
+# # Function calculates between columns correlation over sparse matrix
+# # Taken from https://stackoverflow.com/questions/5888287/running-cor-or-any-variant-over-a-sparse-matrix-in-r
+# sparse.cor <- function(x){
+#     n <- nrow(x)
+# 
+#     cMeans <- Matrix::colMeans(x)
+#     cSums <- Matrix::colSums(x)
+# 
+#     # Calculate the population covariance matrix.
+#     # There's no need to divide by (n-1) as the std. dev is also calculated the same way.
+#     # The code is optimized to minize use of memory and expensive operations
+#     covmat <- Matrix::tcrossprod(cMeans, (-2 * cSums + n * cMeans))
+#     crossp <- Matrix::as.matrix(Matrix::crossprod(x))
+#     covmat <- covmat + crossp
+# 
+#     sdvec <- sqrt(Matrix::diag(covmat)) # standard deviations of columns
+#     covmat / Matrix::crossprod(Matrix::t(sdvec)) # correlation matrix
+# }
+# 
+# # generally the core matrix is small enough to use stats::cor
+# cc <- sparse.cor(Matrix::t(remap_promoters_core))
+# 
+# # but not small enough to plot correlation heatmap
+# cc[upper.tri(cc)] %>% hist()
+# 
+# cc_spearman <- cor(x = as.matrix(remap_promoters_core), method = "spearman")
+# cc_spearman[upper.tri(cc_spearman)] %>% hist()
+
 # shared_pairs_remap <- lapply(
 #     X = 1:100, 
 #     FUN = function(i) {
@@ -735,6 +689,453 @@ with(
 #      main = "ReMap2020 number of promoters vs number of shared TFs",
 #      xlab = "number of promoters",
 #      ylab = "number of shared TFs")
+```
+
+## Looking at promoter TF interaction matrix row wise (promoter wise) - lncRNA
+
+Next we have limited our analysis to promoters of lncRNA defined as 
+promoters associated with a lncRNA gene (as per GENCODE 38) and supported by 
+ENCODE ROADMAP data. Finally, we select one promoter per associated gene that 
+have maximum FANTOM5 score.
+   
+```{r core_lncRNA}
+gc()
+
+# only lncRNA genes as per GENCODE annotation
+promoters_f5_lncRNA <- 
+    promoters_f5[promoters_f5$gene_type_gencode == "lncRNA", ]
+
+# ENCODE ROADMAP confirmation
+roadmap_promoters <- rtracklayer::import.bed(
+    con = system.file(
+        "inst",
+        "extdata",
+        "Epigenome5DRoadmapDHS_promoter_hg38_liftOver.bed",
+        package = "xcore"
+    )
+)
+GenomeInfoDb::seqlevels(roadmap_promoters, pruning.mode = "coarse") <-
+    GenomeInfoDb::seqlevels(promoters_f5_lncRNA)
+promoters_f5_lncRNA <- intersectGr(promoters_f5_lncRNA, roadmap_promoters)
+
+# Select best promoter per gene
+best_promoters <- GenomicRanges::mcols(promoters_f5_lncRNA) %>%
+    as.data.frame() %>%
+    dplyr::group_by(SYMBOL) %>%
+    dplyr::slice(which.max(score)) %>%
+    dplyr::pull(name)
+promoters_f5_lncRNA <-
+    promoters_f5_lncRNA[promoters_f5_lncRNA$name %in% best_promoters, ]
+
+# restrict interaction matrices to core promoters only
+remap_promoters_lncRNA <- remap_promoters[promoters_f5_lncRNA$name, ]
+chip_atlas_promoters_lncRNA <- chip_atlas_promoters[promoters_f5_lncRNA$name, ]
+```
+
+This give us an interaction matrix with `r nrow(remap_promoters_lncRNA)` promoters
+(rows) and `r ncol(remap_promoters_lncRNA)`, `r ncol(chip_atlas_promoters_lncRNA)` 
+ChIP-seq experiments (columns) for ReMap2020, ChIP-Atlas respectively.
+
+### lncRNA coverage
+
+```{r lncRNA_coverage}
+chip_atlas_promoters_lncRNA <- as(chip_atlas_promoters_lncRNA, "dgCMatrix")
+lncRNA <- list(
+    remap = data.table::data.table(
+        nm = remap_promoters_lncRNA %>% rownames(),
+        coverage = remap_promoters_lncRNA %>% Matrix::rowSums(),
+        tf_coverage = remap_promoters_lncRNA %>% getCoverage(col = 2, sep = "\\."),
+        con_coverage = remap_promoters_lncRNA %>% getCoverage(col = 3, sep = "\\.")
+    ),
+    chip_atlas = data.table::data.table(
+        nm = chip_atlas_promoters_lncRNA %>% rownames(),
+        coverage = chip_atlas_promoters_lncRNA %>% Matrix::rowSums(),
+        tf_coverage = chip_atlas_promoters_lncRNA %>%
+            getCoverage(col = 1, sep = "_"),
+        con_coverage = chip_atlas_promoters_lncRNA %>%
+            getCoverage(col = 3, sep = "_")
+    )
+)
+```
+
+```{r lncRNA_coverage_hist}
+# lncRNA coverage histogram
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+coverageHist(x = lncRNA[["remap"]][["coverage"]],
+             main = "ReMap2020 lncRNA coverage")
+coverageHist(x = lncRNA[["chip_atlas"]][["coverage"]], 
+             main = "ChIP-Atlas lncRNA coverage")
+
+# lncRNA TF coverage histogram
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+coverageHist(x = lncRNA[["remap"]][["tf_coverage"]],
+             main = "ReMap2020 lncRNA TF coverage")
+coverageHist(x = lncRNA[["chip_atlas"]][["tf_coverage"]], 
+             main = "ChIP-Atlas lncRNA TF coverage")
+
+# lncRNA biological context coverage histogram
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+coverageHist(x = lncRNA[["remap"]][["con_coverage"]],
+             main = "ReMap2020 lncRNA context coverage")
+coverageHist(x = lncRNA[["chip_atlas"]][["con_coverage"]], 
+             main = "ChIP-Atlas lncRNA context coverage")
+```
+
+For some lncRNA we observe no coverage at all:
+`r sum(lncRNA[["remap"]][["coverage"]] == 0)`,
+`r sum(lncRNA[["chip_atlas"]][["coverage"]] == 0)`
+for ReMap2020, ChIP-Atlas respectively.
+
+### ENCODE blacklist
+
+```{r blacklisted_lncRNA}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+blacklistBoxPlot(coverage = lncRNA[["remap"]][["coverage"]],
+                 cov_names = lncRNA[["remap"]][["nm"]],
+                 gr1 = blacklist,
+                 aname = "blacklisted",
+                 bname = "other",
+                 main = "ReMap2020\nENCODE blacklisted regions",
+                 ylab = "lncRNA coverage")
+blacklistBoxPlot(coverage = lncRNA[["chip_atlas"]][["coverage"]],
+                 cov_names = lncRNA[["chip_atlas"]][["nm"]],
+                 gr1 = blacklist,
+                 aname = "blacklisted",
+                 bname = "other",
+                 main = "ChIP-Atlas\nENCODE blacklisted regions",
+                 ylab = "lncRNA coverage")
+```
+
+### Ensembl soft masked regions
+
+```{r soft_masked_lncRNA}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+blacklistBoxPlot(coverage = lncRNA[["remap"]][["coverage"]],
+                 cov_names = lncRNA[["remap"]][["nm"]],
+                 gr1 = ensembl_sm,
+                 aname = "soft masked",
+                 bname = "other",
+                 main = "ReMap2020\nEnsembl soft masked regions",
+                 ylab = "lncRNA coverage")
+blacklistBoxPlot(coverage = lncRNA[["chip_atlas"]][["coverage"]],
+                 cov_names = lncRNA[["chip_atlas"]][["nm"]],
+                 gr1 = ensembl_sm,
+                 aname = "soft masked",
+                 bname = "other",
+                 main = "ChIP-Atlas\nEnsembl soft masked regions",
+                 ylab = "lncRNA coverage")
+```
+
+### lncRNA promoters "phisical" properties
+
+```{r lncRNA_score_length}
+stopifnot(all(promoters_f5_lncRNA$name == lncRNA[["remap"]][["nm"]]))
+stopifnot(all(promoters_f5_lncRNA$name == lncRNA[["chip_atlas"]][["nm"]]))
+
+lncRNA_score <- log10(promoters_f5_lncRNA$score)
+lncRNA_width <- GenomicRanges::width(promoters_f5_lncRNA)
+
+# lncRNA coverage vs score
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+graphics::smoothScatter(
+     x = lncRNA[["remap"]][["coverage"]],
+     y = lncRNA_score,
+     main = sprintf("ReMap2020\nlncRNA promoter coverage vs F5 score\nSpearman: %f",
+                    cor(x = lncRNA[["remap"]][["coverage"]],
+                        y = lncRNA_score,
+                        method = "spearman")),
+     xlab = "lncRNA coverage",
+     ylab = "log10(lncRNA score)")
+graphics::smoothScatter(
+     x = lncRNA[["chip_atlas"]][["coverage"]],
+     y = lncRNA_score,
+     main = sprintf("ChIP-Atlas\nlncRNA promoter coverage vs F5 score\nSpearman: %f",
+                    cor(x = lncRNA[["chip_atlas"]][["coverage"]],
+                        y = lncRNA_score,
+                        method = "spearman")),
+     xlab = "lncRNA promoter coverage",
+     ylab = "log10(lncRNA score)")
+
+# lncRNA coverage vs width
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+graphics::smoothScatter(
+     x = lncRNA[["remap"]][["coverage"]],
+     y = lncRNA_width,
+     main = sprintf("ReMap2020\nlncRNA coverage vs width\nSpearman: %f",
+                    cor(x = lncRNA[["remap"]][["coverage"]],
+                        y = lncRNA_width,
+                        method = "spearman")),
+     xlab = "lncRNA coverage",
+     ylab = "lncRNA width")
+graphics::smoothScatter(
+     x = lncRNA[["chip_atlas"]][["coverage"]],
+     y = lncRNA_width,
+     main = sprintf("ChIP-Atlas\nlncRNA coverage vs width\nSpearman: %f",
+                    cor(x = lncRNA[["chip_atlas"]][["coverage"]],
+                        y = lncRNA_width,
+                        method = "spearman")),
+     xlab = "lncRNA coverage",
+     ylab = "lncRNA width")
+```
+
+### FANTOM5 lncRNA specificity
+
+```{r lncRNA_f5_specificity}
+promoters_f5_lncRNA_expression <- 
+    promoters_f5_expression[`00Annotation` %in% promoters_f5_lncRNA$name, ]
+promoters_f5_lncRNA_expression[lncRNA[["remap"]],
+                             remap_coverage := coverage,
+                             on = c("00Annotation" = "nm")]
+promoters_f5_lncRNA_expression[lncRNA[["chip_atlas"]],
+                             chip_atlas_coverage := coverage,
+                             on = c("00Annotation" = "nm")]
+```
+
+```{r lncRNA_f5_tau_hist}
+coverageHist(x = promoters_f5_lncRNA_expression$tau,
+             main = expression(paste("core lncRNA promoters ", tau, " distribution")))
+```
+
+```{r lncRNA_f5_specificity_scatter}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1,0))
+with(
+  promoters_f5_lncRNA_expression,
+  graphics::smoothScatter(
+    x = remap_coverage,
+    y = tau,
+    main = sprintf(
+      "ReMap2020\nlncRNA specificity by tau\nSpearman: %f",
+      cor(x = remap_coverage,
+          y = tau,
+          method = "spearman")
+    ),
+    ylab = expression(tau),
+    xlab = "lncRNA coverage"
+  )
+)
+with(
+  promoters_f5_lncRNA_expression,
+  graphics::smoothScatter(
+    x = chip_atlas_coverage,
+    y = tau,
+    main = sprintf(
+      "ChIP-Atlas\nlncRNA specificity by tau\nSpearman: %f",
+      cor(x = chip_atlas_coverage,
+          y = tau,
+          method = "spearman")
+    ),
+    ylab = expression(tau),
+    xlab = "lncRNA coverage"
+  )
+)
+```
+
+## Looking at enhancers TF interaction matrix row wise (enhancers wise)
+
+Next we have we look at enhancers defined as enhancers supported by ENCODE 
+ROADMAP data.
+   
+```{r core_enhancers}
+gc()
+
+# ENCODE ROADMAP confirmation
+roadmap_enhancers <- rtracklayer::import.bed(
+    con = system.file(
+        "inst",
+        "extdata",
+        "Epigenome5DRoadmapDHS_enhancer_hg38_liftOver.bed",
+        package = "xcore"
+    )
+)
+GenomeInfoDb::seqlevels(roadmap_enhancers, pruning.mode = "coarse") <-
+    GenomeInfoDb::seqlevels(xcore::enhancers)
+enhancers_core_gr <- intersectGr(xcore::enhancers, roadmap_enhancers)
+
+# additionally we could think of using EP300 or repeat_dfam
+# enhancers_core_gr <- enhancers_core_gr[enhancers_core_gr$ep300 == "EP300", ]
+
+# restrict interaction matrices to core promoters only
+remap_enhancers_core <- xcore::remap_enhancers[enhancers_core_gr$name, ]
+chip_atlas_enhancers_core <- xcore::chip_atlas_enhancers[enhancers_core_gr$name, ]
+```
+
+This give us an interaction matrix with `r nrow(remap_enhancers_core)` enhancers
+(rows) and `r ncol(remap_enhancers_core)`, `r ncol(chip_atlas_enhancers_core)` 
+ChIP-seq experiments (columns) for ReMap2020, ChIP-Atlas respectively.
+
+### Enhancers coverage
+
+```{r enhancers_coverage}
+remap_enhancers_core <- as(remap_enhancers_core, "dgCMatrix")
+chip_atlas_enhancers_core <- as(chip_atlas_enhancers_core, "dgCMatrix")
+
+enhancers_core <- list(
+    remap = data.table::data.table(
+        nm = remap_enhancers_core %>% rownames(),
+        coverage = remap_enhancers_core %>% Matrix::rowSums(),
+        tf_coverage = remap_enhancers_core %>% getCoverage(col = 2, sep = "\\."),
+        con_coverage = remap_enhancers_core %>% getCoverage(col = 3, sep = "\\.")
+    ),
+    chip_atlas = data.table::data.table(
+        nm = chip_atlas_enhancers_core %>% rownames(),
+        coverage = chip_atlas_enhancers_core %>% Matrix::rowSums(),
+        tf_coverage = chip_atlas_enhancers_core %>%
+            getCoverage(col = 1, sep = "_"),
+        con_coverage = chip_atlas_enhancers_core %>%
+            getCoverage(col = 3, sep = "_")
+    )
+)
+```
+
+```{r enhancers_coverage_hist}
+# enhancers coverage histogram
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+coverageHist(x = enhancers_core[["remap"]][["coverage"]],
+             main = "ReMap2020 enhancers coverage")
+coverageHist(x = enhancers_core[["chip_atlas"]][["coverage"]], 
+             main = "ChIP-Atlas enhancers coverage")
+
+# enhancers TF coverage histogram
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+coverageHist(x = enhancers_core[["remap"]][["tf_coverage"]],
+             main = "ReMap2020 enhancers TF coverage")
+coverageHist(x = enhancers_core[["chip_atlas"]][["tf_coverage"]], 
+             main = "ChIP-Atlas enhancers TF coverage")
+
+# enhancers biological context coverage histogram
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+coverageHist(x = enhancers_core[["remap"]][["con_coverage"]],
+             main = "ReMap2020 enhancers context coverage")
+coverageHist(x = enhancers_core[["chip_atlas"]][["con_coverage"]], 
+             main = "ChIP-Atlas enhancers context coverage")
+```
+
+For some enhancers we observe no coverage at all:
+`r sum(enhancers_core[["remap"]][["coverage"]] == 0)`,
+`r sum(enhancers_core[["chip_atlas"]][["coverage"]] == 0)`
+for ReMap2020, ChIP-Atlas respectively.
+
+### ENCODE blacklist
+
+```{r blacklisted_enhancers}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+blacklistBoxPlot(coverage = enhancers_core[["remap"]][["coverage"]],
+                 cov_names = enhancers_core[["remap"]][["nm"]],
+                 gr1 = blacklist,
+                 aname = "blacklisted",
+                 bname = "other",
+                 main = "ReMap2020\nENCODE blacklisted regions",
+                 ylab = "enhancers coverage")
+blacklistBoxPlot(coverage = enhancers_core[["chip_atlas"]][["coverage"]],
+                 cov_names = enhancers_core[["chip_atlas"]][["nm"]],
+                 gr1 = blacklist,
+                 aname = "blacklisted",
+                 bname = "other",
+                 main = "ChIP-Atlas\nENCODE blacklisted regions",
+                 ylab = "enhancers coverage")
+```
+
+### Ensembl soft masked regions
+
+```{r soft_masked_enhancers}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+blacklistBoxPlot(coverage = enhancers_core[["remap"]][["coverage"]],
+                 cov_names = enhancers_core[["remap"]][["nm"]],
+                 gr1 = ensembl_sm,
+                 aname = "soft masked",
+                 bname = "other",
+                 main = "ReMap2020\nEnsembl soft masked regions",
+                 ylab = "enhancers coverage")
+blacklistBoxPlot(coverage = enhancers_core[["chip_atlas"]][["coverage"]],
+                 cov_names = enhancers_core[["chip_atlas"]][["nm"]],
+                 gr1 = ensembl_sm,
+                 aname = "soft masked",
+                 bname = "other",
+                 main = "ChIP-Atlas\nEnsembl soft masked regions",
+                 ylab = "enhancers coverage")
+```
+
+### enhancers "phisical" properties
+
+```{r enhancers_score_length}
+stopifnot(all(enhancers_core_gr$name == enhancers_core[["remap"]][["nm"]]))
+stopifnot(all(enhancers_core_gr$name == enhancers_core[["chip_atlas"]][["nm"]]))
+
+# enhancers_score <- log10(enhancers_core_gr$score)
+enhancers_width <- GenomicRanges::width(enhancers_core_gr)
+
+# enhancers coverage vs width
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+graphics::smoothScatter(
+     x = enhancers_core[["remap"]][["coverage"]],
+     y = enhancers_width,
+     main = sprintf("ReMap2020\nenhancer coverage vs width\nSpearman: %f",
+                    cor(x = enhancers_core[["remap"]][["coverage"]],
+                        y = enhancers_width,
+                        method = "spearman")),
+     xlab = "enhancer coverage",
+     ylab = "enhancer width")
+graphics::smoothScatter(
+     x = enhancers_core[["chip_atlas"]][["coverage"]],
+     y = enhancers_width,
+     main = sprintf("ChIP-Atlas\nenhancer coverage vs width\nSpearman: %f",
+                    cor(x = enhancers_core[["chip_atlas"]][["coverage"]],
+                        y = enhancers_width,
+                        method = "spearman")),
+     xlab = "enhancer coverage",
+     ylab = "enhancer width")
+```
+
+### FANTOM5 enhancer specificity
+
+```{r enhancers_f5_specificity}
+enhancers_f5_core_expression <- 
+    enhancers_f5_expression[`V1` %in% enhancers_core_gr$name, ]
+enhancers_f5_core_expression[enhancers_core[["remap"]],
+                             remap_coverage := coverage,
+                             on = c("V1" = "nm")]
+enhancers_f5_core_expression[enhancers_core[["chip_atlas"]],
+                             chip_atlas_coverage := coverage,
+                             on = c("V1" = "nm")]
+```
+
+```{r enhancers_f5_tau_hist}
+coverageHist(x = enhancers_f5_core_expression$tau,
+             main = expression(paste("core enhancers ", tau, " distribution")))
+```
+
+```{r enhancers_f5_specificity_scatter}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1,0))
+with(
+  enhancers_f5_core_expression,
+  graphics::smoothScatter(
+    x = remap_coverage,
+    y = tau,
+    main = sprintf(
+      "ReMap2020\nenhancer specificity by tau\nSpearman: %f",
+      cor(x = remap_coverage,
+          y = tau,
+          method = "spearman")
+    ),
+    ylab = expression(tau),
+    xlab = "enhancer coverage"
+  )
+)
+with(
+  enhancers_f5_core_expression,
+  graphics::smoothScatter(
+    x = chip_atlas_coverage,
+    y = tau,
+    main = sprintf(
+      "ChIP-Atlas\nenhancer specificity by tau\nSpearman: %f",
+      cor(x = chip_atlas_coverage,
+          y = tau,
+          method = "spearman")
+    ),
+    ylab = expression(tau),
+    xlab = "enhancer coverage"
+  )
+)
 ```
 
 ## Looking at promoter TF interaction matrix column wise (TF wise)
