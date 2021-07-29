@@ -8,7 +8,13 @@
 #'   \item{name}{Feature name.}
 #'   \item{hg38_enhancer}{FANTOM5's hg38 enhancer name.}
 #'   \item{ep300}{Variable indicating overlapp with EP300 ReMap2020 track.}
-#'   \item{repeat_dfam}{variable indicating overlapp with Dfam dyadic track.}
+#'   \item{repeat_dfam}{Variable indicating overlap with Dfam dyadic track.}
+#'   \item{tau}{Numeric Tau tissue specificity score calculated based on FANTOM5
+#'              expression data.}
+#'   \item{encode_blacklist}{Logical indicating overlap with ENCODE black
+#'                           listed regions.}
+#'   \item{ensembl_sm}{Logical indicating overlap with ENSEMBL soft masked
+#'                     regions.}
 #' }
 #'
 "enhancers_f5"
@@ -16,7 +22,7 @@
 #' Promoters GenomicRanges object
 #'
 #' A dataset containing FANTOM5's hg38 promoters with FANTOM5's annotations.
-#' Additionally this dataset was also annotated to nearest features in GENCODE 
+#' Additionally this dataset was also annotated to nearest features in GENCODE
 #' ver. 38 annotation and UCSC hg38 knownGene annotation ver. 3.13.0.
 #'
 #' @format A \code{GenomicRanges} object of length 209911, with 11 metadata columns:
@@ -34,6 +40,16 @@
 #'                   Prevalence of annotations: UCSC > GENCODE > FANTOM5.}
 #'   \item{SYMBOL}{Gene symbol of associated gene as defined by all three annotation sources.
 #'                 Prevalence of annotations: UCSC > GENCODE > FANTOM5.}
+#'   \item{tau}{Numeric Tau tissue specificity score calculated based on FANTOM5
+#'              expression data.}
+#'   \item{protein_atlas_tissue_specificity}{Character giving tissue specificity
+#'                                           class as defined in Protein Atlas.}
+#'   \item{protein_atlas_cell_specificity}{Character giving cell type specificity
+#'                                           class as defined in Protein Atlas.}
+#'   \item{encode_blacklist}{Logical indicating overlap with ENCODE black
+#'                           listed regions.}
+#'   \item{ensembl_sm}{Logical indicating overlap with ENSEMBL soft masked
+#'                     regions.}
 #' }
 #'
 "promoters_f5"
@@ -41,9 +57,9 @@
 #' Detailed promoters GenomicRanges object
 #'
 #' A dataset containing FANTOM5's hg38 promoters with FANTOM5's annotations.
-#' Additionally this dataset was also annotated to nearest features in GENCODE 
+#' Additionally this dataset was also annotated to nearest features in GENCODE
 #' ver. 38 annotation and UCSC hg38 knownGene annotation ver. 3.13.0.
-#' Further object was overlapped with EP300 peaks from ReMap2020, \code{\link{enhancers_f5}} object 
+#' Further object was overlapped with EP300 peaks from ReMap2020, \code{\link{enhancers_f5}} object
 #' and dyadic regions from Dfam database. Moreover the dataset is overlapped with GENCODE annotation
 #' on both strands.
 #'
@@ -154,7 +170,7 @@
 #' A matrix describing interactions between ChIP-Atlas's ChIP-seq tracks
 #' and human genes (hg38) as defined by \code{\link{promoters_f5}}. The interaction score
 #' for each gene and transcription factor is a *maximum* of transcription factor occurences
-#' among the promoters associated with a given gene. Promoters were assigned to thier target 
+#' among the promoters associated with a given gene. Promoters were assigned to thier target
 #' genes based on ENTREZ IDs.
 #'
 #' @format A \code{Matrix} with 23274 rows and 15133 columns. Row names corresponds to gene's
@@ -168,7 +184,7 @@
 #' A matrix describing interactions between ChIP-Atlas's ChIP-seq tracks
 #' and human genes (hg38) as defined by \code{\link{promoters_f5}}. The interaction score
 #' for each gene and transcription factor is a *maximum* of transcription factor occurences
-#' among the promoters associated with a given gene. Promoters were assigned to thier target 
+#' among the promoters associated with a given gene. Promoters were assigned to thier target
 #' genes based on gene's symbols.
 #'
 #' @format A \code{Matrix} with 25925 rows and 15133 columns. Row names corresponds to gene's
@@ -178,7 +194,7 @@
 "chip_atlas_symbol"
 
 #' ReMap2020 metadata
-#' 
+#'
 #' Metadata associated with \code{remap_promoters} and \code{remap_enhancers}.
 #'
 #' @format A \code{data.table} with 5798 rows and 5 columns.
@@ -193,10 +209,10 @@
 "remap_meta"
 
 #' ChIP-Atlas metadata
-#' 
-#' Metadata associated with \code{chip_atlas_promoters} and 
+#'
+#' Metadata associated with \code{chip_atlas_promoters} and
 #' \code{chip_atlas_enhancers}.
-#' 
+#'
 #' @format A \code{data.frame} with 13923 rows and 5 columns.
 #' \describe{
 #'   \item{id}{Character giving internal experiment ID.}
