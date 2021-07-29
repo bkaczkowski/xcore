@@ -59,6 +59,6 @@ all_enh$repeat_dfam <- ""
 hits <- findOverlaps(all_enh, dfam)
 all_enh$repeat_dfam[hits@from] <- dfam$name[hits@to]
 
-enhancers <- all_enh
-usethis::use_data(enhancers, internal = FALSE, overwrite = TRUE)
+enhancers_f5 <- all_enh
+usethis::use_data(enhancers_f5, internal = FALSE, overwrite = TRUE)
 

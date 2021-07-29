@@ -11,7 +11,7 @@
 #'   \item{repeat_dfam}{variable indicating overlapp with Dfam dyadic track.}
 #' }
 #'
-"enhancers"
+"enhancers_f5"
 
 #' Promoters GenomicRanges object
 #'
@@ -43,7 +43,7 @@
 #' A dataset containing FANTOM5's hg38 promoters with FANTOM5's annotations.
 #' Additionally this dataset was also annotated to nearest features in GENCODE 
 #' ver. 38 annotation and UCSC hg38 knownGene annotation ver. 3.13.0.
-#' Further object was overlapped with EP300 peaks from ReMap2020, \code{\link{enhancers}} object 
+#' Further object was overlapped with EP300 peaks from ReMap2020, \code{\link{enhancers_f5}} object 
 #' and dyadic regions from Dfam database. Moreover the dataset is overlapped with GENCODE annotation
 #' on both strands.
 #'
@@ -66,7 +66,7 @@
 #'   \item{SYMBOL}{Gene symbol of associated gene as defined by all three annotation sources.
 #'                 Prevalence of annotations: UCSC > GENCODE > FANTOM5.}
 #'   \item{ep300}{variable indicating overlapp with EP300 ReMap2020 track.}
-#'   \item{enhancer}{variable indicating overlapp with \code{\link{enhancers}}.}
+#'   \item{enhancer}{variable indicating overlapp with \code{\link{enhancers_f5}}.}
 #'   \item{repeat_dfam}{variable indicating overlapp with Dfam dyadic track.}
 #'   \item{annotation}{Feature annotation type as defined by overlapp with GENCODE annotation.}
 #'   \item{symbol}{Gene symbol of associated gene as defined by overlapp with GENCODE annotation.}
@@ -95,7 +95,7 @@
 #' ReMap2020 and FANTOM5 enhancers intersection matrix
 #'
 #' An intersection matrix describing overlaps between ReMap2020's ChIP-seq tracks
-#' and \code{\link{enhancers}}. To find overlapping regions enhancers were extended
+#' and \code{\link{enhancers_f5}}. To find overlapping regions enhancers were extended
 #' by 500bp in both directions.
 #'
 #' @format A Matrix with 63285 rows and 5728 columns. Row names corresponds to enhancers
@@ -140,7 +140,7 @@
 #' ChIP-Atlas FANTOM5 enhancers intersection matrix
 #'
 #' An intersection matrix describing overlaps between ChIP-Atlas's ChIP-seq tracks
-#' and \code{\link{enhancers}}. To find overlapping regions promoters were extended
+#' and \code{\link{enhancers_f5}}. To find overlapping regions promoters were extended
 #' by 500bp in both directions.
 #'
 #' @format A \code{Matrix} with 63285 rows and 15133 columns. Row names corresponds to promoters
