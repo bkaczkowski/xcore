@@ -177,24 +177,33 @@
 #'
 "chip_atlas_symbol"
 
-#' ChIP-Atlas metadata
+#' ReMap2020 metadata
+#' 
+#' Metadata associated with \code{remap_promoters} and \code{remap_enhancers}.
 #'
-#' ChIP-Atlas metadata... # TODO
-#'
-#' @format A \code{data.frame} with 15133 rows and 11 columns.
+#' @format A \code{data.table} with 5798 rows and 5 columns.
 #' \describe{
-#'   \item{id}{String specifying ExperimentID.}
-#'   \item{TF}{String specifying TranscriptionFactor.}
-#'   \item{origin}{String specifying experiment biological origin.}
-#'   \item{cell}{String specifying cell line in which the experiment was conducted.}
-#'   \item{description}{String giving descriptions of primary tissue and tissue diganosis.}
-#'   \item{name}{String specifying feature name in format TranscriptionFactor_Origin_Cell_ExperimentID.}
-#'   \item{number_of_promoters_with_peak}{Integer giving number of promoters associated with the feature.}
-#'   \item{number_of_enhancers_with_peak}{Integer giving number of enhancers associated with the feature.}
-#'   \item{number_of_geneSymbols_with_peak}{Integer giving number of enhancers associated with the feature based on gene symbol.}
-#'   \item{number_of_geneEntrez_with_peak}{Integer giving number of genes associated with the feature based on ENTREZ ID.}
-#'   \item{total_number_of_peaks}{Integer giving total number of peaks associated with the feature.}
+#'   \item{id}{Character giving internal experiment ID.}
+#'   \item{tf}{Character giving transcription factor name.}
+#'   \item{biotype}{Character giving experiment biological origin.}
+#'   \item{study}{Character giving study ID.}
+#'   \item{condition}{Character specifiying experiment conditions or treatment.}
+#' }
+#'
+"remap_meta"
+
+#' ChIP-Atlas metadata
+#' 
+#' Metadata associated with \code{chip_atlas_promoters} and 
+#' \code{chip_atlas_enhancers}.
+#' 
+#' @format A \code{data.frame} with 13923 rows and 5 columns.
+#' \describe{
+#'   \item{id}{Character giving internal experiment ID.}
+#'   \item{tf}{Character giving transcription factor name.}
+#'   \item{biotype}{Character giving experiment biological origin.}
+#'   \item{study}{Character giving study ID.}
+#'   \item{background}{Character specifying biological background as defined in ChIP-Atlas.}
 #' }
 #'
 "chip_atlas_meta"
-

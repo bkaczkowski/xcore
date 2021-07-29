@@ -157,7 +157,7 @@ sxr_meta$total_number_of_peaks <- total_number_of_peaks
 # Export data
 chip_atlas_entrez <- Matrix::drop0(overlap_mat_entrez)
 chip_atlas_symbol <- Matrix::drop0(overlap_mat_symbol)
-chip_atlas_meta <- sxr_meta
+# chip_atlas_meta <- sxr_meta
 
 # promters to absence/presence matrix
 chip_atlas_promoters <- Matrix::sparseMatrix(
@@ -186,6 +186,6 @@ chip_atlas_enhancers <- as(chip_atlas_enhancers, "dgCMatrix") # how remap is sto
 # usethis::use_data
 usethis::use_data(chip_atlas_entrez, internal = FALSE, overwrite = TRUE)
 usethis::use_data(chip_atlas_symbol, internal = FALSE, overwrite = TRUE)
-usethis::use_data(chip_atlas_meta, internal = FALSE, overwrite = TRUE)
+# usethis::use_data(chip_atlas_meta, internal = FALSE, overwrite = TRUE)
 usethis::use_data(chip_atlas_promoters, internal = FALSE, overwrite = TRUE)
 usethis::use_data(chip_atlas_enhancers, internal = FALSE, overwrite = TRUE)
