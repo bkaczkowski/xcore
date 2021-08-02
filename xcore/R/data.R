@@ -197,10 +197,12 @@
 #'
 #' Metadata associated with \code{remap_promoters} and \code{remap_enhancers}.
 #'
-#' @format A \code{data.table} with 5798 rows and 5 columns.
+#' @format A \code{data.table} with 5798 rows and 6 columns.
 #' \describe{
 #'   \item{id}{Character giving internal experiment ID.}
 #'   \item{tf}{Character giving transcription factor name.}
+#'   \item{tf_dbd}{Character giving transcription factor DNA binding domain
+#'                 family, as per CIS BP database.}
 #'   \item{biotype}{Character giving experiment biological origin.}
 #'   \item{study}{Character giving study ID.}
 #'   \item{condition}{Character specifiying experiment conditions or treatment.}
@@ -213,10 +215,12 @@
 #' Metadata associated with \code{chip_atlas_promoters} and
 #' \code{chip_atlas_enhancers}.
 #'
-#' @format A \code{data.frame} with 13923 rows and 5 columns.
+#' @format A \code{data.frame} with 13923 rows and 6 columns.
 #' \describe{
 #'   \item{id}{Character giving internal experiment ID.}
 #'   \item{tf}{Character giving transcription factor name.}
+#'   \item{tf_dbd}{Character giving transcription factor DNA binding domain
+#'                 family, as per CIS BP database.}
 #'   \item{biotype}{Character giving experiment biological origin.}
 #'   \item{study}{Character giving study ID.}
 #'   \item{background}{Character specifying biological background as defined in ChIP-Atlas.}

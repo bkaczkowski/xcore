@@ -26,7 +26,7 @@ chip_atlas_meta <- chip_atlas_id %>%
 colnames(chip_atlas_meta) <- c("tf", "background", "biotype", "id")
 
 # fix study ids
-chip_atlas_meta$study <- 
+chip_atlas_meta$study <-
   srx2srastudy[match(chip_atlas_meta$id, srx2srastudy$Experiment), ]$SRAStudy
 chip_atlas_meta$study <-
   ifelse(is.na(chip_atlas_meta$study),
@@ -36,6 +36,15 @@ chip_atlas_meta$study <-
 # restore ids
 chip_atlas_meta$id <- chip_atlas_id
 
-data.table::setcolorder(chip_atlas_meta, c("id", "tf", "biotype", "study", "background"))
+# CIS-BP TF classification
+cis_bp <-
+  data.table::fread(system.file("inst", "extdata", "cis_bp_tf_class.txt",
+                                package = "xcore"))
+cis_bp <-
+  cis_bp[, .(tf_dbd = unique(DBDs)),
+         by = TF_Name]
+data.table::setnames(cis_bp, "TF_Name", "tf")
+chip_atlas_meta <- cis_bp[chip_atlas_meta, on = c("tf" = "tf")]
 
+data.table::setcolorder(chip_atlas_meta, c("id", "tf", "tf_dbd", "biotype", "study", "background"))
 usethis::use_data(chip_atlas_meta, overwrite = TRUE)
