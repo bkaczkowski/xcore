@@ -51,7 +51,7 @@ plotHistogram <- function(x, breaks = 40, cex = 0.7, xlab = "", ...) {
 #'
 #' @inheritParams pheatmap::pheatmap
 #' @param mat dgCMatrix interaction matrix such as produced by
-#'   \code{\link{getInteractionMatrix}.
+#'   \code{\link{getInteractionMatrix}}.
 #' @param meta data.table metadata associated with \code{mat}. Should contain
 #'   \code{id} column, which is used to subset \code{mat}. Other character
 #'   columns are used as heatmap annotations.

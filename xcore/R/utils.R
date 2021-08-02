@@ -123,7 +123,7 @@ tau <- function(x) {
 #' overlap with.
 #'
 #' @param mat dgCMatrix interaction matrix such as produced by
-#'   \code{\link{getInteractionMatrix}.
+#'   \code{\link{getInteractionMatrix}}.
 #' @param gr Character vector specifying features groups. Must have length equal
 #'   to number of columns in \code{mat}.
 #'
@@ -143,9 +143,10 @@ getCoverage <- function(mat, gr) {
     rowSums()
 }
 
+#' Simplify Interaction Matrix over groups
 #'
 #' @param mat dgCMatrix interaction matrix such as produced by
-#'   \code{\link{getInteractionMatrix}.
+#'   \code{\link{getInteractionMatrix}}.
 #' @param gr Character vector specifying features groups. Must have length equal
 #'   to number of columns in \code{mat}.
 #' @param method String. Currently only majority voting strategy is available.
