@@ -14,7 +14,7 @@ chip_atlas_enhancers
 }
 \description{
 An intersection matrix describing overlaps between ChIP-Atlas's ChIP-seq tracks
-and \code{\link{enhancers}}. To find overlapping regions promoters were extended
+and \code{\link{enhancers_f5}}. To find overlapping regions promoters were extended
 by 500bp in both directions.
 }
 \keyword{datasets}

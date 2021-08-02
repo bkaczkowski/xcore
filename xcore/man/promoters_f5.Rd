@@ -20,6 +20,16 @@ A \code{GenomicRanges} object of length 209911, with 11 metadata columns:
 Prevalence of annotations: UCSC > GENCODE > FANTOM5.}
 \item{SYMBOL}{Gene symbol of associated gene as defined by all three annotation sources.
 Prevalence of annotations: UCSC > GENCODE > FANTOM5.}
+\item{tau}{Numeric Tau tissue specificity score calculated based on FANTOM5
+expression data.}
+\item{protein_atlas_tissue_specificity}{Character giving tissue specificity
+class as defined in Protein Atlas.}
+\item{protein_atlas_cell_specificity}{Character giving cell type specificity
+class as defined in Protein Atlas.}
+\item{encode_blacklist}{Logical indicating overlap with ENCODE black
+listed regions.}
+\item{ensembl_sm}{Logical indicating overlap with ENSEMBL soft masked
+regions.}
 }
 }
 \usage{
