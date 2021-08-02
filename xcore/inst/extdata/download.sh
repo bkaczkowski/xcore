@@ -55,10 +55,49 @@ downloadDataset https://www.proteinatlas.org/download/proteinatlas.tsv.zip
 
 # CAGE peaks (promoters) expression tables
 # The format is weird so I reprocessed it a bit
-downloadDataset https://fantom.gsc.riken.jp/5/datafiles/reprocessed/hg38_v8/extra/CAGE_peaks_expression/hg38.fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz
-zcat hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz | grep -v -e "^##" -e "^01STAT" -e "^02STAT" | gzip > t && mv t hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz
+if [ ! -f hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz ]; then
+  downloadDataset https://fantom.gsc.riken.jp/5/datafiles/reprocessed/hg38_v8/extra/CAGE_peaks_expression/hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz
+  zcat hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz | grep -v -e "^##" -e "^01STAT" -e "^02STAT" | gzip > t && mv t hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz
+fi
 
 # enhancers expression tables
 # The format is weird so I reprocessed it a bit
 downloadDataset https://fantom.gsc.riken.jp/5/datafiles/reprocessed/hg38_v8/extra/enhancer/F5.hg38.enhancers.expression.tpm.matrix.gz
-zcat hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz | grep -v -e "^##" -e "^01STAT" -e "^02STAT" | gzip > t && mv t hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz
+
+# Download FANTOM CAT data
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv3_robust/FANTOM_CAT.lv3_robust.info_table.ID_mapping.tsv.gz
+
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv3_robust/FANTOM_CAT.lv3_robust.CAGE_cluster.bed.gz
+zcat FANTOM_CAT.lv3_robust.CAGE_cluster.bed.gz | awk '{printf "%s\t%s\t%s\t%s\t%.0f\t%s\n", $1, $2, $3, $4, $5, $6}' | gzip > t && mv t FANTOM_CAT.lv3_robust.CAGE_cluster.bed.gz
+if [ ! -f FANTOM_CAT.lv3_robust.CAGE_cluster.liftOver.hg38.bed.gz ]; then
+  ./liftOver FANTOM_CAT.lv3_robust.CAGE_cluster.bed.gz hg19ToHg38.over.chain.gz FANTOM_CAT.lv3_robust.CAGE_cluster.liftOver.hg38.bed FANTOM_CAT.lv3_robust.CAGE_cluster.liftOver.hg38.unmapped.bed
+  gzip FANTOM_CAT.lv3_robust.CAGE_cluster.liftOver.hg38.bed
+  # remove record with outlayer width
+  zcat FANTOM_CAT.lv3_robust.CAGE_cluster.liftOver.hg38.bed.gz | grep -v 'chr1:145176389..145176406,+' | gzip > t && mv t FANTOM_CAT.lv3_robust.CAGE_cluster.liftOver.hg38.bed.gz
+fi
+
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv3_robust/FANTOM_CAT.lv3_robust.only_divergent_p_lncRNA.gtf.gz
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv3_robust/FANTOM_CAT.lv3_robust.only_e_lncRNA.gtf.gz
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv3_robust/FANTOM_CAT.lv3_robust.only_intergenic_p_lncRNA.gtf.gz
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv3_robust/FANTOM_CAT.lv3_robust.only_lncRNA.gtf.gz
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv3_robust/FANTOM_CAT.lv3_robust.only_mRNA.gtf.gz
+
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/expression/expression_atlas/FANTOM_CAT.expression_atlas.CAGE_cluster.lv1_raw.rle_cpm.tsv.gz
+
+# lv4_stringet
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.info_table.ID_mapping.tsv.gz
+
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.CAGE_cluster.bed.gz
+zcat FANTOM_CAT.lv4_stringent.CAGE_cluster.bed.gz | awk '{printf "%s\t%s\t%s\t%s\t%.0f\t%s\n", $1, $2, $3, $4, $5, $6}' | gzip > t && mv t FANTOM_CAT.lv4_stringent.CAGE_cluster.bed.gz
+if [ ! -f FANTOM_CAT.lv4_stringent.CAGE_cluster.liftOver.hg38.bed.gz ]; then
+  ./liftOver FANTOM_CAT.lv4_stringent.CAGE_cluster.bed.gz hg19ToHg38.over.chain.gz FANTOM_CAT.lv4_stringent.CAGE_cluster.liftOver.hg38.bed FANTOM_CAT.lv4_stringent.CAGE_cluster.liftOver.hg38.unmapped.bed
+  gzip FANTOM_CAT.lv4_stringent.CAGE_cluster.liftOver.hg38.bed
+  # remove record with outlayer width
+  zcat FANTOM_CAT.lv4_stringent.CAGE_cluster.liftOver.hg38.bed.gz | grep -v 'chr1:145176389..145176406,+' | gzip > t && mv t FANTOM_CAT.lv4_stringent.CAGE_cluster.liftOver.hg38.bed.gz
+fi
+
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.only_divergent_p_lncRNA.gtf.gz
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.only_e_lncRNA.gtf.gz
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.only_intergenic_p_lncRNA.gtf.gz
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.only_lncRNA.gtf.gz
+downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.only_mRNA.gtf.gz
