@@ -1,5 +1,6 @@
 #!/usr/bin/env R
 # ReMap2020 metada
+devtools::load_all()
 
 # Studies ids fix
 srx2srastudy <- data.table::fread(
@@ -36,6 +37,7 @@ remap_meta$study[grepl(pattern = "ENCSR", x = remap_meta$id)] <-
   translate(grep(pattern = "ENCSR", x = remap_meta$id, value = TRUE),
             srx2srastudy$Experiment,
             srx2srastudy$SRAStudy)
+remap_meta$study <- ifelse(is.na(remap_meta$study), remap_meta$id, remap_meta$study)
 
 # restore ids
 remap_meta$id <- remap_id
