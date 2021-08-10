@@ -114,3 +114,16 @@ plotExperimentsHeatmap <- function(mat,
     ...
   )
 }
+
+#' Plot subtree
+#'
+#'
+plotSubtree <- function(hc, meta, j) {
+  tree <- as.dendrogram(hc)
+  subtree <- dendextend::find_dendrogram(tree, meta[, id])
+  if (is.null(subtree)) {stop("Could not find subtree. It happens sometimes.")}
+  cols <- meta[stats:::labels.dendrogram(subtree), on = "id"][[j]]
+  dendextend::labels_colors(subtree) <- paintVector(cols)
+  par(cex=0.8, mar=c(15, 4, 1, 1))
+  plot(subtree)
+}
