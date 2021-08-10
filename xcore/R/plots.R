@@ -50,47 +50,35 @@ plotHistogram <- function(x, breaks = 40, cex = 0.7, xlab = "", ...) {
 #' to \code{mat}!
 #'
 #' @inheritParams pheatmap::pheatmap
-#' @param mat dgCMatrix interaction matrix such as produced by
-#'   \code{\link{getInteractionMatrix}}.
+#' @param mat Numeric matrix of pairwise correlations to be plotted.
 #' @param meta data.table metadata associated with \code{mat}. Should contain
 #'   \code{id} column, which is used to subset \code{mat}. Other character
 #'   columns are used as heatmap annotations.
-#' @param method a character string indicating which method should be used to
-#'   calculate distances between \code{mat} columns. Supported values: "pearson",
-#'   "kendall", "spearman" (the actual distance is calculated as
-#'   (1 - cor) /2), "binary".
 #' @param ... arguments passed to \code{\link[pheatmap]{pheatmap}} function.
 #'
 #' @return Invisibly a pheatmap object. See \code{\link[pheatmap]{pheatmap}} for
 #'   more informations.
 #'
 #' @importFrom pheatmap pheatmap
+#' @importFrom proxy dist
 #'
 #' @export
 plotExperimentsHeatmap <- function(mat,
                                    meta,
-                                   method = "pearson",
                                    cluster_rows = TRUE,
                                    cluster_cols = TRUE,
                                    angle_col = 45,
                                    treeheight_col = 0,
+                                   fontsize = 8,
+                                   fontsize_row = 7,
+                                   fontsize_col = 7,
                                    ...) {
-  stopifnot(is(mat, "dgCMatrix"))
+  stopifnot(is(mat, "matrix"))
   stopifnot(is(meta, "data.table"))
   stopifnot("id" %in% colnames(meta))
   stopifnot(sum(meta$id %in% colnames(mat)) >= 2)
-  stopifnot(method %in% c("pearson", "kendall", "spearman", "binary"))
 
-  mat <- mat[, meta$id]
-
-  # experiments distance
-  if (method == "binary") {
-    tf_cor_d <- dist(Matrix::t(mat), method = "binary") # binary
-    tf_cor <- as.matrix(tf_cor_d)
-  } else {
-    tf_cor <- cor(mat %>% as.matrix(), method = method)
-    tf_cor_d <- as.dist(abs((1 - tf_cor) / 2))
-  }
+  mat <- mat[meta$id, meta$id]
 
   # heatmap
   cols <- vapply(
@@ -111,10 +99,8 @@ plotExperimentsHeatmap <- function(mat,
   )
 
   pheatmap::pheatmap(
-    mat = tf_cor,
+    mat = mat,
     scale = "none",
-    clustering_distance_rows = tf_cor_d,
-    clustering_distance_cols = tf_cor_d,
     annotation_row = annotaion,
     annotation_col = annotaion,
     annotation_colors = annotation_colors,
@@ -122,6 +108,9 @@ plotExperimentsHeatmap <- function(mat,
     cluster_cols = cluster_cols,
     angle_col = angle_col,
     treeheight_col = treeheight_col,
+    fontsize = fontsize,
+    fontsize_row = fontsize_row,
+    fontsize_col = fontsize_col,
     ...
   )
 }
