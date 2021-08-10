@@ -23,6 +23,7 @@ Suggests:
     GenomicFeatures (>= 1.44.0),
     knitr,
     lintr (>= 2.0.1),
+    testthat (>= 3.0.0),
     org.Hs.eg.db (>= 3.13.0),
     rmarkdown,
     rtracklayer (>= 1.52.0),
@@ -32,3 +33,4 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Depends: 
     R (>= 4.1)
+Config/testthat/edition: 3
