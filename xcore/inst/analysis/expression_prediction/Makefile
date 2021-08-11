@@ -1,9 +1,14 @@
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 NCPU = 6
-IMAGE_BIN = $(PROJECT_DIR)/IMAGE/IMAGE.pl
-TEPIC_BIN = $(PROJECT_DIR)/TEPIC/Code/TEPIC.sh
-INVOKE_DIR = $(PROJECT_DIR)/TEPIC/MachineLearningPipelines/INVOKE/
-INVOKE_OUT = TEPIC_out/INVOKE/
+IMAGE_DIR = $(PROJECT_DIR)/IMAGE
+IMAGE_BIN = $(IMAGE_DIR)/IMAGE.pl
+IMAGE_OUT = IMAGE_out
+TEPIC_DIR = $(PROJECT_DIR)/TEPIC
+TEPIC_BIN = $(TEPIC_DIR)/Code/TEPIC.sh
+TEPIC_OUT = TEPIC_out
+INVOKE_DIR = $(TEPIC_DIR)/MachineLearningPipelines/INVOKE
+INVOKE_BIN = $(INVOKE_DIR)/runInvokeAnalysis.sh
+INVOKE_OUT = ${TEPIC_OUT}/INVOKE
 
 .PHONY: clean
 clean: ## delete directories created by runing 'image', 'tepic_invoke'
@@ -21,6 +26,7 @@ install: ## download programs and set up environment
 	@echo "setting up TEPIC"
 	git clone https://github.com/SchulzLab/TEPIC.git
 	cd ./TEPIC/Code && ./compile_TRAP_install_R_packages.sh && cd ../..
+	chmod a+x ${INVOKE_BIN}
 	wget -c -P ${INVOKE_DIR}/ExampleData/ http://ftp.ensembl.org/pub/current_fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.1.fa.gz
 	gunzip ${INVOKE_DIR}/ExampleData/chr1.fa.gz
 	wget -c -P ${INVOKE_DIR}/ExampleData/ http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.annotation.gtf.gz
@@ -29,42 +35,76 @@ install: ## download programs and set up environment
 .PHONY: image
 image: ## run IMAGE on it's example data
 	@echo "Running IMAGE"
-	mkdir IMAGE_out
+	mkdir -p ${IMAGE_OUT}
 	${IMAGE_BIN} \
-		-region IMAGE/examples/Enhancers.txt \
-		-expression IMAGE/examples/GeneExpression.txt \
-		-fasta IMAGE/mm9.fa \
+		-region ${IMAGE_DIR}/examples/Enhancers.txt \
+		-expression ${IMAGE_DIR}/examples/GeneExpression.txt \
+		-fasta ${IMAGE_DIR}/mm9.fa \
 		-RNADesign 1 1 2 2 3 3 4 4 \
 		-EnhancerDesign 1 1 2 2 3 3 4 4 \
 		-p ${NCPU} \
-		-n IMAGE_out/IMAGE_test
-	mv IMAGE_test.R IMAGE_test.Rdata
+		-n ${IMAGE_OUT}/IMAGE_test
+	mv ${IMAGE_OUT}/IMAGE_test.R ${IMAGE_OUT}/IMAGE_test.Rdata
+
+# TRAP takes 41s on 105K BED file with 191K genome
+.PHONY: tepic
+tepic: ## run TEPIC on it's example data
+	@echo "Running TEPIC INVOKE"
+	mkdir -p ${TEPIC_OUT}
+	${TEPIC_BIN} \
+		-g ${TEPIC_DIR}/Test/example_sequence.fa \
+ 		-b ${TEPIC_DIR}/Test/example_regions.bed \
+ 		-o ${TEPIC_OUT}/TEPIC-Example \
+ 		-p ${TEPIC_DIR}/PWMs/1.0/pwm_vertebrates_jaspar_uniprobe_original.PSEM \
+ 		-a ${TEPIC_DIR}/Test/example_annotation.gtf \
+ 		-w 3000 \
+ 		-e FALSE
+
+# TEPIC INVOKE pipeline
+# =====config==========
+define TEPIC_INVOKE_CFG
+#The following parameters should be changed by the user
+open_regions="${INVOKE_DIR}/ExampleData/S001S745_ERX616976_GRCh38_hotspot_peaks_20150709_chr1.bed"
+#Note that the brackets at the beginning and at the end are compulsory.
+gene_Expression_Data=("${INVOKE_DIR}/ExampleData/S001S712_gene_quantification_rsem_grape2_crg_GRCh38_20150622_chr1.txt")
+outputDirectory="${INVOKE_OUT}"
+preComputedTEPIC="${INVOKE_DIR}/TestRun/Affinities/S001S745_ERX616976_GRCh38_hotspot_peaks_20150709_chr1_TEPIC_06_08_17_15_34_52_Decay_Affinity_Gene_View_Filtered.txt"
+
+#Parameters of TEPIC
+path=${TEPIC_DIR}
+referenceGenome="${INVOKE_DIR}/ExampleData/Homo_sapiens.GRCh38.dna.chromosome.1.fa"
+pwm=$${path}/PWMs/1.0/pwm_vertebrates_jaspar_uniprobe_original.PSEM
+cores_TEPIC="${NCPU}"
+geneAnnotation=""
+window="10000"
+peakFeature="FALSE"
+decay="TRUE"
+chrPrefix="FALSE"
+#Note that the brackets at the beginning and at the end are compulsory.
+coverageFile=("")
+coverageColumn=("")
+
+#Parameters of the linear regression
+scriptPath="${INVOKE_DIR}/Scripts"
+cores_R="${NCPU}"
+alpha_Step_Size="0.1"
+regularisation="E"
+innerCV="6"
+outerCV="3"
+testsize="0.2"
+performance="TRUE"
+randomise="FALSE"
+fTest="FALSE"
+endef
+export TEPIC_INVOKE_CFG := $(TEPIC_INVOKE_CFG)
+# =====config==========
 
 .PHONY: tepic_invoke
-tepic_invoke: ## run TEPIC INVOKE pipeline
-	@echo "Running TEPIC INVOKE"
+tepic_invoke: ## run TEPIC INVOKE pipeline on it's example data
+	@echo "Running TEPIC INVOKE pipeline"
 	mkdir -p ${INVOKE_OUT}
-	${TEPIC_BIN} \
-		-g ${INVOKE_DIR}/ExampleData/Homo_sapiens.GRCh38.dna.chromosome.1.fa \
-		-b ${INVOKE_DIR}/ExampleData/S001S745_ERX616976_GRCh38_hotspot_peaks_20150709_chr1.bed \
-		-o ${INVOKE_OUT}/INVOKE_test \
-		-p TEPIC/PWMs/1.0/pwm_vertebrates_jaspar_uniprobe_original.PSEM \
-		-a ${INVOKE_DIR}/ExampleData/gencode.v26.annotation.gtf.gz \
-		-w 3000 \
-		-e FALSE
-	python ${INVOKE_DIR}/Scripts/integrateData.py ${INVOKE_OUT}/*Peak_Features_Affinity_Gene_View_Filtered.txt ${INVOKE_DIR}/ExampleData/S001S712_gene_quantification_rsem_grape2_crg_GRCh38_20150622_chr1.txt ${INVOKE_OUT}/IntegratedData/input.txt
-	Rscript Scripts/INVOKE.R \
-		--dataDir=${INVOKE_OUT}/IntegratedData/ \
-		--outDir=${INVOKE_OUT} --response=Expression \
-		--cores ${NCPU} \
-		--alphas=0.1 \
-		--regularisation=E \
-		--testsize=0.2 \
-		--innerCV=6 \
-		--outerCV=3 \
-		--performance=TRUE \
-		--ftest=FALSE
-
+	echo "$${TEPIC_INVOKE_CFG}" > ${INVOKE_OUT}/invokeAnalysis.cfg
+	${INVOKE_BIN} ${INVOKE_OUT}/invokeAnalysis.cfg
 
 # Based on http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 .DEFAULT_GOAL := help
