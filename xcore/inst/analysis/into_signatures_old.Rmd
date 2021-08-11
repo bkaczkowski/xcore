@@ -164,8 +164,12 @@ any tissue/cell type.
 ```{r protein_atlas_promoters}
 # RNA tissue specificity
 par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+ymax <-
+  max(promoters_ann_core$remap_coverage,
+      promoters_ann_core$chip_atlas_coverage)
 graphics::boxplot(remap_coverage ~ protein_atlas_cell_specificity, 
                   data = promoters_ann_core,
+                  ylim = c(0, ymax),
                   main = "ReMap2020",
                   ylab = "promoter coverage",
                   xlab = "",
@@ -173,6 +177,7 @@ graphics::boxplot(remap_coverage ~ protein_atlas_cell_specificity,
                   cex.names = 0.4)
 graphics::boxplot(chip_atlas_coverage ~ protein_atlas_cell_specificity, 
                   data = promoters_ann_core,
+                  ylim = c(0, ymax),
                   main = "ChIP-Atlas",
                   ylab = "promoter coverage",
                   xlab = "",
@@ -188,7 +193,7 @@ mtext(
 )
 ```
 
-### FANTOM5 promoter specificity
+### Promoter tissue specificity
 
 To generalize the idea of promoter tissue/cell type specificity to promoters 
 outside Protein Atlas annotation we define specificity score based on the 
@@ -221,7 +226,7 @@ plotHistogram(x = promoters_ann_core$tau,
 ```{r promoter_f5_specificity_scatter}
 par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0))
 with(
-  promoters_ann_core,
+  as.data.frame(promoters_ann_core),
   graphics::smoothScatter(
     x = remap_coverage,
     y = tau,
@@ -236,7 +241,7 @@ with(
   )
 )
 with(
-  promoters_ann_core,
+  as.data.frame(promoters_ann_core),
   graphics::smoothScatter(
     x = chip_atlas_coverage,
     y = tau,
@@ -274,20 +279,37 @@ genomics data.
 
 ```{r blacklisted_promoters}
 par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-with(promoters_ann_core, boxplot(
-  remap_coverage[encode_blacklist], remap_coverage[! encode_blacklist],
-  names = c(sprintf("blacklisted (%i)", sum(encode_blacklist)),
-            sprintf("other (%i)", sum(! encode_blacklist))),
-  main = "ReMap2020",
-  ylab = "promoter coverage"
-))
-with(promoters_ann_core, boxplot(
-  chip_atlas_coverage[encode_blacklist], chip_atlas_coverage[! encode_blacklist],
-  names = c(sprintf("blacklisted (%i)", sum(encode_blacklist)),
-            sprintf("other (%i)", sum(! encode_blacklist))),
-  main = "ChIP-Atlas",
-  ylab = "promoter coverage"
-))
+ymax <-
+  max(promoters_ann_core$remap_coverage,
+      promoters_ann_core$chip_atlas_coverage)
+with(
+  as.data.frame(promoters_ann_core),
+  boxplot(
+    remap_coverage[encode_blacklist],
+    remap_coverage[!encode_blacklist],
+    names = c(sprintf(
+      "blacklisted (%i)", sum(encode_blacklist)
+    ),
+    sprintf("other (%i)", sum(!encode_blacklist))),
+    ylim = c(0, ymax),
+    main = "ReMap2020",
+    ylab = "promoter coverage"
+  )
+)
+with(
+  as.data.frame(promoters_ann_core),
+  boxplot(
+    chip_atlas_coverage[encode_blacklist],
+    chip_atlas_coverage[!encode_blacklist],
+    names = c(sprintf(
+      "blacklisted (%i)", sum(encode_blacklist)
+    ),
+    sprintf("other (%i)", sum(!encode_blacklist))),
+    ylim = c(0, ymax),
+    main = "ChIP-Atlas",
+    ylab = "promoter coverage"
+  )
+)
 mtext(
   "ENCODE blacklisted regions",
   side = 3,
@@ -366,7 +388,7 @@ mtext(
 
 ### TF overlapp between ReMap2020 and ChIP-Atlas
 
-```{r include=FALSE}
+```{r}
 # ReMap2020
 table((remap_meta$tf %in% chip_atlas_meta$tf)) %>%
   `/`(length(remap_meta$tf)) %>% 
@@ -470,30 +492,229 @@ knitr::kable(remap_tfs_tab[, 1:21], caption = "TF/biotype confusion matrix, top 
 ### MYC
 
 ```{r}
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7, 
+    name = "RdYlBu"))
+  )(length(breaks))
+  
 plotExperimentsHeatmap(
   mat = remap_promoters_core,
-  meta = remap_meta_core[tf == "MYC",-c("tf", "condition")])
+  meta = remap_meta_core[tf == "MYC", -c("tf", "condition", "tf_dbd")],
+  breaks = breaks,
+  color = color,
+  labels_row = remap_meta_core[tf == "MYC", biotype],
+  labels_col = remap_meta_core[tf == "MYC", biotype],
+  main = "MYC experiments Pearson correlation")
+```
+
+### MAX
+
+```{r}
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7, 
+    name = "RdYlBu"))
+  )(length(breaks))
+  
+plotExperimentsHeatmap(
+  mat = remap_promoters_core,
+  meta = remap_meta_core[tf == "MAX", -c("tf", "condition", "tf_dbd")],
+  breaks = breaks,
+  color = color,
+  labels_row = remap_meta_core[tf == "MAX", biotype],
+  labels_col = remap_meta_core[tf == "MAX", biotype],
+  main = "MAX experiments Pearson correlation")
 ```
 
 ### ELF1
 
 ```{r}
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7, 
+    name = "RdYlBu"))
+  )(length(breaks))
+
 plotExperimentsHeatmap(
   mat = remap_promoters_core,
-  meta = remap_meta_core[tf == "ELF1",-c("tf", "condition")])
+  meta = remap_meta_core[tf == "ELF1", -c("tf", "condition", "tf_dbd")],
+  breaks = breaks,
+  color = color,
+  labels_row = remap_meta_core[tf == "ELF1", biotype],
+  labels_col = remap_meta_core[tf == "ELF1", biotype],
+  main = "ELF1 experiments Pearson correlation")
 ```
 
 ### FOXA1
 
 ```{r}
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7, 
+    name = "RdYlBu"))
+  )(length(breaks))
+
 plotExperimentsHeatmap(
   mat = remap_promoters_core,
-  meta = remap_meta_core[tf == "FOXA1",-c("tf", "condition")])
+  meta = remap_meta_core[tf == "FOXA1", -c("tf", "condition", "tf_dbd")],
+  breaks = breaks,
+  color = color,
+  labels_row = remap_meta_core[tf == "FOXA1", biotype],
+  labels_col = remap_meta_core[tf == "FOXA1", biotype],
+  main = "FOXA1 experiments Pearson correlation")
+```
+
+### Core experiments heatmap
+
+```{r include=FALSE}
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7, 
+    name = "RdYlBu"))
+  )(length(breaks))
+
+plotExperimentsHeatmap(
+  mat = remap_promoters_core,
+  meta = remap_meta_core[, -c("study", "condition")],
+  breaks = breaks,
+  color = color,
+  labels_row = remap_meta_core[, paste(tf, biotype)],
+  labels_col = remap_meta_core[, paste(tf, biotype)],
+  main = "Core experiments Pearson correlation")
+```
+
+## Clustering experiments
+
+```{r}
+mat <- remap_promoters_core[, remap_meta_core[, id]]
+mat_cor <- cor(mat %>% as.matrix(), method = "pearson")
+d <- as.dist(abs((1 - mat_cor) / 2))
+hc.complete <- hclust(d, method = "complete")
+
+plot(
+  hc.complete,
+  labels = FALSE,
+  main = "Complete Linkage ",
+  xlab = "",
+  sub = "",
+  cex = .9)
+
+measureClust <- function(c1, hc, N) {
+  nclust_measure <- lapply(
+    X = N,
+    FUN = function(n) {
+      do.call(cbind,
+              aricode::clustComp(c1 = c1,
+                                 c2 = cutree(hc, n)))
+    }
+  )
+  do.call(rbind, nclust_measure)
+}
+
+nclust <- seq(from = 1, to = 400, by = 5)
+nclust_measure_tf <-
+  measureClust(remap_meta_core[, tf], hc.complete, nclust)
+nclust_measure_biotype <-
+  measureClust(remap_meta_core[, biotype], hc.complete, nclust)
+nclust_measure_tf_biotype <-
+  measureClust(remap_meta_core[, paste0(tf, biotype)], hc.complete, nclust)
+nclust_measure_study <-
+  measureClust(remap_meta_core[, study], hc.complete, nclust)
+nclust_measure_dbd <-
+  measureClust(remap_meta_core[, tf_dbd], hc.complete, nclust)
+
+# Adjusted Rand Index (ARI)
+# Low value indicates that the two data clustering do not agree on any pair of
+# points and 1 indicates that the data clustering are exactly the same.
+measure <- "ARI"
+plot(nclust, nclust_measure_tf[, measure], col = "red", 
+     ylim = c(0, 0.5), xlab = "number of clusters", ylab = measure)
+points(nclust, nclust_measure_biotype[, measure], col = "blue")
+points(nclust, nclust_measure_tf_biotype[, measure], col = "green")
+points(nclust, nclust_measure_study[, measure], col = "black")
+points(nclust, nclust_measure_dbd[, measure], col = "orange")
+legend(
+  "topleft",
+  legend = c("TF", "biotype", "TF-biotype", "study", "DBD"),
+  fill = c("red", "blue", "green", "black", "orange")
+)
+
+# Adjusted Mutual Information (AMI)
+# measure of clustering quality 0 no mutual information and 1 perfect
+# correlation; adjusted for chance
+measure <- "NMI"
+plot(nclust, nclust_measure_tf[, measure], col = "red", 
+     ylim = c(0, 1), xlab = "number of clusters", ylab = measure)
+points(nclust, nclust_measure_biotype[, measure], col = "blue")
+points(nclust, nclust_measure_tf_biotype[, measure], col = "green")
+points(nclust, nclust_measure_study[, measure], col = "black")
+points(nclust, nclust_measure_dbd[, measure], col = "orange")
+legend(
+  "topleft",
+  legend = c("TF", "biotype", "TF-biotype", "study", "DBD"),
+  fill = c("red", "blue", "green", "black", "orange")
+)
+
+hc.clusters <- cutree(hc.complete, 106)
+table(hc.clusters, remap_meta_core[, tf])
+```
+
+
+### Experiments correlations in bulk
+
+```{r explore_correlation}
+mat <- remap_promoters_core[, remap_meta_core[, id]]
+mat_cor <- cor(mat %>% as.matrix(), method = "pearson")
+
+getCors <- function(mat, patterns, invert=FALSE) {
+  sapply(
+    X = patterns, 
+    function(x) {
+      m_row <- grep(x, rownames(mat), value = TRUE)
+      m_col <- grep(x, colnames(mat), value = TRUE, invert = invert)
+      sel_cor_mat <- mat[m_row, m_col]
+      sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+    })
+}
+
+# tf
+same_tf_cor <- getCors(mat_cor, remap_meta_core[, unique(tf)])
+diff_tf_cor <- getCors(mat_cor, remap_meta_core[, unique(tf)], invert = TRUE)
+boxplot(unlist(same_tf_cor), unlist(diff_tf_cor), 
+        names = c("same TF", "different TFs"), 
+        main = "Correlation between experiments")
+
+# biotype
+same_bio_cor <- getCors(mat_cor, remap_meta_core[, unique(biotype)])
+diff_bio_cor <- getCors(mat_cor, remap_meta_core[, unique(biotype)], invert = TRUE)
+boxplot(unlist(same_bio_cor), unlist(diff_bio_cor), 
+        names = c("same biotype", "different biotype"), 
+        main = "Correlation between experiments")
+
+# tf-biotype
+same_tfbio_cor <- getCors(mat_cor, remap_meta_core[, unique(paste0(tf, ".", biotype))])
+diff_tfbio_cor <- getCors(mat_cor, remap_meta_core[, unique(paste0(tf, ".", biotype))], invert = TRUE)
+boxplot(unlist(same_tfbio_cor), unlist(diff_tfbio_cor), 
+        names = c("same TF-biotype", "different TF-biotype"), 
+        main = "Correlation between experiments")
+
+# same study
+same_study_cor <- getCors(mat_cor, remap_meta_core[, unique(study)])
+diff_sutdy_cor <- getCors(mat_cor, remap_meta_core[, unique(study)], invert = TRUE)
+boxplot(unlist(same_study_cor), unlist(diff_sutdy_cor), 
+        names = c("same study", "different study"), 
+        main = "Correlation between experiments")
 ```
 
 ## Experiment collapsing
 
-```{r}
+```{r include=FALSE}
 core_id <- colnames(remap_promoters)
 
 remap_promoters_core_tf <- simplifyInteractionMatrix(
@@ -527,978 +748,4 @@ with(
   )
 )
 ```
-
-## Looking at promoter TF interaction matrix row wise (promoter wise) - lncRNA
-
-Next we have limited our analysis to promoters of lncRNA defined as 
-promoters associated with a lncRNA gene (as per GENCODE 38) and supported by 
-ENCODE ROADMAP data. Finally, we select one promoter per associated gene that 
-have maximum FANTOM5 score.
-   
-```{r core_lncRNA}
-gc()
-
-# only lncRNA genes as per GENCODE annotation
-promoters_f5_lncRNA <- 
-    promoters_f5[promoters_f5$gene_type_gencode == "lncRNA", ]
-
-# ENCODE ROADMAP confirmation
-roadmap_promoters <- rtracklayer::import.bed(
-    con = system.file(
-        "inst",
-        "extdata",
-        "Epigenome5DRoadmapDHS_promoter_hg38_liftOver.bed",
-        package = "xcore"
-    )
-)
-GenomeInfoDb::seqlevels(roadmap_promoters, pruning.mode = "coarse") <-
-    GenomeInfoDb::seqlevels(promoters_f5_lncRNA)
-promoters_f5_lncRNA <- intersectGr(promoters_f5_lncRNA, roadmap_promoters)
-
-# Select best promoter per gene
-best_promoters <- GenomicRanges::mcols(promoters_f5_lncRNA) %>%
-    as.data.frame() %>%
-    dplyr::group_by(SYMBOL) %>%
-    dplyr::slice(which.max(score)) %>%
-    dplyr::pull(name)
-promoters_f5_lncRNA <-
-    promoters_f5_lncRNA[promoters_f5_lncRNA$name %in% best_promoters, ]
-
-# restrict interaction matrices to core promoters only
-remap_promoters_lncRNA <- remap_promoters[promoters_f5_lncRNA$name, ]
-chip_atlas_promoters_lncRNA <- chip_atlas_promoters[promoters_f5_lncRNA$name, ]
-```
-
-This give us an interaction matrix with `r nrow(remap_promoters_lncRNA)` promoters
-(rows) and `r ncol(remap_promoters_lncRNA)`, `r ncol(chip_atlas_promoters_lncRNA)` 
-ChIP-seq experiments (columns) for ReMap2020, ChIP-Atlas respectively.
-
-### lncRNA coverage
-
-```{r lncRNA_coverage}
-chip_atlas_promoters_lncRNA <- as(chip_atlas_promoters_lncRNA, "dgCMatrix")
-lncRNA <- list(
-    remap = data.table::data.table(
-        nm = remap_promoters_lncRNA %>% rownames(),
-        coverage = remap_promoters_lncRNA %>% Matrix::rowSums(),
-        tf_coverage = remap_promoters_lncRNA %>% getCoverage(col = 2, sep = "\\."),
-        con_coverage = remap_promoters_lncRNA %>% getCoverage(col = 3, sep = "\\.")
-    ),
-    chip_atlas = data.table::data.table(
-        nm = chip_atlas_promoters_lncRNA %>% rownames(),
-        coverage = chip_atlas_promoters_lncRNA %>% Matrix::rowSums(),
-        tf_coverage = chip_atlas_promoters_lncRNA %>%
-            getCoverage(col = 1, sep = "_"),
-        con_coverage = chip_atlas_promoters_lncRNA %>%
-            getCoverage(col = 3, sep = "_")
-    )
-)
-```
-
-```{r lncRNA_coverage_hist}
-# lncRNA coverage histogram
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-coverageHist(x = lncRNA[["remap"]][["coverage"]],
-             main = "ReMap2020 lncRNA coverage")
-coverageHist(x = lncRNA[["chip_atlas"]][["coverage"]], 
-             main = "ChIP-Atlas lncRNA coverage")
-
-# lncRNA TF coverage histogram
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-coverageHist(x = lncRNA[["remap"]][["tf_coverage"]],
-             main = "ReMap2020 lncRNA TF coverage")
-coverageHist(x = lncRNA[["chip_atlas"]][["tf_coverage"]], 
-             main = "ChIP-Atlas lncRNA TF coverage")
-
-# lncRNA biological context coverage histogram
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-coverageHist(x = lncRNA[["remap"]][["con_coverage"]],
-             main = "ReMap2020 lncRNA context coverage")
-coverageHist(x = lncRNA[["chip_atlas"]][["con_coverage"]], 
-             main = "ChIP-Atlas lncRNA context coverage")
-```
-
-For some lncRNA we observe no coverage at all:
-`r sum(lncRNA[["remap"]][["coverage"]] == 0)`,
-`r sum(lncRNA[["chip_atlas"]][["coverage"]] == 0)`
-for ReMap2020, ChIP-Atlas respectively.
-
-### ENCODE blacklist
-
-```{r blacklisted_lncRNA}
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-blacklistBoxPlot(coverage = lncRNA[["remap"]][["coverage"]],
-                 cov_names = lncRNA[["remap"]][["nm"]],
-                 gr1 = blacklist,
-                 aname = "blacklisted",
-                 bname = "other",
-                 main = "ReMap2020\nENCODE blacklisted regions",
-                 ylab = "lncRNA coverage")
-blacklistBoxPlot(coverage = lncRNA[["chip_atlas"]][["coverage"]],
-                 cov_names = lncRNA[["chip_atlas"]][["nm"]],
-                 gr1 = blacklist,
-                 aname = "blacklisted",
-                 bname = "other",
-                 main = "ChIP-Atlas\nENCODE blacklisted regions",
-                 ylab = "lncRNA coverage")
-```
-
-### Ensembl soft masked regions
-
-```{r soft_masked_lncRNA}
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-blacklistBoxPlot(coverage = lncRNA[["remap"]][["coverage"]],
-                 cov_names = lncRNA[["remap"]][["nm"]],
-                 gr1 = ensembl_sm,
-                 aname = "soft masked",
-                 bname = "other",
-                 main = "ReMap2020\nEnsembl soft masked regions",
-                 ylab = "lncRNA coverage")
-blacklistBoxPlot(coverage = lncRNA[["chip_atlas"]][["coverage"]],
-                 cov_names = lncRNA[["chip_atlas"]][["nm"]],
-                 gr1 = ensembl_sm,
-                 aname = "soft masked",
-                 bname = "other",
-                 main = "ChIP-Atlas\nEnsembl soft masked regions",
-                 ylab = "lncRNA coverage")
-```
-
-### lncRNA promoters "phisical" properties
-
-```{r lncRNA_score_length}
-stopifnot(all(promoters_f5_lncRNA$name == lncRNA[["remap"]][["nm"]]))
-stopifnot(all(promoters_f5_lncRNA$name == lncRNA[["chip_atlas"]][["nm"]]))
-
-lncRNA_score <- log10(promoters_f5_lncRNA$score)
-lncRNA_width <- GenomicRanges::width(promoters_f5_lncRNA)
-
-# lncRNA coverage vs score
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-graphics::smoothScatter(
-     x = lncRNA[["remap"]][["coverage"]],
-     y = lncRNA_score,
-     main = sprintf("ReMap2020\nlncRNA promoter coverage vs F5 score\nSpearman: %f",
-                    cor(x = lncRNA[["remap"]][["coverage"]],
-                        y = lncRNA_score,
-                        method = "spearman")),
-     xlab = "lncRNA coverage",
-     ylab = "log10(lncRNA score)")
-graphics::smoothScatter(
-     x = lncRNA[["chip_atlas"]][["coverage"]],
-     y = lncRNA_score,
-     main = sprintf("ChIP-Atlas\nlncRNA promoter coverage vs F5 score\nSpearman: %f",
-                    cor(x = lncRNA[["chip_atlas"]][["coverage"]],
-                        y = lncRNA_score,
-                        method = "spearman")),
-     xlab = "lncRNA promoter coverage",
-     ylab = "log10(lncRNA score)")
-
-# lncRNA coverage vs width
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-graphics::smoothScatter(
-     x = lncRNA[["remap"]][["coverage"]],
-     y = lncRNA_width,
-     main = sprintf("ReMap2020\nlncRNA coverage vs width\nSpearman: %f",
-                    cor(x = lncRNA[["remap"]][["coverage"]],
-                        y = lncRNA_width,
-                        method = "spearman")),
-     xlab = "lncRNA coverage",
-     ylab = "lncRNA width")
-graphics::smoothScatter(
-     x = lncRNA[["chip_atlas"]][["coverage"]],
-     y = lncRNA_width,
-     main = sprintf("ChIP-Atlas\nlncRNA coverage vs width\nSpearman: %f",
-                    cor(x = lncRNA[["chip_atlas"]][["coverage"]],
-                        y = lncRNA_width,
-                        method = "spearman")),
-     xlab = "lncRNA coverage",
-     ylab = "lncRNA width")
-```
-
-### FANTOM5 lncRNA specificity
-
-```{r lncRNA_f5_specificity}
-promoters_f5_lncRNA_expression <- 
-    promoters_f5_expression[`00Annotation` %in% promoters_f5_lncRNA$name, ]
-promoters_f5_lncRNA_expression[lncRNA[["remap"]],
-                             remap_coverage := coverage,
-                             on = c("00Annotation" = "nm")]
-promoters_f5_lncRNA_expression[lncRNA[["chip_atlas"]],
-                             chip_atlas_coverage := coverage,
-                             on = c("00Annotation" = "nm")]
-```
-
-```{r lncRNA_f5_tau_hist}
-coverageHist(x = promoters_f5_lncRNA_expression$tau,
-             main = expression(paste("core lncRNA promoters ", tau, " distribution")))
-```
-
-```{r lncRNA_f5_specificity_scatter}
-par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1,0))
-with(
-  promoters_f5_lncRNA_expression,
-  graphics::smoothScatter(
-    x = remap_coverage,
-    y = tau,
-    main = sprintf(
-      "ReMap2020\nlncRNA specificity by tau\nSpearman: %f",
-      cor(x = remap_coverage,
-          y = tau,
-          method = "spearman")
-    ),
-    ylab = expression(tau),
-    xlab = "lncRNA coverage"
-  )
-)
-with(
-  promoters_f5_lncRNA_expression,
-  graphics::smoothScatter(
-    x = chip_atlas_coverage,
-    y = tau,
-    main = sprintf(
-      "ChIP-Atlas\nlncRNA specificity by tau\nSpearman: %f",
-      cor(x = chip_atlas_coverage,
-          y = tau,
-          method = "spearman")
-    ),
-    ylab = expression(tau),
-    xlab = "lncRNA coverage"
-  )
-)
-```
-
-## Looking at enhancers TF interaction matrix row wise (enhancers wise)
-
-Next we have we look at enhancers defined as enhancers supported by ENCODE 
-ROADMAP data.
-   
-```{r core_enhancers}
-gc()
-
-# ENCODE ROADMAP confirmation
-roadmap_enhancers <- rtracklayer::import.bed(
-    con = system.file(
-        "inst",
-        "extdata",
-        "Epigenome5DRoadmapDHS_enhancer_hg38_liftOver.bed",
-        package = "xcore"
-    )
-)
-GenomeInfoDb::seqlevels(roadmap_enhancers, pruning.mode = "coarse") <-
-    GenomeInfoDb::seqlevels(xcore::enhancers)
-enhancers_core_gr <- intersectGr(xcore::enhancers, roadmap_enhancers)
-
-# additionally we could think of using EP300 or repeat_dfam
-# enhancers_core_gr <- enhancers_core_gr[enhancers_core_gr$ep300 == "EP300", ]
-
-# restrict interaction matrices to core promoters only
-remap_enhancers_core <- xcore::remap_enhancers[enhancers_core_gr$name, ]
-chip_atlas_enhancers_core <- xcore::chip_atlas_enhancers[enhancers_core_gr$name, ]
-```
-
-This give us an interaction matrix with `r nrow(remap_enhancers_core)` enhancers
-(rows) and `r ncol(remap_enhancers_core)`, `r ncol(chip_atlas_enhancers_core)` 
-ChIP-seq experiments (columns) for ReMap2020, ChIP-Atlas respectively.
-
-### Enhancers coverage
-
-```{r enhancers_coverage}
-remap_enhancers_core <- as(remap_enhancers_core, "dgCMatrix")
-chip_atlas_enhancers_core <- as(chip_atlas_enhancers_core, "dgCMatrix")
-
-enhancers_core <- list(
-    remap = data.table::data.table(
-        nm = remap_enhancers_core %>% rownames(),
-        coverage = remap_enhancers_core %>% Matrix::rowSums(),
-        tf_coverage = remap_enhancers_core %>% getCoverage(col = 2, sep = "\\."),
-        con_coverage = remap_enhancers_core %>% getCoverage(col = 3, sep = "\\.")
-    ),
-    chip_atlas = data.table::data.table(
-        nm = chip_atlas_enhancers_core %>% rownames(),
-        coverage = chip_atlas_enhancers_core %>% Matrix::rowSums(),
-        tf_coverage = chip_atlas_enhancers_core %>%
-            getCoverage(col = 1, sep = "_"),
-        con_coverage = chip_atlas_enhancers_core %>%
-            getCoverage(col = 3, sep = "_")
-    )
-)
-```
-
-```{r enhancers_coverage_hist}
-# enhancers coverage histogram
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-coverageHist(x = enhancers_core[["remap"]][["coverage"]],
-             main = "ReMap2020 enhancers coverage")
-coverageHist(x = enhancers_core[["chip_atlas"]][["coverage"]], 
-             main = "ChIP-Atlas enhancers coverage")
-
-# enhancers TF coverage histogram
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-coverageHist(x = enhancers_core[["remap"]][["tf_coverage"]],
-             main = "ReMap2020 enhancers TF coverage")
-coverageHist(x = enhancers_core[["chip_atlas"]][["tf_coverage"]], 
-             main = "ChIP-Atlas enhancers TF coverage")
-
-# enhancers biological context coverage histogram
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-coverageHist(x = enhancers_core[["remap"]][["con_coverage"]],
-             main = "ReMap2020 enhancers context coverage")
-coverageHist(x = enhancers_core[["chip_atlas"]][["con_coverage"]], 
-             main = "ChIP-Atlas enhancers context coverage")
-```
-
-For some enhancers we observe no coverage at all:
-`r sum(enhancers_core[["remap"]][["coverage"]] == 0)`,
-`r sum(enhancers_core[["chip_atlas"]][["coverage"]] == 0)`
-for ReMap2020, ChIP-Atlas respectively.
-
-### ENCODE blacklist
-
-```{r blacklisted_enhancers}
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-blacklistBoxPlot(coverage = enhancers_core[["remap"]][["coverage"]],
-                 cov_names = enhancers_core[["remap"]][["nm"]],
-                 gr1 = blacklist,
-                 aname = "blacklisted",
-                 bname = "other",
-                 main = "ReMap2020\nENCODE blacklisted regions",
-                 ylab = "enhancers coverage")
-blacklistBoxPlot(coverage = enhancers_core[["chip_atlas"]][["coverage"]],
-                 cov_names = enhancers_core[["chip_atlas"]][["nm"]],
-                 gr1 = blacklist,
-                 aname = "blacklisted",
-                 bname = "other",
-                 main = "ChIP-Atlas\nENCODE blacklisted regions",
-                 ylab = "enhancers coverage")
-```
-
-### Ensembl soft masked regions
-
-```{r soft_masked_enhancers}
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-blacklistBoxPlot(coverage = enhancers_core[["remap"]][["coverage"]],
-                 cov_names = enhancers_core[["remap"]][["nm"]],
-                 gr1 = ensembl_sm,
-                 aname = "soft masked",
-                 bname = "other",
-                 main = "ReMap2020\nEnsembl soft masked regions",
-                 ylab = "enhancers coverage")
-blacklistBoxPlot(coverage = enhancers_core[["chip_atlas"]][["coverage"]],
-                 cov_names = enhancers_core[["chip_atlas"]][["nm"]],
-                 gr1 = ensembl_sm,
-                 aname = "soft masked",
-                 bname = "other",
-                 main = "ChIP-Atlas\nEnsembl soft masked regions",
-                 ylab = "enhancers coverage")
-```
-
-### enhancers "phisical" properties
-
-```{r enhancers_score_length}
-stopifnot(all(enhancers_core_gr$name == enhancers_core[["remap"]][["nm"]]))
-stopifnot(all(enhancers_core_gr$name == enhancers_core[["chip_atlas"]][["nm"]]))
-
-# enhancers_score <- log10(enhancers_core_gr$score)
-enhancers_width <- GenomicRanges::width(enhancers_core_gr)
-
-# enhancers coverage vs width
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-graphics::smoothScatter(
-     x = enhancers_core[["remap"]][["coverage"]],
-     y = enhancers_width,
-     main = sprintf("ReMap2020\nenhancer coverage vs width\nSpearman: %f",
-                    cor(x = enhancers_core[["remap"]][["coverage"]],
-                        y = enhancers_width,
-                        method = "spearman")),
-     xlab = "enhancer coverage",
-     ylab = "enhancer width")
-graphics::smoothScatter(
-     x = enhancers_core[["chip_atlas"]][["coverage"]],
-     y = enhancers_width,
-     main = sprintf("ChIP-Atlas\nenhancer coverage vs width\nSpearman: %f",
-                    cor(x = enhancers_core[["chip_atlas"]][["coverage"]],
-                        y = enhancers_width,
-                        method = "spearman")),
-     xlab = "enhancer coverage",
-     ylab = "enhancer width")
-```
-
-### FANTOM5 enhancer specificity
-
-```{r enhancers_f5_specificity}
-enhancers_f5_core_expression <- 
-    enhancers_f5_expression[`V1` %in% enhancers_core_gr$name, ]
-enhancers_f5_core_expression[enhancers_core[["remap"]],
-                             remap_coverage := coverage,
-                             on = c("V1" = "nm")]
-enhancers_f5_core_expression[enhancers_core[["chip_atlas"]],
-                             chip_atlas_coverage := coverage,
-                             on = c("V1" = "nm")]
-```
-
-```{r enhancers_f5_tau_hist}
-coverageHist(x = enhancers_f5_core_expression$tau,
-             main = expression(paste("core enhancers ", tau, " distribution")))
-```
-
-```{r enhancers_f5_specificity_scatter}
-par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0)) # default par(mgp=c(3,1,0))
-with(
-  enhancers_f5_core_expression,
-  graphics::smoothScatter(
-    x = remap_coverage,
-    y = tau,
-    main = sprintf(
-      "ReMap2020\nenhancer specificity by tau\nSpearman: %f",
-      cor(x = remap_coverage,
-          y = tau,
-          method = "spearman")
-    ),
-    ylab = expression(tau),
-    xlab = "enhancer coverage"
-  )
-)
-with(
-  enhancers_f5_core_expression,
-  graphics::smoothScatter(
-    x = chip_atlas_coverage,
-    y = tau,
-    main = sprintf(
-      "ChIP-Atlas\nenhancer specificity by tau\nSpearman: %f",
-      cor(x = chip_atlas_coverage,
-          y = tau,
-          method = "spearman")
-    ),
-    ylab = expression(tau),
-    xlab = "enhancer coverage"
-  )
-)
-```
-
-## Looking at promoter TF interaction matrix column wise (TF wise)
-
-```{r tf_coverage}
-# Functions
-# Function calculates between columns correlation over sparse matrix
-# Taken from https://stackoverflow.com/questions/5888287/running-cor-or-any-variant-over-a-sparse-matrix-in-r
-sparse.cor <- function(x){
-    n <- nrow(x)
-
-    cMeans <- Matrix::colMeans(x)
-    cSums <- Matrix::colSums(x)
-
-    # Calculate the population covariance matrix.
-    # There's no need to divide by (n-1) as the std. dev is also calculated the same way.
-    # The code is optimized to minize use of memory and expensive operations
-    covmat <- Matrix::tcrossprod(cMeans, (-2 * cSums + n * cMeans))
-    crossp <- Matrix::as.matrix(Matrix::crossprod(x))
-    covmat <- covmat + crossp
-
-    sdvec <- sqrt(Matrix::diag(covmat)) # standard deviations of columns
-    covmat / Matrix::crossprod(Matrix::t(sdvec)) # correlation matrix
-}
-```
-
-There are `r sum(remap_tfs$coverage == 0)`, `r sum(chip_atlas_tfs$coverage == 0)`
-zero coverage ChIP-seqs in ReMap2020, ChIP-Atlas respectively. I've removed 
-those in following analyses.
-
-Moreover in ChIP-Atlas there is `r sum(chip_atlas_tfs$biotype == "Unclassified)`
-with 'Unclassified' biotype, those are removed as well.
-
-```{r chip_cleanup}
-remap_tfs <- remap_tfs[remap_tfs$coverage != 0]
-chip_atlas_tfs <- chip_atlas_tfs[chip_atlas_tfs$coverage != 0]
-chip_atlas_tfs <- chip_atlas_tfs[chip_atlas_tfs$biotype != "Unclassified"]
-```
-
-```{r chip_seq_coverage}
-par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-coverageHist(x = remap_tfs$coverage,
-             main = "ReMap2020 ChIP-seq coverage")
-coverageHist(x = chip_atlas_tfs$coverage, 
-             main = "ChIP-Atlas ChIP-seq coverage")
-
-coverageHist(x = remap_tfs$tf %>% table() %>% as.numeric(),
-             main = "ReMap2020 TFs")
-coverageHist(x = chip_atlas_tfs$tf %>% table() %>% as.numeric(), 
-             main = "ChIP-Atlas TFs")
-
-coverageHist(x = remap_tfs$biotype %>% table() %>% as.numeric(),
-             main = "ReMap2020 biotypes")
-coverageHist(x = chip_atlas_tfs$biotype %>% table() %>% as.numeric(), 
-             main = "ChIP-Atlas biotypes")
-```
-
-### TF overlapp between ReMap2020 and ChIP-Atlas
-
-```{r}
-# ReMap2020
-table((remap_tfs$tf %in% chip_atlas_tfs$tf)) %>%
-  `/`(length(remap_tfs$tf)) %>% 
-  data.frame() %>% 
-  dplyr::rename(TF = Var1) %>% 
-  dplyr::mutate(TF = c("not included in ChIP-Atlas", "included in ChIP-Atlas")) %>%
-  knitr::kable(caption = "ReMap2020 TF")
-
-table(unique(remap_tfs$tf) %in% unique(chip_atlas_tfs$tf)) %>%
-  `/`(length(unique(remap_tfs$tf))) %>% 
-  data.frame() %>% 
-  dplyr::rename(TF = Var1) %>% 
-  dplyr::mutate(TF = c("not included in ChIP-Atlas", "included in ChIP-Atlas")) %>%
-  knitr::kable(caption = "ReMap2020 unique TF")
-
-remap_tfs$tf[! remap_tfs$tf %in% chip_atlas_tfs$tf] %>%
-  table() %>%
-  hist(main = "ReMap2020 TF not included in ChIP-Atlas")
-
-# ChIP-Atlas
-table((chip_atlas_tfs$tf %in% remap_tfs$tf)) %>%
-  `/`(length(chip_atlas_tfs$tf)) %>% 
-  data.frame() %>% 
-  dplyr::rename(TF = Var1) %>% 
-  dplyr::mutate(TF = c("not included in ReMap2020", "included in ReMap2020")) %>%
-  knitr::kable(caption = "ChIP-Atlas TF")
-
-table(unique(chip_atlas_tfs$tf) %in% unique(remap_tfs$tf)) %>%
-  `/`(length(unique(chip_atlas_tfs$tf))) %>% 
-  data.frame() %>% 
-  dplyr::rename(TF = Var1) %>% 
-  dplyr::mutate(TF = c("not included in ChIP-Atlas", "included in ChIP-Atlas")) %>%
-  knitr::kable(caption = "ChIP-Atlas unique TF")
-
-chip_atlas_tfs$tf[! chip_atlas_tfs$tf %in% remap_tfs$tf] %>%
-  table() %>%
-  hist(main = "ChIP-Atlas TF not included in ChIP-Atlas")
-```
-
-### TF / background confusion matrix
-
-```{r tf_bg_confusion_matrix}
-remap_tfs_tab <-
-  data.table::dcast(data = remap_tfs,
-                    formula = biotype ~ tf,
-                    fun = length)
-ord <- c(1, order(remap_tfs_tab[, -1] %>% colSums(), decreasing = TRUE) + 1)
-data.table::setcolorder(remap_tfs_tab, ord)
-remap_tfs_tab[, .r := -rowSums(remap_tfs_tab[, -1])]
-data.table::setorder(remap_tfs_tab, .r)[, .r := NULL]
-
-chip_atlas_tfs_tab <-
-  data.table::dcast(data = chip_atlas_tfs,
-                    formula = biotype ~ tf,
-                    fun = length)
-ord <- c(1, order(chip_atlas_tfs_tab[, -1] %>% colSums(), decreasing = TRUE) + 1)
-data.table::setcolorder(chip_atlas_tfs_tab, ord)
-chip_atlas_tfs_tab[, .r := -rowSums(chip_atlas_tfs_tab[, -1])]
-data.table::setorder(chip_atlas_tfs_tab, .r)[, .r := NULL]
-```
-### Case study: select TP53, MYC other similar specific TFs and show heatmap
-### with clustering, does they cluster by study or by experiment? -- towards
-### collapsing method
-
-# TP53
-
-```{r tp53}
-remap_tfs[tf == "TP53", 
-          .(
-            n_id = length(id),
-            n_study = length(unique(study)),
-            n_biotype = length(unique(biotype))
-           )]
-
-remap_tfs[tf == "TP53", 
-          hist(table(study), main = "TP53 study")
-          ]
-remap_tfs[tf == "TP53", 
-          hist(table(biotype), main = "TP53 biotype")
-          ]
-
-m <- grepl("\\.TP53\\.", colnames(remap_promoters_core))
-tp53_remap <- remap_promoters_core[, m]
-
-coverageHist(Matrix::colSums(tp53_remap), main = "TP53 coverage")
-
-# remove 0 coverage experiments
-tp53_remap <- tp53_remap[, Matrix::colSums(tp53_remap) > 0]
-
-tp53_remap_cor <- sparse.cor(tp53_remap)
-tp53_d <- as.dist(abs((1 - tp53_remap_cor) / 2))
-tp53_d <- dist(Matrix::t(tp53_remap))
-tp53_tree <- hclust(tp53_d, method = "complete")
-plot(tp53_tree, hang = -1, cex = 0.5)
-
-study_labs <- gsub("\\.TP53.*", "", tp53_tree$labels)[tp53_tree$order]
-study_grp <- study_labs %>% as.factor() %>% unclass()
-biotype_cond_labs <- gsub(".*.TP53\\.", "", tp53_tree$labels)[tp53_tree$order]
-biotype_cond_grp <- biotype_cond_labs %>% as.factor() %>% unclass()
-biotype_labs <- gsub("_.*", "", biotype_cond_labs)
-biotype_grp <- biotype_labs %>% as.factor() %>% unclass()
-
-getPch <- function(labs) {
-  grp <- labs %>% as.factor() %>% unclass()
-  pch <- rep(0:18, ceiling(max(grp) / 19))
-  pch[grp]
-}
-getCol <- function(labs, cols=cols) {
-  grp <- labs %>% as.factor() %>% unclass()
-  cols <- rep(c("red", "yellow", "blue", "orange", "green", "violet"), 19)
-  cols[grp]
-}
-
-# study
-stats::as.dendrogram(tp53_tree) %>% 
-  dendextend::set("labels", biotype_cond_labs) %>%
-  dendextend::set("labels_cex", 0.5) %>%
-  dendextend::set("leaves_pch", getPch(study_labs)) %>%
-  dendextend::set("leaves_col", getCol(study_labs)) %>% 
-  plot(dLeaf = 0.02)
-
-# biotype_cond
-stats::as.dendrogram(tp53_tree) %>% 
-  dendextend::set("labels", study_labs) %>%
-  dendextend::set("labels_cex", 0.5) %>%
-  dendextend::set("leaves_pch", getPch(biotype_cond_labs)) %>%
-  dendextend::set("leaves_col", getCol(biotype_cond_labs)) %>% 
-  plot(dLeaf = 0.02)
-
-# biotype
-stats::as.dendrogram(tp53_tree) %>% 
-  dendextend::set("labels", biotype_labs) %>%
-  dendextend::set("labels_cex", 0.5) %>%
-  dendextend::set("leaves_pch", getPch(biotype_labs)) %>%
-  dendextend::set("leaves_col", getCol(biotype_labs)) %>% 
-  plot(dLeaf = 0.02)
-
-# ape
-tp53_phylo <- ape::as.phylo(tp53_tree)
-
-# study
-plot(tp53_phylo, 
-     type = "fan",
-     label.offset = 0.02, 
-     cex = 0.7)
-tiplabels(pch = getPch(tp53_phylo$tip.label %>% gsub("\\.TP53.*", "", .)), 
-          col = getCol(tp53_phylo$tip.label %>% gsub("\\.TP53.*", "", .)))
-
-# biotype
-plot(tp53_phylo, 
-     type = "fan",
-     label.offset = 0.02, 
-     cex = 0.7)
-tiplabels(pch = getPch(tp53_phylo$tip.label %>% 
-                         gsub(".*TP53\\.", "", .) %>% 
-                         gsub("_.*", "", .)), 
-          col = getCol(tp53_phylo$tip.label %>% 
-                         gsub(".*TP53\\.", "", .) %>% 
-                         gsub("_.*", "", .)))
-
-# study / biotype
-getCol <- function(labs, cols=cols) {
-  grp <- labs %>% as.factor() %>% unclass()
-  cols <- rainbow(max(grp))
-  cols[grp]
-}
-plot(tp53_phylo, 
-     type = "fan",
-     label.offset = 0.02, 
-     cex = 0.7)
-tiplabels(pch = getPch(tp53_phylo$tip.label %>% 
-                         gsub(".*TP53\\.", "", .) %>% 
-                         gsub("_.*", "", .)), 
-          col = getCol(tp53_phylo$tip.label %>% gsub("\\.TP53.*", "", .)))
-
-study_ann <- data.frame(
-  study = tp53_remap_cor %>%
-    rownames() %>%
-    gsub("\\.TP53.*", " ", .),
-  row.names = tp53_remap_cor %>% rownames(),
-  stringsAsFactors = FALSE
-)
-biotype_ann <- data.frame(
-  biotype = tp53_remap_cor %>%
-    rownames() %>%
-    gsub(".*TP53\\.", "", .) %>%
-    gsub("_.*", "", .),
-  row.names = tp53_remap_cor %>% rownames(),
-  stringsAsFactors = FALSE
-)
-annotation_colors <- list(
-  study = stats::setNames(
-    pals::glasbey(study_ann$study %>% as.factor() %>% nlevels()),
-    study_ann$study %>% as.factor() %>% levels()
-  ),
-  biotype = stats::setNames(
-    pals::glasbey(biotype_ann$biotype %>% as.factor() %>% nlevels()),
-    biotype_ann$biotype %>% as.factor() %>% levels()
-  )
-)
-pheatmap::pheatmap(mat = tp53_remap_cor, 
-                   scale = "none", 
-                   cluster_rows = TRUE,
-                   cluster_cols = TRUE, 
-                   clustering_distance_rows = as.dist(abs(1 - tp53_remap_cor) / 2),
-                   clustering_distance_cols = as.dist(abs(1 - tp53_remap_cor) / 2),
-                   fontsize = 4,
-                   labels_col = tp53_remap_cor %>%
-                     rownames() %>% 
-                     gsub("\\.TP53\\.", " ", .),
-                   labels_row = tp53_remap_cor %>%
-                     rownames() %>% 
-                     gsub("\\.TP53\\.", " ", .),
-                   annotation_row = study_ann,
-                   annotation_col = biotype_ann, 
-                   annotation_colors = annotation_colors
-)
-```
-
-```{r tf_coverage_exploration_remap}
-
-# study
-object <- lm(coverage ~ term, 
-             data = data.table::dcast(data = remap_tfs, 
-                                      formula = id + coverage + term ~ study, 
-                                      fun = length))
-res_study <- midasHLA::analyzeAssociations(object = object,
-                                           variables = unique(remap_tfs$study), 
-                                           correction = "BH")
-
-# tf
-object <- lm(coverage ~ term, 
-             data = data.table::dcast(data = remap_tfs, 
-                                      formula = id + coverage + term ~ tf, 
-                                      fun = length))
-res_tf <- midasHLA::analyzeAssociations(object = object,
-                                           variables = unique(remap_tfs$tf), 
-                                           correction = "BH")
-
-# biotype
-object <- lm(coverage ~ term, 
-             data = data.table::dcast(data = remap_tfs, 
-                                      formula = id + coverage + term ~ biotype, 
-                                      fun = length))
-res_biotype <- midasHLA::analyzeAssociations(object = object,
-                                           variables = unique(remap_tfs$biotype), 
-                                           correction = "BH")
-```
-
-For few of the studies we can observe tendencies for ChIP-seq experiment to 
-have high or low coverage.
-
-In ReMap2020 we can find 3 large such studies:
-
-#### GSE78099 
-consisting out of 208 experiments that has a tendency towards low coverage.
-
-```{r}
-m <- remap_tfs$study == "GSE78099"
-graphics::boxplot(remap_tfs$coverage[m], remap_tfs$coverage[!m], 
-                  names = c("GSE78099", "other"))
-```
-
-This study has many different TFs, mainly different ZNFs in HEK293T background.
-So of those are also present in other studies so we can compare to those.
-
-```{r}
-GSE78099_tfs <- remap_tfs$tf[remap_tfs$study == "GSE78099"]
-remap_tfs$tf[remap_tfs$tf %in% GSE78099_tfs] %>% 
-  table() %>% 
-  `[`(. > 1) %>%
-  names() -> tf_sel
-
-m1 <- remap_tfs$study == "GSE78099"
-m2 <- remap_tfs$tf %in% tf_sel
-graphics::boxplot(remap_tfs$coverage[m1 & m2], remap_tfs$coverage[(! m1) & m2], 
-                  names = c("GSE78099", "other"),
-                  main = "Selected TFs")
-```
-
-To make it even more comparable we will restrict ourselves to HEK293 and HEK293T
-biotypes.
-
-```{r}
-m1 <- remap_tfs$study == "GSE78099"  
-m2 <- remap_tfs$tf %in% tf_sel
-m3 <- remap_tfs$biotype %in% c("HEK293", "HEK293T")
-graphics::boxplot(remap_tfs$coverage[m1 & m2 & m3], remap_tfs$coverage[(! m1) & m2 &m3], 
-                  names = c("GSE78099", "other"),
-                  main = "Selected TFs",
-                  outline = FALSE)
-```
-
-Still it looks like the coverage in GSE78099 is lower then in other studies.
-
-####GSE87418
-is a high coverage study with a smaller number of samples = 36.
-
-Here they explore BRD4, CEBPB, MED1 in HCC1806, SUM159PT or SUM229PE under
-different conditions.
-
-```{r}
-m <- remap_tfs$study == "GSE87418"
-graphics::boxplot(remap_tfs$coverage[m], remap_tfs$coverage[!m], 
-                  names = c("GSE87418", "other"))
-```
-
-Again let's try comparing with other experiments
-
-```{r}
-GSE87418_tfs <- remap_tfs$tf[remap_tfs$study == "GSE87418"]
-remap_tfs$tf[remap_tfs$tf %in% GSE87418_tfs] %>% 
-  table() %>% 
-  `[`(. > 1) %>%
-  names() -> tf_sel
-
-m1 <- remap_tfs$study == "GSE87418"
-m2 <- remap_tfs$tf %in% tf_sel
-graphics::boxplot(remap_tfs$coverage[m1 & m2], remap_tfs$coverage[(! m1) & m2], 
-                  names = c("GSE87418", "other"),
-                  main = "Selected TFs")
-```
-
-####GSE109411
-is a high coverage study with 12 samples.
-
-Here again we have BRD4 TF in different conditions.So let's just compare with
-GSE87418 BRD samples.
-
-```{r}
-m1 <- remap_tfs$study == "GSE87418"
-m2 <- remap_tfs$study == "GSE109411"
-m3 <- remap_tfs$tf == "BRD4"
-graphics::boxplot(remap_tfs$coverage[m1 & m3], remap_tfs$coverage[m2 & m3], 
-                  names = c("GSE87418", "GSE109411"),
-                  main = "BRD")
-```
-
-The above result would actually advocate that there is no study bias but rather
-TF bias ie. BRD4 has many binding sites in promoters. 
-
-This result also underlines the need to control for TF and likely biotype when
-modeling study bias. But how to do this?
-
-####GSE100292 
-is a low coverage study with a smaller number of samples = 17
-
-here they explored TP53 across different biotypes and always with some kind of
-treatment. I've looked up thier paper and they also report small number of 
-detected peaks.
-
-```{r}
-m <- remap_tfs$study == "GSE100292"
-graphics::boxplot(remap_tfs$coverage[m], remap_tfs$coverage[!m], 
-                  names = c("GSE100292", "other"))
-```
-
-Again let's try comparing with tp53 from other experiments
-
-```{r}
-GSE100292_tfs <- remap_tfs$tf[remap_tfs$study == "GSE100292"]
-remap_tfs$tf[remap_tfs$tf %in% GSE100292_tfs] %>% 
-  table() %>% 
-  `[`(. > 1) %>%
-  names() -> tf_sel
-
-m1 <- remap_tfs$study == "GSE100292"
-m2 <- remap_tfs$tf %in% tf_sel
-graphics::boxplot(remap_tfs$coverage[m1 & m2], remap_tfs$coverage[(! m1) & m2], 
-                  names = c("GSE100292", "other"),
-                  main = "Selected TFs",
-                  outline = FALSE)
-```
-
-####GSE101074
-is a high coverage study with small number of experiments = 3
-
-Here they explore TFAP2C in UCLA1-hESCs under different conditions.
-
-```{r}
-m <- remap_tfs$study == "GSE101074"
-graphics::boxplot(remap_tfs$coverage[m], remap_tfs$coverage[!m], 
-                  names = c("GSE101074", "other"))
-```
-
-Again let's try comparing with other experiments
-
-```{r}
-GSE101074_tfs <- remap_tfs$tf[remap_tfs$study == "GSE101074"]
-remap_tfs$tf[remap_tfs$tf %in% GSE101074_tfs] %>% 
-  table() %>% 
-  `[`(. > 1) %>%
-  names() -> tf_sel
-
-m1 <- remap_tfs$study == "GSE101074"
-m2 <- remap_tfs$tf %in% tf_sel
-graphics::boxplot(remap_tfs$coverage[m1 & m2], remap_tfs$coverage[(! m1) & m2], 
-                  names = c("GSE101074", "other"),
-                  main = "Selected TFs")
-```
-
-```{r tf_coverage_exploration_chipatlas}
-# study
-object <- lm(coverage ~ term, 
-             data = data.table::dcast(data = chip_atlas_tfs, 
-                                      formula = id + coverage + term ~ id, 
-                                      fun = length))
-chip_atlas_res_study <- midasHLA::analyzeAssociations(object = object,
-                                           variables = unique(chip_atlas_tfs$id), 
-                                           correction = "BH")
-
-# tf
-object <- lm(coverage ~ term, 
-             data = data.table::dcast(data = chip_atlas_tfs, 
-                                      formula = id + coverage + term ~ tf, 
-                                      fun = length))
-chip_atlas_res_tf <- midasHLA::analyzeAssociations(object = object,
-                                           variables = unique(chip_atlas_tfs$tf), 
-                                           correction = "BH")
-
-# biotype
-object <- lm(coverage ~ term, 
-             data = data.table::dcast(data = chip_atlas_tfs, 
-                                      formula = id + coverage + term ~ biotype, 
-                                      fun = length))
-chip_atlas_res_biotype <- midasHLA::analyzeAssociations(object = object,
-                                           variables = unique(chip_atlas_tfs$biotype), 
-                                           correction = "BH")
-```
-
-
-# what are the chip seqs with least/most peaks? How do they compare to average
-# ChIPs?
-
-```{r looking_into_datasets}
-getFeature <- function(nm, col, sep = "\\.") {
-    n <- stringr::str_count(nm, sep)[1]
-    nm %>% 
-        gsub(pattern = paste(c("(.*)", rep(c(sep, "(.*)"), n)), collapse = ""),
-             replacement = paste0("\\", col))
-}
-
-remap_tfs <- remap_promoters_core %>%
-  colnames() %>%
-  stringr::str_split(pattern = "\\.", n = 3) %>%
-  do.call(what = rbind) %>%
-  data.table::as.data.table()
-colnames(remap_tfs) <- c("id", "tf", "background")
-
-chip_atlas_tfs <- chip_atlas_promoters_core %>%
-  colnames() %>%
-  stringr::str_split(pattern = "_", n = 4) %>%
-  do.call(what = rbind) %>%
-  data.table::as.data.table()
-colnames(chip_atlas_tfs) <- c("tf", "context", "background", "id")
-
-table((remap_tfs$background %>% unique()) %in% (chip_atlas_tfs$background %>% unique()))
-remap_tfs$background %>% unique() %>% length()
-
-table((chip_atlas_tfs$background %>% unique()) %in% (remap_tfs$background %>% unique()))
-chip_atlas_tfs$background %>% unique() %>% length()
-```
-
-# Can we summarize redundant signatures to e.g. one per TF, TF in cell type
-## replicated expriments in ChIP-Atlas
-
-# Concordance between signatures of the same TF/same cell line. (difference 
-# between studies, similarities within studies)
 

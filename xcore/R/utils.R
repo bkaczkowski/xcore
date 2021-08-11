@@ -143,58 +143,168 @@ getCoverage <- function(mat, gr) {
     rowSums()
 }
 
-#' Simplify Interaction Matrix over groups
+#' Simplify Interaction Matrix
 #'
 #' @param mat dgCMatrix interaction matrix such as produced by
 #'   \code{\link{getInteractionMatrix}}.
-#' @param gr Character vector specifying features groups. Must have length equal
-#'   to number of columns in \code{mat}.
-#' @param method String. Currently only majority voting strategy is available.
+#' @param alpha Number between 0 and 1 specifying voting threshold. Eg. for 3
+#'   column matrix alpha 0.5 will give voting criteria >= 2.
 #'
 #' @return dgCMatrix
 #'
-simplifyInteractionMatrix <- function(mat, gr, method = "majority") {
+#' @importFrom Matrix rowSums sparseMatrix
+#'
+#' @export
+simplifyInteractionMatrix <- function(mat, alpha = 0.5, colname = NA) {
   stopifnot(is(mat, "dgCMatrix"))
-  stopifnot(is.character(rownames(mat)))
-  stopifnot(is.character(gr))
-  stopifnot(length(gr) == ncol(mat))
+  stopifnot(is.numeric(alpha) && (length(alpha) == 1))
+  stopifnot((alpha > 0) && (alpha <= 1))
 
-  group <- as.factor(gr)
-  i.list <- lapply(X = levels(group),
-         FUN = function(x) {
-           m <- group == x
-           crit <- floor(sum(m) / 2)
-           mask <- Matrix::rowSums(mat[, m, drop = FALSE]) > crit
-           which(mask)
-         })
-  i_lens <- vapply(i.list, length, numeric(1L))
-  j <- rep(seq(1, nlevels(group)), times = i_lens)
-  Matrix::sparseMatrix(i = unlist(i.list, use.names = FALSE),
-                       j = j,
+  crit <- ceiling(ncol(mat) * alpha)
+  i <- which(Matrix::rowSums(mat) >= crit)
+  Matrix::sparseMatrix(i = i,
+                       j = rep(1L, length(i)),
                        x = 1,
-                       dims = c(nrow(mat), nlevels(group)),
-                       dimnames = list(rownames(mat), levels(group)))
+                       dims = c(nrow(mat), 1L),
+                       dimnames = list(rownames(mat), colname))
 }
 
-# TODO test
-# identical(
-#   simplifyInteractionMatrix(Matrix(
-#     matrix(
-#       c(1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1),
-#       ncol = 6,
-#       byrow = T,
-#       dimnames = list(1:3)
-#     ), sparse = TRUE
-#   ),
-#   c("A", "A", "A", "B", "B", "B")),
-#   new(
-#     "dgCMatrix",
-#     i = c(0L, 2L, 1L),
-#     p = c(0L, 2L, 3L),
-#     Dim = 3:2,
-#     Dimnames = list(c("1", "2", "3"), c("A", "B")),
-#     x = c(1,
-#           1, 1),
-#     factors = list()
-#   )
-# )
+#' Calculate vector purity
+#'
+#' @export
+vectorPurity <- function(x) {
+  xtab <- table(x, useNA = "always")
+  max(xtab) / length(x)
+}
+
+#' Get most frequent value
+#'
+#'
+mostFreqValue <- function(vec) {
+  freq <- table(vec, useNA = "always")
+  freq <- sort(freq, decreasing = TRUE)
+  mostfreq <- names(freq)[1]
+
+  return(mostfreq)
+}
+
+#' Prune metadata
+#'
+#' Prunes metadata based on selected column such that only entries with most
+#' frequent items remains.
+#'
+#' @param col pruning column
+#'
+#' @export
+pruneClusterMeta <- function(meta, col) {
+  idx <- meta[[col]]
+  mostfreq <- mostFreqValue(idx)
+  mask <- idx == mostfreq
+
+  return(meta[mask, ])
+}
+
+#' Make cluster name based on metadata
+#'
+#'
+makeClusterName <- function(meta,
+                            columns = c("tf", "biotype", "study", "tf_dbd", "cov_type"),
+                            mixed_th = 0.5) {
+  nms <- vapply(X = columns,
+                FUN = function(x) {
+                  vec <- meta[[x]]
+                  nm <-
+                    ifelse(vectorPurity(vec) > mixed_th, mostFreqValue(vec), "mixed")
+                  paste(x, nm, sep = ".")
+                },
+                FUN.VALUE = character(1L))
+  nm <- paste(nms, collapse = "_")
+
+  return(nm)
+}
+
+#'
+#' @param pruning_purity if purity > pruning_purity then prune
+#'
+collapseInteractionMatrix <- function(mat,
+                                      meta,
+                                      cl,
+                                      alpha = 0.5,
+                                      purity_feature = "tf",
+                                      min_pruning_purity = 0.5
+) {
+  stopifnot(is(mat, "dgCMatrix"))
+  stopifnot(is(meta, "data.table"))
+  stopifnot("id" %in% colnames(meta))
+  stopifnot(all(colnames(mat) == meta$id))
+  stopifnot(length(cl) == ncol(mat))
+
+  cl <- as.factor(cl)
+  out <- list()
+  for (clu in levels(cl)) {
+    m <- cl == clu
+    purity <- vectorPurity(meta[m, ][[purity_feature]])
+
+    if (purity > min_pruning_purity) {
+      pruned_meta <- pruneClusterMeta(meta[m, ], purity_feature)
+      m <- pruned_meta[["id"]]
+      nice_name <- makeClusterName(pruned_meta, mixed_th = min_pruning_purity)
+    } else {
+      nice_name <- makeClusterName(meta[m, ], mixed_th = min_pruning_purity)
+    }
+    nice_name <- paste(clu, nice_name, sep = "_")
+
+    # alpha <- 0.3 # calculate alpha based on
+
+    out[[nice_name]] <- simplifyInteractionMatrix(mat = mat[, m],
+                                                  alpha = alpha,
+                                                  colname = nice_name)
+  }
+
+  new_mat <- do.call(cbind, out)
+
+  return(new_mat)
+}
+
+#' Select cutHeight and deepSplit parameters for dynamicTreeCut
+#'
+#'
+selectParams4dynamicTreeCut <- function(dendro,
+                                        distM,
+                                        ref_cl,
+                                        minClusterSize = 3,
+                                        c_deepSplit = 1:4,
+                                        c_cutHeight = seq(from = 0.5, to = 6, by = 0.2)) {
+  res <- list(deepSplit = c(), cutHeight = c(), ARI = c(), AMI = c(), N = c())
+  for (ds in c_deepSplit) {
+    for (ch in c_cutHeight) {
+      cl <- dynamicTreeCut::cutreeDynamic(
+        dendro = dendro,
+        cutHeight = ch,
+        minClusterSize = minClusterSize,
+        method = "hybrid",
+        distM = distM,
+        deepSplit = ds,
+        pamStage = TRUE)
+
+
+      res[["deepSplit"]] <- c(res[["deepSplit"]], ds)
+      res[["cutHeight"]] <- c(res[["cutHeight"]], ch)
+      res[["AMI"]] <- c(res[["AMI"]], aricode::AMI(ref_cl, cl))
+      res[["ARI"]] <- c(res[["ARI"]], aricode::ARI(ref_cl, cl))
+      res[["N"]] <- c(res[["N"]], cl %>% unique() %>% length())
+    }
+  }
+
+  res <- do.call(cbind, res) %>% as.data.table()
+
+  return(res)
+}
+
+#' Paint vector
+#'
+#' Get colors along vector
+#'
+paintVector <- function(vec) {
+  colorspace::qualitative_hcl(length(unique(vec)))[as.integer(factor(vec))]
+}

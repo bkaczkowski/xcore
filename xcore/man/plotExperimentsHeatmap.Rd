@@ -7,26 +7,22 @@
 plotExperimentsHeatmap(
   mat,
   meta,
-  method = "pearson",
   cluster_rows = TRUE,
   cluster_cols = TRUE,
   angle_col = 45,
   treeheight_col = 0,
+  fontsize = 8,
+  fontsize_row = 7,
+  fontsize_col = 7,
   ...
 )
 }
 \arguments{
-\item{mat}{dgCMatrix interaction matrix such as produced by
-\code{\link{getInteractionMatrix}}.}
+\item{mat}{Numeric matrix of pairwise correlations to be plotted.}
 
 \item{meta}{data.table metadata associated with \code{mat}. Should contain
 \code{id} column, which is used to subset \code{mat}. Other character
 columns are used as heatmap annotations.}
-
-\item{method}{a character string indicating which method should be used to
-calculate distances between \code{mat} columns. Supported values: "pearson",
-"kendall", "spearman" (the actual distance is calculated as
-(1 - cor) /2), "binary".}
 
 \item{cluster_rows}{boolean values determining if rows should be clustered or \code{hclust} object,}
 
@@ -37,6 +33,12 @@ predefined options (0, 45, 90, 270 and 315)}
 
 \item{treeheight_col}{the height of a tree for columns, if these are clustered. 
 Default value 50 points.}
+
+\item{fontsize}{base fontsize for the plot}
+
+\item{fontsize_row}{fontsize for rownames (Default: fontsize)}
+
+\item{fontsize_col}{fontsize for colnames (Default: fontsize)}
 
 \item{...}{arguments passed to \code{\link[pheatmap]{pheatmap}} function.}
 }

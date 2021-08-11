@@ -2,22 +2,20 @@
 % Please edit documentation in R/utils.R
 \name{simplifyInteractionMatrix}
 \alias{simplifyInteractionMatrix}
-\title{Simplify Interaction Matrix over groups}
+\title{Simplify Interaction Matrix}
 \usage{
-simplifyInteractionMatrix(mat, gr, method = "majority")
+simplifyInteractionMatrix(mat, alpha = 0.5, colname = NA)
 }
 \arguments{
 \item{mat}{dgCMatrix interaction matrix such as produced by
 \code{\link{getInteractionMatrix}}.}
 
-\item{gr}{Character vector specifying features groups. Must have length equal
-to number of columns in \code{mat}.}
-
-\item{method}{String. Currently only majority voting strategy is available.}
+\item{alpha}{Number between 0 and 1 specifying voting threshold. Eg. for 3
+column matrix alpha 0.5 will give voting criteria >= 2.}
 }
 \value{
 dgCMatrix
 }
 \description{
-Simplify Interaction Matrix over groups
+Simplify Interaction Matrix
 }
