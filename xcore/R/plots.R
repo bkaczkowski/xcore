@@ -88,7 +88,7 @@ plotExperimentsHeatmap <- function(mat,
     FUN.VALUE = logical(1L)
   ) &
     (!colnames(meta) %in% "id")
-  annotaion <- as.data.frame(meta[, cols])
+  annotaion <- as.data.frame(meta[, cols, with = FALSE])
   rownames(annotaion) <- meta$id
   annotaion <- rapply(annotaion, as.factor, how = "replace")
   annotation_colors <- lapply(
