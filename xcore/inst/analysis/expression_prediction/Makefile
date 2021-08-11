@@ -5,6 +5,11 @@ TEPIC_BIN = $(PROJECT_DIR)/TEPIC/Code/TEPIC.sh
 INVOKE_DIR = $(PROJECT_DIR)/TEPIC/MachineLearningPipelines/INVOKE/
 INVOKE_OUT = TEPIC_out/INVOKE/
 
+.PHONY: clean
+clean: ## delete directories created by runing 'image', 'tepic_invoke'
+	@echo "cleaning up"
+	rm -r IMAGE_out ${INVOKE_OUT}
+
 .PHONY: install
 install: ## download programs and set up environment
 	@echo "setting up IMAGE"
