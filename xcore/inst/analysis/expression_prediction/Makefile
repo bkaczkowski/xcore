@@ -9,6 +9,9 @@ TEPIC_OUT = TEPIC_out
 INVOKE_DIR = $(TEPIC_DIR)/MachineLearningPipelines/INVOKE
 INVOKE_BIN = $(INVOKE_DIR)/runInvokeAnalysis.sh
 INVOKE_OUT = ${TEPIC_OUT}/INVOKE
+DYNAMITE_DIR = $(TEPIC_DIR)/MachineLearningPipelines/DYNAMITE
+DYNAMITE_BIN = $(DYNAMITE_DIR)/runDYNAMITE.sh
+DYNAMITE_OUT = ${TEPIC_OUT}/DYNAMITE
 
 .PHONY: clean
 clean: ## delete directories created by runing 'image', 'tepic_invoke'
@@ -26,7 +29,7 @@ install: ## download programs and set up environment
 	@echo "setting up TEPIC"
 	git clone https://github.com/SchulzLab/TEPIC.git
 	cd ./TEPIC/Code && ./compile_TRAP_install_R_packages.sh && cd ../..
-	chmod a+x ${INVOKE_BIN}
+	chmod a+x ${TEPIC_BIN} ${INVOKE_BIN} ${DYNAMITE_BIN}
 	wget -c -P ${INVOKE_DIR}/ExampleData/ http://ftp.ensembl.org/pub/current_fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.1.fa.gz
 	gunzip ${INVOKE_DIR}/ExampleData/chr1.fa.gz
 	wget -c -P ${INVOKE_DIR}/ExampleData/ http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.annotation.gtf.gz
@@ -105,6 +108,54 @@ tepic_invoke: ## run TEPIC INVOKE pipeline on it's example data
 	mkdir -p ${INVOKE_OUT}
 	echo "$${TEPIC_INVOKE_CFG}" > ${INVOKE_OUT}/invokeAnalysis.cfg
 	${INVOKE_BIN} ${INVOKE_OUT}/invokeAnalysis.cfg
+
+# TEPIC DYNAMITE pipeline
+# =====config==========
+define TEPIC_DYNAMITE_CFG
+#The following parameters should be changed by the user
+open_regions_Group1="${DYNAMITE_DIR}/ExampleData/Hf03_BlEM_NOMe.bed"
+open_regions_Group2="${DYNAMITE_DIR}/ExampleData/Hf03_BlTN_NOMe.bed"
+differential_Gene_Expression_Data="${DYNAMITE_DIR}/ExampleData/TEM_vs_TN0_000001.txt"
+outputDirectory="${DYNAMITE_OUT}"
+
+#To reuse existing TEPIC results on two different groups specfiy the path to the group1 and group2 folders here. Note that mean affinities and ratios are recomputed
+existing_TEPIC_Results_Group1="${DYNAMITE_DIR}/TestRun/Affinities/group1/"
+existing_TEPIC_Results_Group2="${DYNAMITE_DIR}/TestRun/Affinities/group2/"
+
+#Parameters of TEPIC
+path=${TEPIC_DIR}
+referenceGenome=""
+pwm="${DYNAMITE_DIR}/ExampleData/T-Cell-Example.PSEM"
+cores_TEPIC=${NCPU}
+geneAnnotation=""
+window="50000"
+coverage_Files_Group1=("")
+coverage_Files_Group2=("")
+coverage_Columns_Group1=("")
+coverage_Columns_Group2=("")
+decay="TRUE"
+peakFeatures="TRUE"
+chrPrefix="FALSE"
+
+#Parameters of the logistic regression
+scriptPath="${DYNAMITE_DIR}/Scripts"
+outerCV=3
+innerCV=6
+alpha_Step_Size=0.1
+coresR=${NCPU}
+performance="TRUE"
+randomise="FALSE"
+endef
+export TEPIC_DYNAMITE_CFG := $(TEPIC_DYNAMITE_CFG)
+# =====config==========
+
+.PHONY: tepic_dynamite
+tepic_dynamite: ## run TEPIC DYNAMITE pipeline on it's example data
+	@echo "Running TEPIC DYNAMITE pipeline"
+	mkdir -p ${DYNAMITE_OUT}
+	echo "$${TEPIC_DYNAMITE_CFG}" > ${DYNAMITE_OUT}/DYNAMITE.cfg
+	${DYNAMITE_BIN} ${DYNAMITE_OUT}/DYNAMITE.cfg
+	Rscript ${DYNAMITE_DIR}/Scripts/generateFeaturePlots.R ${DYNAMITE_OUT}/ Peak_Counts TEM TN
 
 # Based on http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 .DEFAULT_GOAL := help
