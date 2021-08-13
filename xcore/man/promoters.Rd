@@ -5,7 +5,7 @@
 \alias{promoters}
 \title{Promoters GenomicRanges object}
 \format{
-A GenomicRanges object of length 209911, with 11 metadata columns:
+A \code{GenomicRanges} object of length 209911, with 11 metadata columns:
 \describe{
 \item{name}{Promotor name.}
 \item{score}{Numeric vector.}

@@ -5,7 +5,7 @@
 \alias{enhancers}
 \title{Enahncers GenomicRanges object}
 \format{
-A GenomicRanges object of length 63285, with 4 metadata columns:
+A \code{GenomicRanges} object of length 63285, with 4 metadata columns:
 \describe{
 \item{name}{Feature name.}
 \item{hg38_enhancer}{FANTOM5's hg38 enhancer name.}

@@ -30,6 +30,19 @@ downloadDataset https://remap.univ-amu.fr/storage/remap2020/hg38/MACS2/TF/EP300/
 # Download ChIP-Atlas
 # hg38 TFs and others (15217) in All cell types (61679) with 50 Threshold for Significance
 downloadDataset http://dbarchive.biosciencedbc.jp/kyushu-u/hg38/assembled/Oth.ALL.05.AllAg.AllCell.bed
+# process ChIP-Atlas data to extract SRX field and remove unncecessary data from 4th column
+if [ ! -f chip_atlas_hg38.Oth.ALL.05.AllAg.AllCell_SRX_only.bed.gz ]; then
+  cat Oth.ALL.05.AllAg.AllCell.bed | \
+    awk '{gsub(";.*|ID=","",$4)}1' |  \
+    awk 'OFS="\t" {print $1,$2,$3,$4,$5,$6}' | \
+    tail -n +2 | \
+    gzip > chip_atlas_hg38.Oth.ALL.05.AllAg.AllCell_SRX_only.bed.gz
+fi
+# download experiments metadata
+downloadDataset http://dbarchive.biosciencedbc.jp/kyushu-u/metadata/experimentList.tab
+if [ ! -f experimentList_TF_hg38.txt ]; then
+  grep -w hg38 experimentList.tab | grep -w 'TFs and others' | awk '{if($2 == "hg38"){print $0}}' > experimentList_TF_hg38.txt
+fi
 
 # Download GENCODE annotation
 downloadDataset http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_38/gencode.v38.annotation.gff3.gz

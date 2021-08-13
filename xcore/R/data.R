@@ -3,7 +3,7 @@
 #' A dataset containing FANTOM5's hg38 enhancers overlapped with EP300 peaks
 #' from ReMap2020 and dyadic regions from Dfam database.
 #'
-#' @format A GenomicRanges object of length 63285, with 4 metadata columns:
+#' @format A \code{GenomicRanges} object of length 63285, with 4 metadata columns:
 #' \describe{
 #'   \item{name}{Feature name.}
 #'   \item{hg38_enhancer}{FANTOM5's hg38 enhancer name.}
@@ -19,7 +19,7 @@
 #' Additionally this dataset was also annotated to nearest features in GENCODE 
 #' ver. 38 annotation and UCSC hg38 knownGene annotation ver. 3.13.0.
 #'
-#' @format A GenomicRanges object of length 209911, with 11 metadata columns:
+#' @format A \code{GenomicRanges} object of length 209911, with 11 metadata columns:
 #' \describe{
 #'   \item{name}{Promotor name.}
 #'   \item{score}{Numeric vector.}
@@ -47,7 +47,7 @@
 #' and dyadic regions from Dfam database. Moreover the dataset is overlapped with GENCODE annotation
 #' on both strands.
 #'
-#' @format A GenomicRanges object of length 209911, with 24 metadata columns:
+#' @format A \code{GenomicRanges} object of length 209911, with 24 metadata columns:
 #' \describe{
 #'   \item{name}{Promotor name.}
 #'   \item{score}{Numeric vector.}
@@ -124,4 +124,77 @@
 #' @format A Matrix with 25925 rows and 5728 columns. Row names corresponds to gene's
 #'         symbols, column names are formatted as ExperimentID.TranscriptionFactor.Biotype.
 "remap_symbol"
+
+#' ChIP-Atlas FANTOM5 promoters intersection matrix
+#'
+#' An intersection matrix describing overlaps between ChIP-Atlas's ChIP-seq tracks
+#' and \code{\link{promoters}}. To find overlapping regions promoters were extended
+#' by 500bp in both directions.
+#'
+#' @format A \code{Matrix} with 209911 rows and 15133 columns. Row names corresponds to promoters
+#'         names, column names are formatted as TranscriptionFactor_Origin_Cell_ExperimentID
+#'	   (eg. PARK7_Neural_SH-SY5Y_DRX000550, MLL-AF6_Blood_ML-2_DRX001460).
+#'
+"chip_atlas_promoters"
+
+#' ChIP-Atlas FANTOM5 enhancers intersection matrix
+#'
+#' An intersection matrix describing overlaps between ChIP-Atlas's ChIP-seq tracks
+#' and \code{\link{enhancers}}. To find overlapping regions promoters were extended
+#' by 500bp in both directions.
+#'
+#' @format A \code{Matrix} with 63285 rows and 15133 columns. Row names corresponds to promoters
+#'         names, column names are formatted as TranscriptionFactor_Origin_Cell_ExperimentID
+#'	   (eg. PARK7_Neural_SH-SY5Y_DRX000550, MLL-AF6_Blood_ML-2_DRX001460).
+#'
+"chip_atlas_enhancers"
+
+#' ChIP-Atlas gene level interaction matrix
+#'
+#' A matrix describing interactions between ChIP-Atlas's ChIP-seq tracks
+#' and human genes (hg38) as defined by \code{\link{promoters}}. The interaction score
+#' for each gene and transcription factor is a *maximum* of transcription factor occurences
+#' among the promoters associated with a given gene. Promoters were assigned to thier target 
+#' genes based on ENTREZ IDs.
+#'
+#' @format A \code{Matrix} with 23274 rows and 15133 columns. Row names corresponds to gene's
+#'         ENTREZ IDs, column names are formatted as TranscriptionFactor_Origin_Cell_ExperimentID
+#'	   (eg. PARK7_Neural_SH-SY5Y_DRX000550, MLL-AF6_Blood_ML-2_DRX001460).
+#'
+"chip_atlas_entrez"
+
+#' ChIP-Atlas gene level interaction matrix
+#'
+#' A matrix describing interactions between ChIP-Atlas's ChIP-seq tracks
+#' and human genes (hg38) as defined by \code{\link{promoters}}. The interaction score
+#' for each gene and transcription factor is a *maximum* of transcription factor occurences
+#' among the promoters associated with a given gene. Promoters were assigned to thier target 
+#' genes based on gene's symbols.
+#'
+#' @format A \code{Matrix} with 25925 rows and 15133 columns. Row names corresponds to gene's
+#'         symbols, column names are formatted as TranscriptionFactor_Origin_Cell_ExperimentID
+#'	   (eg. PARK7_Neural_SH-SY5Y_DRX000550, MLL-AF6_Blood_ML-2_DRX001460).
+#'
+"chip_atlas_symbol"
+
+#' ChIP-Atlas metadata
+#'
+#' ChIP-Atlas metadata... # TODO
+#'
+#' @format A \code{data.frame} with 15133 rows and 11 columns.
+#' \describe{
+#'   \item{id}{String specifying ExperimentID.}
+#'   \item{TF}{String specifying TranscriptionFactor.}
+#'   \item{origin}{String specifying experiment biological origin.}
+#'   \item{cell}{String specifying cell line in which the experiment was conducted.}
+#'   \item{description}{String giving descriptions of primary tissue and tissue diganosis.}
+#'   \item{name}{String specifying feature name in format TranscriptionFactor_Origin_Cell_ExperimentID.}
+#'   \item{number_of_promoters_with_peak}{Integer giving number of promoters associated with the feature.}
+#'   \item{number_of_enhancers_with_peak}{Integer giving number of enhancers associated with the feature.}
+#'   \item{number_of_geneSymbols_with_peak}{Integer giving number of enhancers associated with the feature based on gene symbol.}
+#'   \item{number_of_geneEntrez_with_peak}{Integer giving number of genes associated with the feature based on ENTREZ ID.}
+#'   \item{total_number_of_peaks}{Integer giving total number of peaks associated with the feature.}
+#' }
+#'
+"chip_atlas_meta"
 
