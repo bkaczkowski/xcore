@@ -1,0 +1,148 @@
+---
+title: "Expression prediction - available software"
+author: "Migdal"
+date: "8/2/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+devtools::load_all()
+```
+
+# Available software
+
+Here I explored available software for expression prediction analysis:
+
+ + IMAGE
+ + TEPIC INVOKE / DYNAMITE / EPIC-DREM (in fact it is TEPIC + DREM)
+ + ISMARA (new MARA)
+
+## IMAGE
+
+Inputs:
+
+ + *enhancers* (promoters, enhancers etc.) (normalized) activities.
+ + gene expression counts (raw).
+ + genome FASTA.
+ + enhancer and expression design.
+ 
+Output:
+
+ + R data with several data frames including: estimated motif activities based
+   on enhancers, and gene expression (pooled regulatory regions). Ultimately
+   Results table contains motifs coefficients averaged over groups.
+ 
+Modeling procedure:
+
++ Gene expression is transformed to RPKM.
++ First *enhancers* expression / activity is modeled as a function motifs
+  frequency. At this step learned motifs activities are can be thought of as
+  prediction motifs targets, or a motif contribution factors estimation.
++ Second gene expression is modeled as a function of motif frequencies, motif
+  contribution and distance weight over all enhancers associated with a gene.
++ Machine learning modeling is implemented using `glmnet::glmnet` with `alpha=0`
+  (ridge regression).
++ IMAGE also calculate DE using edgeR but those results are not used for the
+  expression modeling, but only attached to the final result.
+
+Conclusion:
+
+I think we can't really use IMAGE on our data. 1. We are missing *enhancers* 
+activities, this is needed by the method to calculate motifs targets. We could
+maybe overcome this by using some DHS or histone ChIP-seq data, or in some more 
+hacky way. 2. IMAGE does not give option to provide custom binding data, one can
+only provide *enhancers* coordinates and FASTA file which are used to predict
+binding sites based on motifs accompanying IMAGE.
+
+```{r}
+image_out <-
+  system.file(
+    "inst",
+    "analysis",
+    "expression_prediction",
+    "IMAGE_out",
+    "IMAGE_test.Rdata",
+    package = "xcore")
+load(image_out)
+knitr::kable(head(Result), caption = "IMAGE main output")
+```
+## TEPIC INVOKE / DYNAMITE / EPIC-DREM
+TEPIC is a TFBS prediction software using a biophysical model. 
+
+### INVOKE / DYNAMITE
+Inputs:
+
+  + regulatory regions (BED) or pre-computed TF affinities from TEPIC.
+  + gene expression data.
+
+Modeling procedure:
+
+  + TF affinities (log2 ratio in DYNAMITE) are summed over a region around gene, 
+    optionally with a decay penalty.
+  + Gene expression (log2 ratio in DYNAMITE) is directly modeled as a function
+    of TF activities. 
+  + Machine learning modeling is implemented using `glmnet::glmnet` with 
+    regularization of choice. In case of elastic net best alpha is found by 
+    testing a range of alphas in CV setting.
+    
+Output:
+
+  + txt file with the regression coefficients learned.
+  + bar plot showing all nonzero regression coefficients.
+  + boxplot showing model performance.
+  +  file holding Accuracy on Training and Test data, F1 measures.
+  + Confusion matrices per sample and outer cross validation run.
+  + heatmap showing of regression coefficients sorted by the median computed on 
+    the regression coefficient values of the outer cross validation folds.
+    
+![invoke barplot](TEPIC_out/INVOKE/Learning_Results/Coefficients_Barplot_S001S745_ERX616976_GRCh38_hotspot_peaks_20150709_chr1_TEPIC_06_08_17_15_34_52_Decay_Affinity_Gene_View_Filtered_Integrated.png)
+![invoke heatmap](TEPIC_out/INVOKE/Learning_Results/Coefficients_Heatmap_S001S745_ERX616976_GRCh38_hotspot_peaks_20150709_chr1_TEPIC_06_08_17_15_34_52_Decay_Affinity_Gene_View_Filtered_Integrated.png)
+*Here we could use our binding data to pretend pre-computed TEPIC affinities*
+
+### EPIC-DREM
+  It is more of a description on how to combine TEPIC with DREM, shortly TEPIC 
+  is used to infer motifs activities or binding which are then fed to DREM 
+  together with expression data.
+
+### DREM
+Inputs:
+
+  + TF - gene interaction matrix, can be either binary or not
+  + gene expression
+
+Modeling procedure:
+
+  + Uses an input–output hidden Markov model to represent a temporal  mapping 
+    from binding data to observed temporal expression profiles. This is achieved 
+    by focusing on *bifurcation events*. The goal of the method is to detect 
+    these bifurcation events and explain them in terms of regulation by TFs.
+    In HMMs as well as IOHMMs, hidden states are used to group genes by 
+    associating a cluster with each path through the hidden states over time. 
+
+Output:
+
+  + DREM2 is run through graphical user interface, it can be run in a batch mode
+    but the output model is not as easy to understand right away. I've look for
+    some description on this but could not find any.
+  + Main output includes expression profiles plot with important TFs marked at
+    the bifurcation points.
+    
+![DREM output](drem2/mapHeat.png)
+    
+## ISMARA (new MARA)
+This tool is only available via webinterface so I do not describe it here. Here
+is the webpage https://ismara.unibas.ch/mara and some example results
+https://ismara.unibas.ch/supp/dataset1_IBM_v2/averaged_replicates/averaged_report.
+
+*Here we could directly use our binding data!*
+    
+    
+    
+    
+    
+    
+    
+    
+    
