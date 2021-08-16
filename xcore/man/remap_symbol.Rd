@@ -13,7 +13,7 @@ remap_symbol
 }
 \description{
 An matrix describing interactions between ReMap2020's ChIP-seq tracks
-and human genes (hg38) as defined by \code{\link{promoters}}. The interaction score
+and human genes (hg38) as defined by \code{\link{promoters_f5}}. The interaction score
 for each gene and transcription factor is a sum of transcription factor occurences
 in the gene promoter. Promoters were assigned to thier target genes based on gene symbols.
 }

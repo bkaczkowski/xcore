@@ -1,0 +1,1294 @@
+---
+title: "Deeper look into the 'signatures'"
+author: "Maciej Migdał"
+output: pdf_document
+params:
+  promoters_ann: promoters_f5
+  annotation_name: FANTOM5
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+devtools::load_all()
+library(data.table)
+
+promoters_ann <- get0(params$promoters_ann)
+
+stopifnot(
+  all(c(
+    "SYMBOL",
+    "gene_type_gencode",
+    "score",
+    "name",
+    "tau",
+    "protein_atlas_tissue_specificity",
+    "encode_blacklist",
+    "ensembl_sm"
+  ) %in% colnames(GenomicRanges::mcols(promoters_ann)))
+)
+```
+
+# Technical biases and noise vs biological signal.
+
+Based on the Bogumil's observation that some promoters always give a signal
+regardless on the transcription factor we look at. As well as, some TF gives 
+signal regardless of the promoter we look at. We set out with an exploratory 
+data analysis on the ReMap2020 and ChIP-Atlas data sets.
+
+## Looking at promoter TF interaction matrix row wise (promoter wise)
+
+ReMap2020 and ChIP-Atlas were intersected with FANTOM5 promoters into 
+interaction matrices with ChIP-seq experiment as a columns and promoters as a
+row names. Overall our data included `r nrow(remap_promoters)` promoters and
+`r ncol(remap_promoters)`, `r ncol(chip_atlas_promoters)` ChIP-seq experiments
+for ReMap2020, ChIP-Atlas respectively.
+
+To look deeper into those data sets, first we have limited our analysis to 
+core promoters defined as promoters associated with a protein coding gene (as
+per GENCODE 38) and supported by ENCODE ROADMAP data. Finally, we select one
+promoter per associated gene that have maximum FANTOM5 score.
+   
+```{r core_promoters}
+# only protein coding genes as per GENCODE annotation
+promoters_ann_core <- 
+    promoters_ann[promoters_ann$gene_type_gencode == "protein_coding", ]
+
+# ENCODE ROADMAP confirmation
+roadmap_promoters <- rtracklayer::import.bed(
+    con = system.file(
+        "inst",
+        "extdata",
+        "Epigenome5DRoadmapDHS_promoter_hg38_liftOver.bed",
+        package = "xcore"
+    )
+)
+GenomeInfoDb::seqlevels(roadmap_promoters, pruning.mode = "coarse") <-
+    GenomeInfoDb::seqlevels(promoters_ann_core)
+promoters_ann_core <- intersectGR(promoters_ann_core, roadmap_promoters)
+
+# Select best promoter per gene
+best_promoters <- GenomicRanges::mcols(promoters_ann_core) %>%
+    as.data.frame() %>%
+    dplyr::group_by(SYMBOL) %>%
+    dplyr::slice(which.max(score)) %>%
+    dplyr::pull(name)
+promoters_ann_core <-
+    promoters_ann_core[promoters_ann_core$name %in% best_promoters, ]
+
+# restrict interaction matrices to core promoters only
+remap_promoters_core <- remap_promoters[promoters_ann_core$name, ]
+chip_atlas_promoters_core <- chip_atlas_promoters[promoters_ann_core$name, ]
+```
+
+This give us an interaction matrix with `r nrow(remap_promoters_core)` promoters
+(rows) and `r ncol(remap_promoters_core)`, `r ncol(chip_atlas_promoters_core)` 
+ChIP-seq experiments (columns) for ReMap2020, ChIP-Atlas respectively.
+
+### Promoter coverage
+
+For each promoter we calculate coverage which is equal to the number
+of ChIP-seq experiment the promoter intersect with.
+
+```{r promoters_coverage}
+# remap
+promoters_ann_core$remap_coverage <- remap_promoters_core %>% Matrix::rowSums()
+# chip_atlas
+promoters_ann_core$chip_atlas_coverage <- chip_atlas_promoters_core %>% Matrix::rowSums()
+```
+
+```{r promoters_coverage_hist}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+
+# Promoter coverage histogram
+plotHistogram(x = promoters_ann_core$remap_coverage,
+             main = "ReMap2020 promoter coverage")
+plotHistogram(x = promoters_ann_core$chip_atlas_coverage, 
+             main = "ChIP-Atlas promoter coverage")
+```
+
+For some promoters we observe no coverage at all:
+`r sum(promoters_ann_core$remap_coverage == 0)`,
+`r sum(promoters_ann_core$chip_atlas_coverage == 0)`
+for ReMap2020, ChIP-Atlas respectively.
+
+
+### Protein Atlas gene specificity classification
+
+We investigate promoters coverage by looking at their target genes 
+classification in terms of tissue/cell type specificity as defined by Protein 
+Atlas.
+
+> The RNA specificity category is based on mRNA expression levels in a 
+combination of data from HPA, GTEX and FANTOM5. The categories include: tissue enriched, group enriched, tissue enhanced, low tissue specificity and not 
+detected.
+
+>
++ Enriched - NX level in a particular tissue/region/cell type at least four 
+times any other tissue/cell type.
++ Group enriched - NX levels of a group (2-5 tissues or 2-10 cell types) at 
+least four times any other tissue/cell type.
++ Enhanced - NX levels of a group (1-5 tissues or 1-10 cell types) at least four 
+times the mean of other tissue/cell types.
++ Low specificity - NX >= 1 in at least one tissue/cell type but not elevated in 
+any tissue/cell type.
++ Not detected - NX < 1 in all tissue/cell types.
+
+[Protein Atlas](https://www.proteinatlas.org/about/assays+annotation#classification_rna)
+
+```{r protein_atlas_promoters}
+# RNA tissue specificity
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+ymax <-
+  max(promoters_ann_core$remap_coverage,
+      promoters_ann_core$chip_atlas_coverage)
+graphics::boxplot(remap_coverage ~ protein_atlas_cell_specificity, 
+                  data = promoters_ann_core,
+                  ylim = c(0, ymax),
+                  main = "ReMap2020",
+                  ylab = "promoter coverage",
+                  xlab = "",
+                  las=2,
+                  cex.names = 0.4)
+graphics::boxplot(chip_atlas_coverage ~ protein_atlas_cell_specificity, 
+                  data = promoters_ann_core,
+                  ylim = c(0, ymax),
+                  main = "ChIP-Atlas",
+                  ylab = "promoter coverage",
+                  xlab = "",
+                  las=2,
+                  cex.names = 0.4)
+mtext(
+  "Protein Atlas tissue specificity",
+  side = 3,
+  outer = TRUE,
+  line = -2,
+  font = 2,
+  cex = 1.2
+)
+```
+
+### Promoter tissue specificity
+
+To generalize the idea of promoter tissue/cell type specificity to promoters 
+outside Protein Atlas annotation we define specificity score based on the 
+FANTOM5 CAGE data.
+
+The  can be defined in multiple ways. Here we calculate expression based 
+specificity score using $\tau$ metric defined as
+
+$\tau = \frac{\sum_{i=1}^{n} (1-\hat{x_i})}{n-1}; \hat{x_i} = \frac{x_i}{max(x)}$
+
+Tau varies from 0 to 1, where 0 means broadly expressed, and 1 is specific.
+
+[reference](https://academic.oup.com/bib/article/18/2/205/2562739#119555186).
+
+```{r promoter_f5_specificity_boxplot}
+graphics::boxplot(tau ~ protein_atlas_tissue_specificity, 
+                  data = promoters_ann_core,
+                  main = "Tau vs Protein Atlass classififcation",
+                  ylab = expression(tau),
+                  xlab = "",
+                  cex.axis = 0.8)
+```
+
+
+```{r promoters_f5_tau_hist}
+plotHistogram(x = promoters_ann_core$tau,
+             main = expression(paste("core promoters ", tau, " distribution")))
+```
+
+```{r promoter_f5_specificity_scatter}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s", mgp=c(2,1,0))
+with(
+  as.data.frame(promoters_ann_core),
+  graphics::smoothScatter(
+    x = remap_coverage,
+    y = tau,
+    main = sprintf(
+      "ReMap2020\nSpearman: %f",
+      cor(x = remap_coverage,
+          y = tau,
+          method = "spearman")
+    ),
+    ylab = expression(tau),
+    xlab = "promoter coverage"
+  )
+)
+with(
+  as.data.frame(promoters_ann_core),
+  graphics::smoothScatter(
+    x = chip_atlas_coverage,
+    y = tau,
+    main = sprintf(
+      "ChIP-Atlas\nSpearman: %f",
+      cor(x = chip_atlas_coverage,
+          y = tau,
+          method = "spearman")
+    ),
+    ylab = expression(tau),
+    xlab = "promoter coverage"
+  )
+)
+mtext(
+  "Promoter coverage vs tau",
+  side = 3,
+  outer = TRUE,
+  line = -2,
+  font = 2,
+  cex = 1.2
+)
+```
+
+### ENCODE blacklist
+
+We investigate promoters coverage by overlapping the promoters with ENCODE's 
+list of blacklisted regions.
+
+>  ENCODE blacklist is a comprehensive set of regions in the human and other 
+genomes that have anomalous, unstructured, or high signal in next-generation 
+sequencing experiments independent of cell line or experiment. The removal of 
+the ENCODE blacklist is an essential quality measure when analyzing functional 
+genomics data.
+[ENCODE blacklist](https://github.com/Boyle-Lab/Blacklist)
+
+```{r blacklisted_promoters}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+ymax <-
+  max(promoters_ann_core$remap_coverage,
+      promoters_ann_core$chip_atlas_coverage)
+with(
+  as.data.frame(promoters_ann_core),
+  boxplot(
+    remap_coverage[encode_blacklist],
+    remap_coverage[!encode_blacklist],
+    names = c(sprintf(
+      "blacklisted (%i)", sum(encode_blacklist)
+    ),
+    sprintf("other (%i)", sum(!encode_blacklist))),
+    ylim = c(0, ymax),
+    main = "ReMap2020",
+    ylab = "promoter coverage"
+  )
+)
+with(
+  as.data.frame(promoters_ann_core),
+  boxplot(
+    chip_atlas_coverage[encode_blacklist],
+    chip_atlas_coverage[!encode_blacklist],
+    names = c(sprintf(
+      "blacklisted (%i)", sum(encode_blacklist)
+    ),
+    sprintf("other (%i)", sum(!encode_blacklist))),
+    ylim = c(0, ymax),
+    main = "ChIP-Atlas",
+    ylab = "promoter coverage"
+  )
+)
+mtext(
+  "ENCODE blacklisted regions",
+  side = 3,
+  outer = TRUE,
+  line = -2,
+  font = 2,
+  cex = 1.2
+)
+```
+
+### Promoters score (width) vs coverage
+
+We investigate promoters coverage by looking at the relations between promoter
+coverage and score, or width.
+
+```{r promoter_score_length}
+# Promoters coverage vs score
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+graphics::smoothScatter(
+     x = promoters_ann_core$remap_coverage,
+     y = log10(promoters_ann_core$score),
+     main = sprintf("ReMap2020\nSpearman: %f",
+                    cor(x = promoters_ann_core$remap_coverage,
+                        y = log10(promoters_ann_core$score),
+                        method = "spearman")),
+     xlab = "promoter coverage",
+     ylab = "log10(promoter score)")
+graphics::smoothScatter(
+     x = promoters_ann_core$chip_atlas_coverage,
+     y = log10(promoters_ann_core$score),
+     main = sprintf("ChIP-Atlas\nSpearman: %f",
+                    cor(x = promoters_ann_core$chip_atlas_coverage,
+                        y = log10(promoters_ann_core$score),
+                        method = "spearman")),
+     xlab = "promoter coverage",
+     ylab = "log10(promoter score)")
+mtext(
+  "Promoter coverage vs promoter score",
+  side = 3,
+  outer = TRUE,
+  line = -2,
+  font = 2,
+  cex = 1.2
+)
+
+# Promoters coverage vs width
+graphics::smoothScatter(
+     x = promoters_ann_core$remap_coverage,
+     y = GenomicRanges::width(promoters_ann_core),
+     main = sprintf("ReMap2020\nSpearman: %f",
+                    cor(x = promoters_ann_core$remap_coverage,
+                        y = GenomicRanges::width(promoters_ann_core),
+                        method = "spearman")),
+     xlab = "promoter coverage",
+     ylab = "promoter width")
+graphics::smoothScatter(
+     x = promoters_ann_core$chip_atlas_coverage,
+     y = GenomicRanges::width(promoters_ann_core),
+     main = sprintf("ChIP-Atlas\nSpearman: %f",
+                    cor(x = promoters_ann_core$chip_atlas_coverage,
+                        y = GenomicRanges::width(promoters_ann_core),
+                        method = "spearman")),
+     xlab = "promoter coverage",
+     ylab = "promoter width")
+mtext(
+  "Promoter coverage vs promoter width",
+  side = 3,
+  outer = TRUE,
+  line = -2,
+  font = 2,
+  cex = 1.2
+)
+```
+
+## Looking at promoter TF interaction matrix column wise (TF wise)
+
+### TF overlapp between ReMap2020 and ChIP-Atlas
+
+```{r}
+# ReMap2020
+table((remap_meta$tf %in% chip_atlas_meta$tf)) %>%
+  `/`(length(remap_meta$tf)) %>% 
+  data.frame() %>% 
+  dplyr::rename(TF = Var1) %>% 
+  dplyr::mutate(TF = c("not included in ChIP-Atlas", "included in ChIP-Atlas")) %>%
+  knitr::kable(caption = "ReMap2020 TF")
+
+table(unique(remap_meta$tf) %in% unique(chip_atlas_meta$tf)) %>%
+  `/`(length(unique(remap_meta$tf))) %>% 
+  data.frame() %>% 
+  dplyr::rename(TF = Var1) %>% 
+  dplyr::mutate(TF = c("not included in ChIP-Atlas", "included in ChIP-Atlas")) %>%
+  knitr::kable(caption = "ReMap2020 unique TF")
+
+remap_meta$tf[! remap_meta$tf %in% chip_atlas_meta$tf] %>%
+  table() %>%
+  as.numeric() %>%
+  plotHistogram(breaks = "Sturges", 
+               main = "ReMap2020 TF not included in ChIP-Atlas")
+
+# ChIP-Atlas
+table((chip_atlas_meta$tf %in% remap_meta$tf)) %>%
+  `/`(length(chip_atlas_meta$tf)) %>% 
+  data.frame() %>% 
+  dplyr::rename(TF = Var1) %>% 
+  dplyr::mutate(TF = c("not included in ReMap2020", "included in ReMap2020")) %>%
+  knitr::kable(caption = "ChIP-Atlas TF")
+
+table(unique(chip_atlas_meta$tf) %in% unique(remap_meta$tf)) %>%
+  `/`(length(unique(chip_atlas_meta$tf))) %>% 
+  data.frame() %>% 
+  dplyr::rename(TF = Var1) %>% 
+  dplyr::mutate(TF = c("not included in ChIP-Atlas", "included in ChIP-Atlas")) %>%
+  knitr::kable(caption = "ChIP-Atlas unique TF")
+
+chip_atlas_meta$tf[! chip_atlas_meta$tf %in% remap_meta$tf] %>%
+  table() %>%
+  as.numeric() %>%
+  plotHistogram(breaks = "Sturges", 
+               main = "ChIP-Atlas TF not included in ChIP-Atlas")
+```
+
+```{r}
+remap_meta[, coverage := Matrix::colSums(remap_promoters_core[, id])]
+chip_atlas_meta[, coverage := Matrix::colSums(chip_atlas_promoters_core[, id])]
+```
+
+For the basic analysis we have focused only on subset of ReMap2020 and 
+ChIP-Atlas. Choosing only experiments that overlap more than 1% of 
+core promoters. Additionally for ReMap2020 we took only experiments without 
+condition or treatment label.
+
+Further we focused only on TF with >= 10 experiments and for ReMap2020 biotypes 
+with >= 29 experiments, excluding the "breast" and "liver" biotypes, and for
+ChIP-Atlas biotypes with >= 50 experiments, excluding the "Breast.cancer.cells", 
+"Breast.cancer", "Prostate", "Lymphoblastoid.cell.line", "Macrophages".
+
+```{r}
+# ReMap2020
+remap_meta_core <- remap_meta[(coverage >= (nrow(remap_promoters_core) * 0.01)) &
+                                (condition == "")]
+
+sel_tf <- remap_meta_core$tf %>% 
+  table() %>% 
+  `[`(. >= 10) %>% 
+  names()
+remap_meta_core <- remap_meta_core[tf %in% sel_tf]
+
+sel_biotypes <- remap_meta_core$biotype %>% 
+  table() %>% 
+  `[`(. >= 29) %>% 
+  names() %>%
+  `[`(! . %in% c("breast", "liver"))
+remap_meta_core <- remap_meta_core[biotype %in% sel_biotypes]
+
+# annotate coverage
+remap_meta_core[, cov_type := cut(
+  coverage,
+  breaks = c(0, quantile(coverage, 0.25), quantile(coverage, 0.75), Inf),
+  labels = c("low", "medium", "high")
+)]
+
+# ChIP-Atlas
+chip_atlas_meta_core <- 
+  chip_atlas_meta[coverage >= (nrow(remap_promoters_core) * 0.01)]
+
+sel_tf <- chip_atlas_meta_core$tf %>% 
+  table() %>% 
+  `[`(. >= 10) %>% 
+  names()
+chip_atlas_meta_core <- chip_atlas_meta_core[tf %in% sel_tf]
+
+sel_biotypes <- chip_atlas_meta_core$biotype %>% 
+  table() %>% 
+  `[`(. >= 50) %>% 
+  names() %>%
+  `[`(! . %in% c("Breast.cancer.cells", "Breast.cancer", "Prostate", "Lymphoblastoid.cell.line", "Macrophages"))
+chip_atlas_meta_core <- chip_atlas_meta_core[biotype %in% sel_biotypes]
+
+# annotate coverage
+chip_atlas_meta_core[, cov_type := cut(
+  coverage,
+  breaks = c(0, quantile(coverage, 0.25), quantile(coverage, 0.75), Inf),
+  labels = c("low", "medium", "high")
+)]
+```
+
+```{r}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+plotHistogram(remap_meta_core$coverage, 
+              main = "ReMap2020")
+plotHistogram(chip_atlas_meta_core$coverage, 
+              main = "ChIP-Atlas")
+mtext(
+  "Selected experiment's coverage",
+  side = 3,
+  outer = TRUE,
+  line = -2,
+  font = 2,
+  cex = 1.2
+)
+```
+
+### TF / biotype confusion matrix
+
+```{r tf_bg_confusion_matrix_remap, echo=FALSE}
+remap_tfs_tab <-
+  data.table::dcast(data = remap_meta_core,
+                    formula = biotype ~ tf,
+                    fun = length)
+ord <- c(1, order(remap_tfs_tab[, -1] %>% colSums(), decreasing = TRUE) + 1)
+data.table::setcolorder(remap_tfs_tab, ord)
+remap_tfs_tab[, .r := -rowSums(remap_tfs_tab[, -1])]
+data.table::setorder(remap_tfs_tab, .r)[, .r := NULL]
+
+knitr::kable(remap_tfs_tab[, 1:11], caption = "ReMap TF/biotype matrix, top 10 TF")
+```
+
+```{r tf_bg_confusion_matrix_chip_atlas, echo=FALSE}
+chip_atlas_tfs_tab <-
+  data.table::dcast(data = chip_atlas_meta_core,
+                    formula = biotype ~ tf,
+                    fun = length)
+ord <- c(1, order(chip_atlas_tfs_tab[, -1] %>% colSums(), decreasing = TRUE) + 1)
+data.table::setcolorder(chip_atlas_tfs_tab, ord)
+chip_atlas_tfs_tab[, .r := -rowSums(chip_atlas_tfs_tab[, -1])]
+data.table::setorder(chip_atlas_tfs_tab, .r)[, .r := NULL]
+
+knitr::kable(chip_atlas_tfs_tab[, 1:11], caption = "ChIP-Atlas TF/biotype matrix, top 10 TF")
+```
+
+## Choosing distance measure
+In order to select a distance measure that would best describe associations
+between experiments, we have looked into several distance measures: Phi 
+(which we approximate with Pearson's), Gower, Jaccard, Dice, Yule, Russel, 
+Tanimoto. In order to select one we wanted to maximize the difference between
+mean distance between the same TF and different TF.
+
+The selection was done using core ReMap2020.
+
+Outliers were not marked on plots.
+
+```{r select_distance_measure}
+mat <- remap_promoters_core[, remap_meta_core[, id]] %>% as.matrix()
+
+getDists <- function(mat, patterns, invert=FALSE) {
+  sapply(
+    X = patterns, 
+    function(x) {
+      m_row <- grep(x, rownames(mat), value = TRUE)
+      m_col <- grep(x, colnames(mat), value = TRUE, invert = invert)
+      sel_cor_mat <- mat[m_row, m_col]
+      sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+    })
+}
+
+compDists <- function(D, Dnames, patterns) {
+  Ds <- lapply(
+    X = seq_along(D),
+    FUN = function(i) {
+      same_tf <- data.frame(metric = Dnames[i], 
+                            val = unlist(getDists(D[[i]], patterns)),
+                            type = "same")                
+      diff_tf <- data.frame(metric = Dnames[i],
+                            val = unlist(getDists(D[[i]], patterns, invert=TRUE)),
+                            type = "diff.")
+      rbind(same_tf, diff_tf)
+    }
+  ) %>% do.call(what = rbind)
+}
+
+# pearson approximates phi coefficient
+d_pearson <- (1 - cor(mat, method = "pearson")) / 2
+# d_binary <- dist(t(mat), method = "binary") %>% as.matrix() equivalent to jaccard
+d_gower <- cluster::daisy(t(mat), metric = "gower", warnType = FALSE) %>% as.matrix()
+d_jaccard <- proxy::dist(x = mat, 
+                         method = "Jaccard", 
+                         by_rows = FALSE, 
+                         convert_similarities = TRUE) %>% as.matrix()
+d_dice <- proxy::dist(x = mat, 
+                         method = "Dice", 
+                         by_rows = FALSE, 
+                         convert_similarities = TRUE) %>% as.matrix()
+# here it gives distance but it actuall varies from -1 to + 1 so I could plot it on heatmap
+d_yule <- proxy::dist(x = mat, 
+                      method = "Yule", 
+                      by_rows = FALSE, 
+                      convert_similarities = TRUE) %>% as.matrix()
+d_russel <- proxy::dist(x = mat, 
+                         method = "Russel", 
+                         by_rows = FALSE, 
+                         convert_similarities = TRUE) %>% as.matrix()
+d_tanimoto <- proxy::dist(x = mat, 
+                         method = "Tanimoto", 
+                         by_rows = FALSE, 
+                         convert_similarities = TRUE) %>% as.matrix()
+
+d_comparison <- compDists(
+  list(d_pearson, d_gower, d_jaccard, d_dice, d_yule, d_russel, d_tanimoto), 
+  c("Phi", "Gower", "Jaccard", "Dice", "Yule", "Russel", "Tanimoto"), 
+  remap_meta_core[, unique(tf)])
+par(mar = c(10, 4, 4, 1))
+boxplot(val ~ type + metric, 
+        data = d_comparison,
+        sep = " ", 
+        las=2,
+        ylim = c(0, 1),
+        outline = FALSE,
+        main = "Distances between experiments grouped by TF",
+        ylab = "distance",
+        xlab = "")
+
+d_comparison %>%
+  dplyr::group_by(type, metric) %>%
+  dplyr::summarise(mean = mean(val)) %>%
+  dplyr::group_by(metric) %>%
+  dplyr::summarise(dAve = abs(mean[1] - mean[2])) %>%
+  knitr::kable(col.names = c("Distance metric", "$\\Delta Average$"), 
+               caption = "Difference between mean distance between same and different TF groups",
+               escape = FALSE)
+```
+
+Explore Yule's coefficient of colligation
+
+```{r}
+par(mfrow = c(1, 3), cex = 0.7, pty = "s")
+
+# tf
+same_tf_cor <- getDists(d_yule, remap_meta_core[, unique(tf)]) %>% 
+  unlist()
+diff_tf_cor <- getDists(d_yule, remap_meta_core[, unique(tf)], invert = TRUE) %>% 
+  unlist()
+boxplot(
+  same_tf_cor, 
+  diff_tf_cor, 
+  names = c(sprintf("same (%i)", length(same_tf_cor)),
+            sprintf("different (%i)", length(diff_tf_cor))),
+  ylim = c(0, 1),
+  outline = FALSE,
+  main = "Grouped by TF",
+  ylab = "Yule's distance")
+
+# biotype
+same_bio_cor <- getDists(d_yule, remap_meta_core[, unique(biotype)]) %>%
+  unlist()
+diff_bio_cor <- getDists(d_yule, remap_meta_core[, unique(biotype)], invert = TRUE) %>%
+  unlist()
+boxplot(
+  same_bio_cor, diff_bio_cor, 
+  names = c(sprintf("same (%i)", length(same_bio_cor)),
+            sprintf("different (%i)", length(diff_bio_cor))),
+  ylim = c(0, 1),
+  outline = FALSE,
+  main = "Grouped by biotype",
+  ylab = "Yule's distance")
+
+# study
+# TODO make it work on metadata
+rownames(d_yule) <- paste0(rownames(d_yule), "=", remap_meta_core[, study])
+colnames(d_yule) <- paste0(colnames(d_yule), "=", remap_meta_core[, study]) 
+same_study_cor <- getDists(d_yule, remap_meta_core[, unique(study)]) %>%
+  unlist()
+diff_sutdy_cor <- getDists(d_yule, remap_meta_core[, unique(study)], invert = TRUE) %>%
+  unlist()
+rownames(d_yule) <- sub("=.*", "", rownames(d_yule))
+colnames(d_yule) <- sub("=.*", "", colnames(d_yule))
+
+boxplot(
+  same_study_cor, diff_sutdy_cor, 
+  names = c(sprintf("same (%i)", length(same_study_cor)),
+            sprintf("different (%i)", length(diff_sutdy_cor))),
+  ylim = c(0, 1),
+  outline = FALSE,
+  main = "Grouped by study",
+  ylab = "Yule's distance")
+
+mtext(
+  "Yule's distance between experiments",
+  side = 3,
+  outer = TRUE,
+  line = -2,
+  font = 2,
+  cex = 1.2)
+```
+
+### MYC
+
+```{r}
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7, 
+    name = "RdYlBu"))
+  )(length(breaks))
+  
+m <- remap_meta_core[tf == "MYC", id]
+mat <- d_yule[m, m]
+plotExperimentsHeatmap(
+  mat = 1 - (2 * mat),
+  meta = remap_meta_core[tf == "MYC", -c("tf", "condition", "tf_dbd")],
+  clustering_distance_rows = as.dist(mat),
+  clustering_distance_cols = as.dist(mat),
+  clustering_method = "ward.D2",
+  breaks = breaks,
+  color = color,
+  labels_row = remap_meta_core[tf == "MYC", biotype],
+  labels_col = remap_meta_core[tf == "MYC", biotype],
+  main = "MYC experiments Yule's Y coefficient")
+```
+
+### MAX
+
+```{r}
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7, 
+    name = "RdYlBu"))
+  )(length(breaks))
+
+m <- remap_meta_core[tf == "MAX", id]
+mat <- d_yule[m, m]
+plotExperimentsHeatmap(
+  mat =  1 - (2 * mat),
+  meta = remap_meta_core[tf == "MAX", -c("tf", "condition", "tf_dbd")],
+  clustering_distance_rows = as.dist(mat),
+  clustering_distance_cols = as.dist(mat),
+  clustering_method = "ward.D2",
+  breaks = breaks,
+  color = color,
+  labels_row = remap_meta_core[tf == "MAX", biotype],
+  labels_col = remap_meta_core[tf == "MAX", biotype],
+  main = "MAX experiments Yule's Y coefficient")
+```
+
+### HDAC2
+
+```{r}
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7, 
+    name = "RdYlBu"))
+  )(length(breaks))
+
+m <- remap_meta_core[tf == "HDAC2", id]
+mat <- d_yule[m, m]
+plotExperimentsHeatmap(
+  mat = 1 - (2 * mat),
+  meta = remap_meta_core[tf == "HDAC2", -c("tf", "condition", "tf_dbd")],
+  clustering_distance_rows = as.dist(mat),
+  clustering_distance_cols = as.dist(mat),
+  clustering_method = "ward.D2",
+  breaks = breaks,
+  color = color,
+  labels_row = remap_meta_core[tf == "HDAC2", biotype],
+  labels_col = remap_meta_core[tf == "HDAC2", biotype],
+  main = "HDAC2 experiments Yule's Y coefficient")
+```
+
+### FOXA1
+
+```{r}
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7, 
+    name = "RdYlBu"))
+  )(length(breaks))
+
+m <- remap_meta_core[tf == "FOXA1", id]
+mat <- d_yule[m, m]
+plotExperimentsHeatmap(
+  mat = 1 - (2 * mat),
+  meta = remap_meta_core[tf == "FOXA1", -c("tf", "condition", "tf_dbd")],
+  clustering_distance_rows = as.dist(mat),
+  clustering_distance_cols = as.dist(mat),
+  clustering_method = "ward.D2",
+  breaks = breaks,
+  color = color,
+  labels_row = remap_meta_core[tf == "FOXA1", biotype],
+  labels_col = remap_meta_core[tf == "FOXA1", biotype],
+  main = "FOXA1 experiments Yule's Y association")
+```
+
+### REST
+
+```{r}
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7, 
+    name = "RdYlBu"))
+  )(length(breaks))
+
+m <- remap_meta_core[tf == "REST", id]
+mat <- d_yule[m, m]
+plotExperimentsHeatmap(
+  mat = 1 - (2 * mat),
+  meta = remap_meta_core[tf == "REST", -c("tf", "condition", "tf_dbd")],
+  clustering_distance_rows = as.dist(mat),
+  clustering_distance_cols = as.dist(mat),
+  clustering_method = "ward.D2",
+  breaks = breaks,
+  color = color,
+  labels_row = remap_meta_core[tf == "REST", biotype],
+  labels_col = remap_meta_core[tf == "REST", biotype],
+  main = "REST experiments Yule's Y association")
+```
+
+### Core experiments heatmap
+
+```{r include=FALSE, eval=FALSE}
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7, 
+    name = "RdYlBu"))
+  )(length(breaks))
+
+plotExperimentsHeatmap(
+  mat = 1 - (2 * d_yule),
+  meta = remap_meta_core[, -c("study", "condition")],
+  clustering_distance_rows = as.dist(d_yule),
+  clustering_distance_cols = as.dist(d_yule),
+  clustering_method = "ward.D2",
+  breaks = breaks,
+  color = color,
+  labels_row = remap_meta_core[, paste(tf, biotype)],
+  labels_col = remap_meta_core[, paste(tf, biotype)],
+  main = "Core experiments Yule's Y association")
+```
+
+## Yule's distance bulk calculation
+
+```{r eval=FALSE}
+# exclude experiments with coverage below 1% of core promoters
+
+j <- Matrix::colSums(remap_promoters_core) >= (length(promoters_ann_core) * 0.01)
+d_yule_remap <- proxy::dist(x = as.matrix(remap_promoters_core[, j]), 
+                         method = "Yule", 
+                         by_rows = FALSE, 
+                         convert_similarities = TRUE)
+save(d_yule_remap, file = "d_yule_remap.rda")
+
+j <- Matrix::colSums(chip_atlas_promoters_core) >= (length(promoters_ann_core) * 0.01)
+d_yule_chip_atlas <- proxy::dist(x = as.matrix(chip_atlas_promoters_core[, j]), 
+                         method = "Yule", 
+                         by_rows = FALSE, 
+                         convert_similarities = TRUE)
+save(d_yule_chip_atlas, file = "d_yule_chip_atlas.rda")
+```
+
+```{r}
+load(system.file("inst", "analysis", "d_yule_remap.rda", package = "xcore"))
+load(system.file("inst", "analysis", "d_yule_chip_atlas.rda", package = "xcore"))
+```
+
+## Clustering experiments
+
+### Hierarchical Clustering
+
+```{r}
+measureClust <- function(c1, hc, N) {
+  nclust_measure <- lapply(
+    X = N,
+    FUN = function(n) {
+      do.call(cbind,
+              aricode::clustComp(c1 = c1,
+                                 c2 = cutree(hc, n)))
+    }
+  )
+  do.call(rbind, nclust_measure)
+}
+
+plotMeasureClust <- function(n_cl, 
+                             cl_measure, 
+                             measure,
+                             ylim,
+                             pos = "topright",
+                             main = "",
+                             add_legend = TRUE) {
+  cols <- colorspace::qualitative_hcl(length(cl_measure))
+  plot(
+    x = NA,
+    y = NA,
+    main = main,
+    xlim = c(min(n_cl), max(n_cl)),
+    ylim = ylim,
+    xlab = "number of clusters",
+    ylab = measure
+  )
+  for (i in seq_along(cl_measure)) {
+    points(n_cl, cl_measure[[i]][, measure], col = cols[i], pch = i)
+  }
+  if (add_legend) {
+    legend(
+      pos,
+      legend = names(cl_measure),
+      col = cols,
+      pch = seq_along(cl_measure))
+  }
+}
+```
+
+### Linkage method choice
+
+```{r}
+nclust <- seq(from = 1, to = 400, by = 5)
+linkage_methods <- c("complete", "single", "ward.D", "ward.D2", "average", 
+                     "mcquitty", "median", "centroid")
+
+# ReMap2020
+id_core <- remap_meta_core[, id]
+d_core <- as.dist(as.matrix(d_yule_remap)[id_core, id_core])
+true_cl <- remap_meta_core[, tf]
+clust_measures <- lapply(
+  X = linkage_methods, 
+  FUN = function(m) {
+    hc <- hclust(d_core, method = m)
+    measureClust(true_cl, hc, nclust)
+  })
+names(clust_measures) <- linkage_methods
+
+par(mfrow = c(1, 2), oma = c(0, 0, 4, 0), cex = 0.7, pty = "s")
+plotMeasureClust(
+  nclust,
+  clust_measures,
+  "ARI",
+  ylim = c(0, 0.65),
+  pos = "topright",
+  main = "Adjusted Rand Index",
+  add_legend = FALSE
+)
+plotMeasureClust(
+  nclust,
+  clust_measures,
+  "AMI",
+  ylim = c(0, 0.8),
+  pos = "bottomright",
+  main = "Adjusted Mutual Information"
+)
+mtext(
+  "Hierarchical clustering performance\nfor different linkage methods\nReMap2020 core experiments",
+  side = 3,
+  outer = TRUE,
+  line = -1,
+  font = 2,
+  cex = 0.9
+)
+
+# ChIP-Atlas
+id_core <- chip_atlas_meta_core[, id]
+d_core <- as.dist(as.matrix(d_yule_chip_atlas)[id_core, id_core])
+true_cl <- chip_atlas_meta_core[, tf]
+clust_measures <- lapply(
+  X = linkage_methods, 
+  FUN = function(m) {
+    hc <- hclust(d_core, method = m)
+    measureClust(true_cl, hc, nclust)
+  })
+names(clust_measures) <- linkage_methods
+
+plotMeasureClust(
+  nclust,
+  clust_measures,
+  "ARI",
+  ylim = c(0, 0.65),
+  pos = "topright",
+  main = "Adjusted Rand Index"
+)
+plotMeasureClust(
+  nclust,
+  clust_measures,
+  "AMI",
+  ylim = c(0, 0.8),
+  pos = "bottomright",
+  main = "Adjusted Mutual Information"
+)
+mtext(
+  "Hierarchical clustering performance\nfor different linkage methods\nChIP-Atlas core experiments",
+  side = 3,
+  outer = TRUE,
+  line = -1,
+  font = 2,
+  cex = 0.9
+)
+```
+
+### clustering as compared to known labels
+
+```{r}
+nclust <- seq(from = 1, to = 400, by = 5)
+labels <- c("tf", "biotype", "study")
+
+# ReMap2020
+id_core <- remap_meta_core[, id]
+d_core <- as.dist(as.matrix(d_yule_remap)[id_core, id_core])
+labs_measure <- lapply(
+  X = labels, 
+  FUN = function(l) {
+    hc <- hclust(d_core, method = "ward.D2")
+    measureClust(remap_meta_core[[l]], hc, nclust)
+  })
+names(labs_measure) <- labels
+
+par(mfrow = c(1, 2), oma = c(0, 0, 3, 0), cex = 0.7, pty = "s")
+plotMeasureClust(
+  nclust,
+  labs_measure,
+  "ARI",
+  ylim = c(0, 0.65),
+  pos = "topright",
+  main = "Adjusted Rand Index"
+)
+plotMeasureClust(
+  nclust,
+  labs_measure,
+  "AMI",
+  ylim = c(0, 0.8),
+  pos = "bottomright",
+  main = "Adjusted Mutual Information"
+)
+mtext(
+  "Hierarchical clustering performance for different labels\nReMap2020 selected experiments",
+  side = 3,
+  outer = TRUE,
+  line = -1,
+  font = 2,
+  cex = 1
+)
+
+# ChIP-Atlas
+id_core <- chip_atlas_meta_core[, id]
+d_core <- as.dist(as.matrix(d_yule_chip_atlas)[id_core, id_core])
+labs_measure <- lapply(
+  X = labels, 
+  FUN = function(l) {
+    hc <- hclust(d_core, method = "ward.D2")
+    measureClust(chip_atlas_meta_core[[l]], hc, nclust)
+  })
+names(labs_measure) <- labels
+
+plotMeasureClust(
+  nclust,
+  labs_measure,
+  "ARI",
+  ylim = c(0, 0.65),
+  pos = "topright",
+  main = "Adjusted Rand Index"
+)
+plotMeasureClust(
+  nclust,
+  labs_measure,
+  "AMI",
+  ylim = c(0, 0.8),
+  pos = "bottomright",
+  main = "Adjusted Mutual Information"
+)
+mtext(
+  "Hierarchical clustering performance for different labels\nChIP-Atlas selected experiments",
+  side = 3,
+  outer = TRUE,
+  line = -1,
+  font = 2,
+  cex = 1
+)
+```
+
+### Partitioning Around Medoids
+
+```{r}
+nclust <- seq(from = 1, to = 400, by = 10)
+labels <- c("tf", "biotype", "study")
+
+# ReMap2020
+id_core <- remap_meta_core[, id]
+d_core <- as.dist(as.matrix(d_yule_remap)[id_core, id_core])
+
+cl_pam <- lapply(
+  X = nclust, 
+  FUN = function(i) {
+    cluster::pam(d_core, k = i, cluster.only = TRUE)
+  })
+cl_measure <- lapply(
+  X = labels, 
+  FUN = function(l) {
+    cbind(
+      ARI = sapply(cl_pam, aricode::ARI, c1 = remap_meta_core[[l]]),
+      AMI = sapply(cl_pam, aricode::AMI, c1 = remap_meta_core[[l]])
+    )
+  })
+names(cl_measure) <- labels
+
+par(mfrow = c(1, 2), oma = c(0, 0, 4, 0), cex = 0.7, pty = "s")
+plotMeasureClust(
+  nclust,
+  cl_measure,
+  "ARI",
+  ylim = c(0, 0.65),
+  pos = "topright",
+  main = "Adjusted Rand Index"
+)
+plotMeasureClust(
+  nclust,
+  cl_measure,
+  "AMI",
+  ylim = c(0, 0.8),
+  pos = "bottomright",
+  main = "Adjusted Mutual Information"
+)
+mtext(
+  "Partitioning Around Medoids clustering performance\nfor different labels\nReMap2020 selected experiments",
+  side = 3,
+  outer = TRUE,
+  line = -1,
+  font = 2,
+  cex = 1.2
+)
+
+# ChIP-Atlas
+# id_core <- chip_atlas_meta_core[, id]
+# d_core <- as.dist(as.matrix(d_yule_chip_atlas)[id_core, id_core])
+# 
+# cl_pam <- lapply(
+#   X = nclust,
+#   FUN = function(i) {
+#     cluster::pam(d_core, k = i, cluster.only = TRUE)
+#   })
+# cl_measure <- lapply(
+#   X = labels,
+#   FUN = function(l) {
+#     cbind(
+#       ARI = sapply(cl_pam, aricode::ARI, c1 = chip_atlas_meta_core[[l]]),
+#       AMI = sapply(cl_pam, aricode::AMI, c1 = chip_atlas_meta_core[[l]])
+#     )
+#   })
+# names(cl_measure) <- labels
+# 
+# plotMeasureClust(
+#   nclust,
+#   cl_measure,
+#   "ARI",
+#   ylim = c(0, 0.65),
+#   pos = "topright",
+#   main = "Adjusted Rand Index"
+# )
+# plotMeasureClust(
+#   nclust,
+#   cl_measure,
+#   "AMI",
+#   ylim = c(0, 0.8),
+#   pos = "bottomright",
+#   main = "Adjusted Mutual Information"
+# )
+# mtext(
+#   "Partitioning Around Medoids clustering performance\nfor different labels\nChIP-Atlas selected experiments",
+#   side = 3,
+#   outer = TRUE,
+#   line = -1,
+#   font = 2,
+#   cex = 1.2
+# )
+```
+
+## Experiment collapsing
+
+```{r eval=FALSE}
+# ReMap2020
+ids_remap <- labels(d_yule_remap)
+meta_remap <- remap_meta[id %in% ids_remap, ]
+hc_remap <- hclust(d_yule_remap, method = "ward.D2")
+ 
+# dynamic cut parameters selection
+res <- selectParams4dynamicTreeCut(
+  dendro = hc_remap, 
+  distM = as.matrix(d_yule_remap), 
+  ref_cl = meta_remap[["tf"]])
+res[res[, (AMI * ARI) == max(AMI * ARI)]]
+#    deepSplit cutHeight       ARI      AMI   N
+# 1:         1       2.5 0.4389195 0.730026 374
+
+cl_remap <- dynamicTreeCut::cutreeDynamic(
+  dendro = hc_remap,
+  cutHeight = 2.5,
+  minClusterSize = 3,
+  method = "hybrid",
+  distM = as.matrix(d_yule_remap),
+  deepSplit = 1,
+  pamStage = TRUE)
+
+remap_promoters_core_collapsed <- 
+  collapseInteractionMatrix(mat = remap_promoters_core[, ids_remap], 
+                            meta = meta_remap, 
+                            cl = cl_remap, 
+                            alpha = 0.5, # 0.5 corresponds to majority vote
+                            purity_feature = "tf", 
+                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
+save(remap_promoters_core_collapsed, file = "remap_promoters_core_collapsed.rda")
+
+remap_promoters_collapsed <- 
+  collapseInteractionMatrix(mat = remap_promoters[, ids_remap], 
+                            meta = meta_remap, 
+                            cl = cl_remap, 
+                            alpha = 0.5, # 0.5 corresponds to majority vote
+                            purity_feature = "tf", 
+                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
+save(remap_promoters_core_collapsed, file = "remap_promoters_collapsed.rda")
+
+meta_remap[, cluster := cl_remap]
+data.table::fwrite(meta_remap, file = "remap_metadata_clusters.csv")
+
+# ChIP-Atlas
+ids_chip_atlas <- labels(d_yule_chip_atlas)
+meta_chip_atlas <- chip_atlas_meta[id %in% ids_chip_atlas, ]
+hc_chip_atlas <- hclust(d_yule_chip_atlas, method = "ward.D2")
+ 
+# dynamic cut parameters selection
+res <- selectParams4dynamicTreeCut(
+  dendro = hc_chip_atlas, 
+  distM = as.matrix(d_yule_chip_atlas), 
+  ref_cl = meta_chip_atlas[["tf"]])
+res[res[, (AMI * ARI) == max(AMI * ARI)]]
+#    deepSplit cutHeight       ARI       AMI   N
+# 1:         2       5.7 0.5661968 0.7048017 377
+
+cl_chip_atlas <- dynamicTreeCut::cutreeDynamic(
+  dendro = hc_chip_atlas,
+  cutHeight = 5.7,
+  minClusterSize = 3,
+  method = "hybrid",
+  distM = as.matrix(d_yule_chip_atlas),
+  deepSplit = 2,
+  pamStage = TRUE)
+
+chip_atlas_promoters_core_collapsed <- 
+  collapseInteractionMatrix(mat = chip_atlas_promoters_core[, ids_chip_atlas], 
+                            meta = meta_chip_atlas, 
+                            cl = cl_chip_atlas, 
+                            alpha = 0.5, # 0.5 corresponds to majority vote
+                            purity_feature = "tf", 
+                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
+save(chip_atlas_promoters_core_collapsed, file = "chip_atlas_promoters_core_collapsed.rda")
+
+chip_atlas_promoters_collapsed <- 
+  collapseInteractionMatrix(mat = chip_atlas_promoters[, ids_chip_atlas], 
+                            meta = meta_chip_atlas, 
+                            cl = cl_chip_atlas, 
+                            alpha = 0.5, # 0.5 corresponds to majority vote
+                            purity_feature = "tf", 
+                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
+save(chip_atlas_promoters_core_collapsed, file = "chip_atlas_promoters_collapsed.rda")
+
+meta_chip_atlas[, cluster := cl_chip_atlas]
+data.table::fwrite(meta_chip_atlas, file = "chip_atlas_metadata_clusters.csv")
+```
+
+# Explore clustering and collapsed matrices
+
+```{r}
+meta_remap <- data.table::fread("remap_metadata_clusters.csv")
+meta_chip_atlas <- data.table::fread("chip_atlas_metadata_clusters.csv")
+
+remap_ncl <- meta_remap[, length(unique(cluster))]
+chip_atlas_ncl <- meta_chip_atlas[, length(unique(cluster))]
+
+par(mfrow = c(1, 2), oma = c(0, 0, 0, 0), cex = 0.7, pty = "s")
+plotHistogram(
+  x = meta_remap[, .N, by = cluster][["N"]], 
+  breaks = "scott", 
+  main = sprintf("ReMap2020 (# clusters: %i)", remap_ncl))
+plotHistogram(
+  x = meta_chip_atlas[, .N, by = cluster][["N"]], 
+  breaks = "scott", 
+  main = sprintf("ChIP-Atlas (# clusters: %i)", chip_atlas_ncl))
+mtext(
+  "Clusters size distribution",
+  side = 3,
+  outer = TRUE,
+  line = -4,
+  font = 2,
+  cex = 1.2
+)
+
+# purity_dt <- meta_remap[, .(
+#   tf_purity = vectorPurity(tf),
+#   biotype_purity = vectorPurity(biotype),
+#   study_purity = vectorPurity(study),
+#   dbd_purity = vectorPurity(tf_dbd),
+#   .N
+#   ),
+# by = cluster]
+# 
+# par(mfrow = c(1, 1), oma = c(0, 0, 0, 0), cex = 0.7, pty = "s")
+# 
+# # clustered by study?
+# plotSubtree(hc_remap, meta_remap[cluster == 92, ], "tf")
+# mtext("Cluster 92, clustering by study?")
+# plotSubtree(hc_remap, meta_remap[cluster == 175, ], "tf")
+# mtext("Cluster 175, clustering by study?")
+# 
+# # clustered by biotype?
+# plotSubtree(hc_remap, meta_remap[cluster == 46, ], "tf")
+# mtext("Cluster 46, clustering by biotye?")
+# plotSubtree(hc_remap, meta_remap[cluster == 110, ], "tf")
+# mtext("Cluster 110, clustering by biotype?")
+```

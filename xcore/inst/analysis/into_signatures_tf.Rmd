@@ -1,0 +1,929 @@
+---
+title: "Deeper look into the 'signatures'"
+author: "Maciej Migdał"
+output: pdf_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+
+devtools::load_all()
+library(data.table)
+```
+
+```{r functions_data, cache=TRUE, echo=FALSE, message=FALSE}
+# Internally used functions
+
+# Function return logical vector indicating columns populated in all rows
+# mat - object of class dgCMatrix with only 1 and 0 values
+getSharedColumns <- function(mat) {
+    stopifnot(is(mat, "dgCMatrix"))
+    stopifnot(nrow(mat) > 0)
+
+    Matrix::colSums(mat) == nrow(mat)
+}
+
+# Funtion return features from subject overlapped by query
+# where subject, query are GRanges objects
+# ... other arguments internally passed to GenomicRanges::findOverlaps
+intersectGr <- function(subject, query, drop.duplicates = TRUE, ...) {
+    stopifnot(is(subject, "GRanges"))
+    stopifnot(is(query, "GRanges"))
+
+    hits <- GenomicRanges::findOverlaps(query = query, subject = subject, ...)
+    i <- S4Vectors::subjectHits(hits)
+    
+    if (drop.duplicates) {
+      i <- i[! duplicated(i)]
+    }
+    
+    subject[i, ]
+}
+
+# Function returns all pairs of values in a vector; order in pair is not
+# considered relevant
+# x character vector of length > 1
+getSharedColumnsPairs <- function(mat) {
+    stopifnot(is(mat, "dgCMatrix"))
+    stopifnot(nrow(mat) > 0)
+    
+    indexes <- combn(x = seq(from = 1, to = nrow(mat)), 
+                     m = 2,
+                     simplify = FALSE)
+    vapply(X = indexes, 
+           function(i) sum(Matrix::colSums(mat[i, ]) == 2), 
+           FUN.VALUE = integer(1L))
+}
+
+# Function return summary as a string
+summaryString <- function(...) {
+    s <- summary(...)
+    snm <- names(s)
+    sval <- s %>% round(2) %>% as.character()
+    len <- vapply(X = seq_along(snm), 
+                  FUN = function(i) max(nchar(c(snm[i], sval[i]))) + 3L, 
+                  FUN.VALUE = integer(1L))
+    snm <- paste(vapply(
+        X = seq_along(snm),
+        FUN = function(i) stringr::str_pad(snm[i], len[i]),
+        FUN.VALUE = character(1L)
+        ), collapse = " ")
+    sval <- paste(vapply(
+        X = seq_along(sval),
+        FUN = function(i) stringr::str_pad(sval[i], len[i] + 2),
+        FUN.VALUE = character(1L)
+        ), collapse = " ")
+    paste0(snm, "\n", sval)
+}
+
+# Function calculates TF or Context coverage based on interaction matrix
+# col to use for grouping
+getCoverage <- function(mat, col = c(2, 3), sep = "\\.") {
+    n <- stringr::str_count(colnames(mat)[1], sep)
+    colnm <- colnames(mat) %>% 
+        gsub(pattern = paste(c("(.*)", rep(c(sep, "(.*)"), n)), collapse = ""),
+             replacement = paste0("\\", col))
+    DelayedArray::colsum(x = mat, group = colnm %>% as.factor()) %>%
+        `>`(1) %>%
+        rowSums()
+}
+
+# Function plot coverage histogram
+coverageHist<- function(x, breaks = 40, cex = 0.7, xlab = "", ...) {
+    par(mar = c(5, 5, 6, 2))
+    graphics::hist(x = x, 
+                   breaks = breaks,
+                   cex = 0.7,
+                   xlab = xlab,
+                   ...)
+    mtext(text = summaryString(x), 
+          side = 3,
+          cex=0.6)
+}
+
+# Function plot two group box plot
+blacklistBoxPlot <- function(coverage, cov_names, gr1, aname, bname, ...) {
+    blk <- coverage[cov_names %in% gr1]
+    nonblk <- coverage[! cov_names %in% gr1]
+    aname <- paste0(aname, " (%i)")
+    bname <- paste0(bname, " (%i)")
+
+    graphics::boxplot(blk, nonblk,
+                      names = c(sprintf(aname, length(blk)), 
+                                sprintf(bname, length(nonblk))),
+                      ...)
+}
+
+
+# tau calculation from on https://academic.oup.com/bib/article/18/2/205/2562739
+#Function require a vector with expression of one gene in different tissues.
+#If expression for one tissue is not known, gene specificity for this gene is NA
+#Minimum 2 tissues
+fTau <- function(x)
+{
+	if(all(!is.na(x)))
+ 	{
+ 		if(min(x, na.rm=TRUE) >= 0)
+		{
+ 			if(max(x)!=0)
+ 			{
+ 				x <- (1-(x/max(x)))
+ 				res <- sum(x, na.rm=TRUE)
+ 				res <- res/(length(x)-1)
+ 			} else {
+ 				res <- 0
+ 			}
+ 		} else {
+ 		res <- NA
+ 		#print("Expression values have to be positive!")
+ 		} 
+ 	} else {
+ 		res <- NA
+ 		#print("No data for this gene avalable.")
+ 	} 
+ 	return(res)
+}
+
+# Internally used datasets
+# ENCODE blacklist list 636 regions spanning ~7% of human genome
+blacklist <- rtracklayer::import(system.file("inst",
+                                             "extdata",
+                                             "hg38-blacklist.v2.bed.gz",
+                                             package = "xcore")) %>%
+    intersectGr(subject = c(xcore::promoters_f5, xcore::enhancers), 
+                type = "any") %>%
+    GenomicRanges::mcols() %>%
+    `[[`("name")
+    
+
+# ENSEMBL soft mask list 4725854 regions spanning ~50% of human genome
+ensembl_sm <- rtracklayer::import(system.file("inst",
+                                              "extdata",
+                                              "hg38_ensembl_sm.bed.gz",
+                                              package = "xcore")) %>%
+    intersectGr(subject = c(xcore::promoters_f5, xcore::enhancers), 
+                type = "any") %>%
+    GenomicRanges::mcols() %>%
+    `[[`("name")
+
+# Protein atlas
+protein_atlas <-
+    data.table::fread(
+        file = system.file("inst", "extdata", "proteinatlas.tsv.gz", package = "xcore"),
+        header = TRUE
+    )[! duplicated(Gene), ]
+
+# FANTOM5 promoter expression table
+# Matrix of promoters normalized expression across datasets in FANTOM5, 
+# column names are not imported!
+promoters_f5_expression <-
+    data.table::fread(
+        file = system.file("inst",
+                           "extdata",
+                           "hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz",
+                           package = "xcore"),
+        header = TRUE
+    )
+
+promoters_f5_expression <-
+    data.table::melt(data = promoters_f5_expression,
+                     id.vars = "00Annotation")
+promoters_f5_expression <- promoters_f5_expression[, .(
+                         mean = mean(value, na.rm = TRUE),
+                         min = min(value, na.rm = TRUE),
+                         max = max(value, na.rm = TRUE),
+                         sd = sd(value, na.rm = TRUE),
+                         tau = fTau(log(value + 1))
+                     ),
+                     by = "00Annotation"]
+
+# enhancers expression
+enhancers_f5_expression <-
+    data.table::fread(
+        file = system.file("inst",
+                           "extdata",
+                           "F5.hg38.enhancers.expression.tpm.matrix.gz",
+                           package = "xcore"),
+        header = TRUE
+    )
+
+enhancers_f5_expression <-
+    data.table::melt(data = enhancers_f5_expression,
+                     id.vars = "V1")
+enhancers_f5_expression <- enhancers_f5_expression[, .(
+                         mean = mean(value, na.rm = TRUE),
+                         min = min(value, na.rm = TRUE),
+                         max = max(value, na.rm = TRUE),
+                         sd = sd(value, na.rm = TRUE),
+                         tau = fTau(log(value + 1))
+                     ),
+                     by = "V1"]
+
+gc()
+```
+# Technical biases and noise vs biological signal.
+
+Based on the Bogumil's observation that some promoters always give a signal
+regardless on the transcription factor we look at. As well as, some TF gives 
+signal regardless of the promoter we look at. We set out with an exploratory 
+data analysis on the ReMap2020 and ChIP-Atlas data sets.
+
+## Looking at promoter TF interaction matrix row wise (promoter wise)
+
+ReMap2020 and ChIP-Atlas were intersected with FANTOM5 promoters into 
+interaction matrices with ChIP-seq experiment as a columns and promoters as a
+row names. Overall our data included `r nrow(remap_promoters)` promoters and
+`r ncol(remap_promoters)`, `r ncol(chip_atlas_promoters)` ChIP-seq experiments
+for ReMap2020, ChIP-Atlas respectively.
+
+To look deeper into those data sets, first we have limited our analysis to 
+core promoters defined as promoters associated with a protein coding gene (as
+per GENCODE 38) and supported by ENCODE ROADMAP data. Finally, we select one
+promoter per associated gene that have maximum FANTOM5 score.
+   
+```{r core_promoters, echo=FALSE}
+# only protein coding genes as per GENCODE annotation
+promoters_f5_core <- 
+    promoters_f5[promoters_f5$gene_type_gencode == "protein_coding", ]
+
+# ENCODE ROADMAP confirmation
+roadmap_promoters <- rtracklayer::import.bed(
+    con = system.file(
+        "inst",
+        "extdata",
+        "Epigenome5DRoadmapDHS_promoter_hg38_liftOver.bed",
+        package = "xcore"
+    )
+)
+GenomeInfoDb::seqlevels(roadmap_promoters, pruning.mode = "coarse") <-
+    GenomeInfoDb::seqlevels(promoters_f5_core)
+promoters_f5_core <- intersectGr(promoters_f5_core, roadmap_promoters)
+
+# Select best promoter per gene
+best_promoters <- GenomicRanges::mcols(promoters_f5_core) %>%
+    as.data.frame() %>%
+    dplyr::group_by(SYMBOL) %>%
+    dplyr::slice(which.max(score)) %>%
+    dplyr::pull(name)
+promoters_f5_core <-
+    promoters_f5_core[promoters_f5_core$name %in% best_promoters, ]
+
+# restrict interaction matrices to core promoters only
+remap_promoters_core <- remap_promoters[promoters_f5_core$name, ]
+chip_atlas_promoters_core <- chip_atlas_promoters[promoters_f5_core$name, ]
+```
+
+This give us an interaction matrix with `r nrow(remap_promoters_core)` promoters
+(rows) and `r ncol(remap_promoters_core)`, `r ncol(chip_atlas_promoters_core)` 
+ChIP-seq experiments (columns) for ReMap2020, ChIP-Atlas respectively.
+
+## Looking at promoter TF interaction matrix column wise (TF wise)
+
+```{r tf_coverage, echo=FALSE}
+# Functions
+# Function calculates between columns correlation over sparse matrix
+# Taken from https://stackoverflow.com/questions/5888287/running-cor-or-any-variant-over-a-sparse-matrix-in-r
+sparse.cor <- function(x){
+    n <- nrow(x)
+
+    cMeans <- Matrix::colMeans(x)
+    cSums <- Matrix::colSums(x)
+
+    # Calculate the population covariance matrix.
+    # There's no need to divide by (n-1) as the std. dev is also calculated the same way.
+    # The code is optimized to minize use of memory and expensive operations
+    covmat <- Matrix::tcrossprod(cMeans, (-2 * cSums + n * cMeans))
+    crossp <- Matrix::as.matrix(Matrix::crossprod(x))
+    covmat <- covmat + crossp
+
+    sdvec <- sqrt(Matrix::diag(covmat)) # standard deviations of columns
+    covmat / Matrix::crossprod(Matrix::t(sdvec)) # correlation matrix
+}
+
+# Data
+srx2srastudy <- data.table::fread(
+  file = system.file(
+    "inst",
+    "analysis",
+    "srx2sraproject",
+    "srx2study.csv",
+    package = "xcore"
+  )
+)
+
+translate <- function(x, key, value) {
+  newx <- value[match(x, key)]
+  newx
+}
+
+remap_tfs <- remap_promoters_core %>%
+  colnames() %>%
+  stringr::str_split(pattern = "\\.", n = 3) %>%
+  do.call(what = rbind) %>%
+  data.table::as.data.table()
+colnames(remap_tfs) <- c("id", "tf", "background")
+remap_tfs$coverage <- remap_promoters_core %>% Matrix::colSums()
+remap_tfs$biotype <- remap_tfs$background %>% gsub(pattern = "_.*", replacement = "")
+remap_tfs$condition <- remap_tfs$background %>% 
+  sub(pattern = "(.*?)_", replacement = "")
+remap_tfs$condition[! grepl("_", remap_tfs$background)] <- ""
+
+# fix study ids
+remap_tfs$study <- remap_tfs$id
+remap_tfs$study[grepl(pattern = "ENCSR", x = remap_tfs$id)] <- 
+  translate(grep(pattern = "ENCSR", x = remap_tfs$id, value = TRUE),
+            srx2srastudy$Experiment,
+            srx2srastudy$SRAStudy)
+# restore ids
+remap_tfs$id <- remap_promoters_core %>% colnames()
+
+chip_atlas_tfs <- chip_atlas_promoters_core %>%
+  colnames() %>%
+  stringr::str_split(pattern = "_", n = 4) %>%
+  do.call(what = rbind) %>%
+  data.table::as.data.table()
+colnames(chip_atlas_tfs) <- c("tf", "background", "biotype", "id")
+chip_atlas_tfs$coverage <- chip_atlas_promoters_core %>% Matrix::colSums()
+
+# fix study id
+chip_atlas_tfs$study <- 
+  srx2srastudy[match(chip_atlas_tfs$id, srx2srastudy$Experiment), ]$SRAStudy
+
+# restore ids
+chip_atlas_tfs$id <- chip_atlas_promoters_core %>% colnames()
+```
+
+There are `r sum(remap_tfs$coverage == 0)`, `r sum(chip_atlas_tfs$coverage == 0)`
+zero coverage ChIP-seqs in ReMap2020, ChIP-Atlas respectively. I've removed 
+TF with coverage below 11 from further analysis.
+
+In ReMap2020 we focus only on the biotypes with >= 30 experiments excluding 
+the "breast" and "liver" biotypes.
+
+Moreover in ChIP-Atlas there is `r sum(chip_atlas_tfs$biotype == "Unclassified")`
+with 'Unclassified' biotype, those are removed as well.
+
+```{r chip_cleanup, echo=FALSE}
+remap_tfs <- remap_tfs[remap_tfs$coverage > 10]
+
+remap_tfs <- remap_tfs[condition == ""]
+
+sel_biotypes <- remap_tfs$biotype %>% 
+  table() %>% 
+  `[`(. >= 30) %>% 
+  names() %>%
+  `[`(! . %in% c("breast", "liver"))
+remap_tfs <- remap_tfs[biotype %in% sel_biotypes]
+
+
+# annotate coverage
+remap_tfs[, cov_type := cut(
+  coverage,
+  breaks = c(0, quantile(coverage, 0.25), quantile(coverage, 0.75), Inf),
+  labels = c("low", "medium", "high")
+)]
+
+chip_atlas_tfs <- chip_atlas_tfs[chip_atlas_tfs$coverage != 0]
+chip_atlas_tfs <- chip_atlas_tfs[chip_atlas_tfs$biotype != "Unclassified"]
+```
+
+```{r chip_seq_coverage, include=FALSE}
+par(mfrow = c(1, 2), cex = 0.7, pty = "s")
+coverageHist(x = remap_tfs$coverage,
+             main = "ReMap2020 ChIP-seq coverage")
+coverageHist(x = chip_atlas_tfs$coverage, 
+             main = "ChIP-Atlas ChIP-seq coverage")
+
+coverageHist(x = remap_tfs$tf %>% table() %>% as.numeric(),
+             main = "ReMap2020 TFs")
+coverageHist(x = chip_atlas_tfs$tf %>% table() %>% as.numeric(), 
+             main = "ChIP-Atlas TFs")
+
+coverageHist(x = remap_tfs$biotype %>% table() %>% as.numeric(),
+             main = "ReMap2020 biotypes")
+coverageHist(x = chip_atlas_tfs$biotype %>% table() %>% as.numeric(), 
+             main = "ChIP-Atlas biotypes")
+```
+
+### TF / background confusion matrix
+
+```{r tf_bg_confusion_matrix, echo=FALSE}
+remap_tfs_tab <-
+  data.table::dcast(data = remap_tfs,
+                    formula = biotype ~ tf,
+                    fun = length)
+ord <- c(1, order(remap_tfs_tab[, -1] %>% colSums(), decreasing = TRUE) + 1)
+data.table::setcolorder(remap_tfs_tab, ord)
+remap_tfs_tab[, .r := -rowSums(remap_tfs_tab[, -1])]
+data.table::setorder(remap_tfs_tab, .r)[, .r := NULL]
+
+chip_atlas_tfs_tab <-
+  data.table::dcast(data = chip_atlas_tfs,
+                    formula = biotype ~ tf,
+                    fun = length)
+ord <- c(1, order(chip_atlas_tfs_tab[, -1] %>% colSums(), decreasing = TRUE) + 1)
+data.table::setcolorder(chip_atlas_tfs_tab, ord)
+chip_atlas_tfs_tab[, .r := -rowSums(chip_atlas_tfs_tab[, -1])]
+data.table::setorder(chip_atlas_tfs_tab, .r)[, .r := NULL]
+
+knitr::kable(remap_tfs_tab[, .(biotype, MYC, ELF1, MAX, YY1, RAD21, FOXA1, SIN3A)])
+```
+### Case study: select TP53, MYC other similar specific TFs and show heatmap
+### with clustering, does they cluster by study or by experiment? -- towards
+### collapsing method
+
+```{r case_study_functions, echo=FALSE}
+tfSummary <- function(sel_tf, meta) {
+  print(meta[tf == sel_tf,
+       .(
+         n_id = length(id),
+         n_study = length(unique(study)),
+         n_biotype = length(unique(biotype))
+       )])
+  
+  # print(meta[tf == sel_tf,
+  #      hist(table(study), main = paste0(sel_tf, " study"))])
+  # print(meta[tf == sel_tf,
+  #      hist(table(biotype), main = paste0(sel_tf, " biotype"))])
+}
+
+getTFMat <- function(sel_tf, mat, meta) {
+  i <- meta[tf == sel_tf, id] 
+  mat[, i]
+}
+
+makeTFHeatmap <- function(tf_mat, meta, method = "pearson") {
+  print(tf_mat %>% dim())
+  
+  # tf experiments correlation
+  if (method == "binary") {
+    tf_cor_d <- dist(Matrix::t(tf_mat), method = "binary") # binary
+    tf_cor <- as.matrix(tf_cor_d)
+  } else {
+    tf_cor <- cor(tf_mat %>% as.matrix(), method = method)
+    tf_cor_d <- as.dist(abs((1 - tf_cor) / 2))
+  }
+  
+  # heatmap
+  annotaion <- data.frame(
+    study = meta$study,
+    biotype = meta$biotype,
+    coverage = meta$cov_type,
+    row.names = meta$id,
+    stringsAsFactors = TRUE
+  )
+  annotation_colors <- lapply(
+    X = annotaion,
+    FUN = function(x) {
+      col <- stats::setNames(colorspace::qualitative_hcl(nlevels(x)), levels(x))
+      # m <-
+      #   unclass(x)[!duplicated(unclass(x)) &
+      #                !duplicated(unclass(x), fromLast = TRUE)]
+      # col[m] <- NA
+      col
+    }
+  )
+  labs <- paste0(meta$study, " ", meta$biotype)
+  
+  pheatmap::pheatmap(
+    mat = tf_cor,
+    scale = "none",
+    cluster_rows = TRUE,
+    cluster_cols = TRUE,
+    clustering_distance_rows = tf_cor_d,
+    clustering_distance_cols = tf_cor_d,
+    # fontsize = 5,
+    # labels_col = labs,
+    # labels_row = labs,
+    # annotation_row = annotaion,
+    annotation_col = annotaion,
+    annotation_colors = annotation_colors,
+    angle_col = 45,
+    treeheight_col = 0
+  )
+}
+```
+
+### MYC
+
+```{r myc_remap}
+sel_tf <- "MYC"
+tf_mat <- getTFMat(sel_tf, remap_promoters_core, remap_tfs)
+
+tfSummary(sel_tf, remap_tfs)
+
+# coverageHist(Matrix::colSums(tf_mat), main = paste0(sel_tf, " coverage"))
+# coverageHist(Matrix::rowSums(tf_mat), main = paste0(sel_tf, " rowSums"))
+
+
+# remove experiments with coverage below 10 and promoters with coverage lower than 3
+# look only at biotypes with at least 2 replicates
+colsum_id <- colnames(tf_mat)[Matrix::colSums(tf_mat) > 10]
+colsel <- remap_tfs[id %in% colsum_id, .(id, .N), by = "biotype"][N >= 2, id]
+rowsel <- Matrix::rowSums(tf_mat[, colsel]) >= 2
+
+tf_mat_sub <- tf_mat[rowsel, colsel]
+
+full_rows <- tf_mat_sub %>% Matrix::rowSums() %>% `==`(ncol(tf_mat_sub))
+tf_mat_sub <- tf_mat_sub[! full_rows, ]
+
+makeTFHeatmap(tf_mat = tf_mat_sub, 
+              meta = remap_tfs[id %in% colsel])
+```
+
+### ELF1
+
+```{r elf1_remap}
+sel_tf <- "ELF1"
+tf_mat <- getTFMat(sel_tf, remap_promoters_core, remap_tfs)
+
+tfSummary(sel_tf, remap_tfs)
+
+# coverageHist(Matrix::colSums(tf_mat), main = paste0(sel_tf, " coverage"))
+# coverageHist(Matrix::rowSums(tf_mat), main = paste0(sel_tf, " rowSums"))
+
+
+# remove experiments with coverage below 10 and promoters with coverage lower than 3
+# look only at biotypes with at least 2 replicates
+colsum_id <- colnames(tf_mat)[Matrix::colSums(tf_mat) > 10]
+colsel <- remap_tfs[id %in% colsum_id, .(id, .N), by = "biotype"][N >= 2, id]
+rowsel <- Matrix::rowSums(tf_mat[, colsel]) >= 2
+
+tf_mat_sub <- tf_mat[rowsel, colsel]
+
+makeTFHeatmap(tf_mat = tf_mat[rowsel, colsel], 
+              meta = remap_tfs[id %in% colsel])
+```
+
+### MAX
+
+```{r max_remap}
+sel_tf <- "MAX"
+tf_mat <- getTFMat(sel_tf, remap_promoters_core, remap_tfs)
+
+tfSummary(sel_tf, remap_tfs)
+
+# coverageHist(Matrix::colSums(tf_mat), main = paste0(sel_tf, " coverage"))
+# coverageHist(Matrix::rowSums(tf_mat), main = paste0(sel_tf, " rowSums"))
+
+
+# remove experiments with coverage below 10 and promoters with coverage lower than 3
+# look only at biotypes with at least 2 replicates
+colsum_id <- colnames(tf_mat)[Matrix::colSums(tf_mat) > 10]
+colsel <- remap_tfs[id %in% colsum_id, .(id, .N), by = "biotype"][N >= 2, id]
+rowsel <- Matrix::rowSums(tf_mat[, colsel]) >= 2
+
+tf_mat_sub <- tf_mat[rowsel, colsel]
+
+makeTFHeatmap(tf_mat = tf_mat[rowsel, colsel], 
+              meta = remap_tfs[id %in% colsel])
+```
+
+
+### YY1
+
+```{r yy1_remap}
+sel_tf <- "YY1"
+tf_mat <- getTFMat(sel_tf, remap_promoters_core, remap_tfs)
+
+tfSummary(sel_tf, remap_tfs)
+
+# coverageHist(Matrix::colSums(tf_mat), main = paste0(sel_tf, " coverage"))
+# coverageHist(Matrix::rowSums(tf_mat), main = paste0(sel_tf, " rowSums"))
+
+
+# remove experiments with coverage below 10 and promoters with coverage lower than 3
+# look only at biotypes with at least 2 replicates
+colsum_id <- colnames(tf_mat)[Matrix::colSums(tf_mat) > 10]
+colsel <- remap_tfs[id %in% colsum_id, .(id, .N), by = "biotype"][N >= 2, id]
+rowsel <- Matrix::rowSums(tf_mat[, colsel]) >= 2
+
+tf_mat_sub <- tf_mat[rowsel, colsel]
+
+makeTFHeatmap(tf_mat = tf_mat[rowsel, colsel], 
+              meta = remap_tfs[id %in% colsel])
+```
+
+### RAD21
+
+```{r rad21_remap}
+sel_tf <- "RAD21"
+tf_mat <- getTFMat(sel_tf, remap_promoters_core, remap_tfs)
+
+tfSummary(sel_tf, remap_tfs)
+
+# coverageHist(Matrix::colSums(tf_mat), main = paste0(sel_tf, " coverage"))
+# coverageHist(Matrix::rowSums(tf_mat), main = paste0(sel_tf, " rowSums"))
+
+
+# remove experiments with coverage below 10 and promoters with coverage lower than 3
+# look only at biotypes with at least 2 replicates
+colsum_id <- colnames(tf_mat)[Matrix::colSums(tf_mat) > 10]
+colsel <- remap_tfs[id %in% colsum_id, .(id, .N), by = "biotype"][N >= 2, id]
+rowsel <- Matrix::rowSums(tf_mat[, colsel]) >= 2
+
+tf_mat_sub <- tf_mat[rowsel, colsel]
+
+makeTFHeatmap(tf_mat = tf_mat[rowsel, colsel], 
+              meta = remap_tfs[id %in% colsel])
+```
+
+### FOXA1
+
+```{r foxa1_remap}
+sel_tf <- "FOXA1"
+tf_mat <- getTFMat(sel_tf, remap_promoters_core, remap_tfs)
+
+tfSummary(sel_tf, remap_tfs)
+
+# coverageHist(Matrix::colSums(tf_mat), main = paste0(sel_tf, " coverage"))
+# coverageHist(Matrix::rowSums(tf_mat), main = paste0(sel_tf, " rowSums"))
+
+
+# remove experiments with coverage below 10 and promoters with coverage lower than 3
+# look only at biotypes with at least 2 replicates
+colsum_id <- colnames(tf_mat)[Matrix::colSums(tf_mat) > 10]
+colsel <- remap_tfs[id %in% colsum_id, .(id, .N), by = "biotype"][N >= 2, id]
+rowsel <- Matrix::rowSums(tf_mat[, colsel]) >= 2
+
+tf_mat_sub <- tf_mat[rowsel, colsel]
+
+makeTFHeatmap(tf_mat = tf_mat[rowsel, colsel], 
+              meta = remap_tfs[id %in% colsel])
+```
+
+### SIN3A
+
+```{r sin3a_remap}
+sel_tf <- "SIN3A"
+tf_mat <- getTFMat(sel_tf, remap_promoters_core, remap_tfs)
+
+tfSummary(sel_tf, remap_tfs)
+
+# coverageHist(Matrix::colSums(tf_mat), main = paste0(sel_tf, " coverage"))
+# coverageHist(Matrix::rowSums(tf_mat), main = paste0(sel_tf, " rowSums"))
+
+
+# remove experiments with coverage below 10 and promoters with coverage lower than 3
+# look only at biotypes with at least 2 replicates
+colsum_id <- colnames(tf_mat)[Matrix::colSums(tf_mat) > 10]
+colsel <- remap_tfs[id %in% colsum_id, .(id, .N), by = "biotype"][N >= 2, id]
+rowsel <- Matrix::rowSums(tf_mat[, colsel]) >= 2
+
+tf_mat_sub <- tf_mat[rowsel, colsel]
+
+makeTFHeatmap(tf_mat = tf_mat[rowsel, colsel], 
+              meta = remap_tfs[id %in% colsel])
+```
+
+### ESR1
+
+```{r esr1_remap}
+sel_tf <- "ESR1"
+tf_mat <- getTFMat(sel_tf, remap_promoters_core, remap_tfs)
+
+tfSummary(sel_tf, remap_tfs)
+
+# coverageHist(Matrix::colSums(tf_mat), main = paste0(sel_tf, " coverage"))
+# coverageHist(Matrix::rowSums(tf_mat), main = paste0(sel_tf, " rowSums"))
+
+
+# remove experiments with coverage below 10 and promoters with coverage lower than 3
+# look only at biotypes with at least 2 replicates
+colsum_id <- colnames(tf_mat)[Matrix::colSums(tf_mat) > 10]
+colsel <- remap_tfs[id %in% colsum_id, .(id, .N), by = "biotype"][N >= 2, id]
+rowsel <- Matrix::rowSums(tf_mat[, colsel]) >= 2
+
+tf_mat_sub <- tf_mat[rowsel, colsel]
+
+makeTFHeatmap(tf_mat = tf_mat[rowsel, colsel], 
+              meta = remap_tfs[id %in% colsel])
+```
+
+### Correlation how it works?
+
+```{r explore_correlation}
+sel_tf <- remap_tfs_tab[, -1][, sapply(.SD, sum) %>% `[`(. >= 10)] %>% names()
+m_biotypes <- remap_tfs_tab[, sel_tf, with = FALSE] %>% rowSums() %>% `>=`(10)
+sel_biotypes <- remap_tfs_tab[m_biotypes, biotype]
+
+sel_id <- remap_tfs[biotype %in% sel_biotypes & tf %in% sel_tf, id]
+tf_mat <- remap_promoters_core[, sel_id]
+
+tf_mat_cor <- tf_mat %>% as.matrix() %>% cor()
+
+# same tf
+same_tf_cor <- sapply(
+  X = sel_tf,
+  FUN = function(x) {
+    m_row <- grep(x, rownames(tf_mat_cor), value = TRUE)
+    m_col <- grep(x, colnames(tf_mat_cor), value = TRUE)
+    sel_cor_mat <- tf_mat_cor[m_row, m_col]
+    sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+  }
+)
+
+# diff tf
+diff_tf_cor <- sapply(
+  X = sel_tf,
+  FUN = function(x) {
+    m_row <- grep(x, rownames(tf_mat_cor), value = TRUE)
+    m_col <- grep(x, colnames(tf_mat_cor), value = TRUE, invert = TRUE)
+    sel_cor_mat <- tf_mat_cor[m_row, m_col]
+    sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+  }
+)
+
+boxplot(unlist(same_tf_cor), unlist(diff_tf_cor), 
+        names = c("same TF", "different TFs"), 
+        main = "Correlation between experiments")
+
+p1 <- hist(unlist(same_tf_cor), freq = FALSE, breaks = 50)                     # centered at 4
+p2 <- hist(unlist(diff_tf_cor), freq = FALSE, breaks = 50)                     # centered at 6
+plot(p1, col=rgb(0,0,1,1/4), xlim=c(-0.4, 1), ylim=c(0, 4), freq = FALSE)  # first histogram
+plot(p2, col=rgb(1,0,0,1/4), xlim=c(-0.4, 1), freq = FALSE, add=T)
+
+th <- seq(0, 1, by = 0.01)
+crit <- sapply(th, function(th) sum(unlist(same_tf_cor) > th) / sum(unlist(diff_tf_cor) > th))
+
+# same biotype
+same_bio_cor <- sapply(
+  X = sel_biotypes,
+  FUN = function(x) {
+    m_row <- grep(x, rownames(tf_mat_cor), value = TRUE)
+    m_col <- grep(x, colnames(tf_mat_cor), value = TRUE)
+    sel_cor_mat <- tf_mat_cor[m_row, m_col]
+    sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+  }
+)
+
+# diff biotype
+diff_bio_cor <- sapply(
+  X = sel_biotypes,
+  FUN = function(x) {
+    m_row <- grep(x, rownames(tf_mat_cor), value = TRUE)
+    m_col <- grep(x, colnames(tf_mat_cor), value = TRUE, invert = TRUE)
+    sel_cor_mat <- tf_mat_cor[m_row, m_col]
+    sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+  }
+)
+
+boxplot(unlist(same_bio_cor), unlist(diff_bio_cor), 
+        names = c("same biotype", "different biotype"), 
+        main = "Correlation between experiments")
+
+# same study
+same_study_cor <- sapply(
+  X = remap_tfs[, unique(study)],
+  FUN = function(x) {
+    m_row <- grep(x, rownames(tf_mat_cor), value = TRUE)
+    m_col <- grep(x, colnames(tf_mat_cor), value = TRUE)
+    sel_cor_mat <- tf_mat_cor[m_row, m_col]
+    sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+  }
+)
+
+# diff study
+diff_sutdy_cor <- sapply(
+  X = remap_tfs[, unique(study)],
+  FUN = function(x) {
+    m_row <- grep(x, rownames(tf_mat_cor), value = TRUE)
+    m_col <- grep(x, colnames(tf_mat_cor), value = TRUE, invert = TRUE)
+    sel_cor_mat <- tf_mat_cor[m_row, m_col]
+    sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+  }
+)
+
+boxplot(unlist(same_study_cor), unlist(diff_sutdy_cor), 
+        names = c("same study", "different study"), 
+        main = "Correlation between experiments")
+
+remap_tfs[, .N, by = .(study, tf)]$N %>% summary()
+
+
+# TF classes
+df <- data.table::fread(system.file("inst", "analysis", "cis_bp_tf_class.txt", package = "xcore"))
+df <-
+  df[, .(TF_Name,
+         Family_Name = unique(Family_Name),
+         DBDs = unique(DBDs)), 
+     by = TF_Name]
+df <- remap_tfs[df, on = c("tf" = "TF_Name")]
+df <- df[! is.na(id)]
+
+# same tf class
+same_class_cor <- sapply(
+  X = unique(df$Family_Name),
+  FUN = function(x) {
+    m_row <- rownames(tf_mat_cor) %in% df[Family_Name == x, id]
+    m_col <- colnames(tf_mat_cor) %in% df[Family_Name == x, id]
+    sel_cor_mat <- tf_mat_cor[m_row, m_col]
+    sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+  }
+)
+
+# diff tf class
+diff_class_cor <- sapply(
+  X = unique(df$Family_Name),
+  FUN = function(x) {
+    m_row <- rownames(tf_mat_cor) %in% df[Family_Name == x, id]
+    m_col <- colnames(tf_mat_cor) %in% df[Family_Name != x, id]
+    sel_cor_mat <- tf_mat_cor[m_row, m_col]
+    sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+  }
+)
+
+boxplot(unlist(same_class_cor), unlist(diff_class_cor), 
+        names = c("same family", "different family"), 
+        main = "Correlation between experiments")
+
+# coverage dependence
+# same tf high cov
+same_tf_cor_high <- sapply(
+  X = sel_tf,
+  FUN = function(x) {
+    m_row <- rownames(tf_mat_cor) %in% remap_tfs[tf == x & cov_type == "high", id]
+    m_col <- colnames(tf_mat_cor) %in% remap_tfs[tf == x & cov_type == "high", id]
+    sel_cor_mat <- tf_mat_cor[m_row, m_col]
+    sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+  }
+)
+
+# same tf medium cov
+same_tf_cor_medium <- sapply(
+  X = sel_tf,
+  FUN = function(x) {
+    m_row <- rownames(tf_mat_cor) %in% remap_tfs[tf == x & cov_type == "medium", id]
+    m_col <- colnames(tf_mat_cor) %in% remap_tfs[tf == x & cov_type == "medium", id]
+    sel_cor_mat <- tf_mat_cor[m_row, m_col]
+    sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+  }
+)
+
+# same tf low cov
+same_tf_cor_low <- sapply(
+  X = sel_tf,
+  FUN = function(x) {
+    m_row <- rownames(tf_mat_cor) %in% remap_tfs[tf == x & cov_type == "low", id]
+    m_col <- colnames(tf_mat_cor) %in% remap_tfs[tf == x & cov_type == "low", id]
+    sel_cor_mat <- tf_mat_cor[m_row, m_col]
+    sel_cor_mat[upper.tri(sel_cor_mat, diag = FALSE)]
+  }
+)
+
+boxplot(
+  unlist(same_tf_cor_high),
+  unlist(same_tf_cor_medium),
+  unlist(same_tf_cor_low),
+  names = c("high coverage", "medium coverage", "low coverage"),
+  main = "Correlation between experiments, same TF"
+)
+```
+
+# Multiple Correspondence Analysis
+
+```{r}
+X <- tf_mat %>% 
+  as.matrix() %>%
+  t() %>%
+  as.data.frame() %>% 
+  rapply(f = as.character, classes = "numeric", how = "replace")
+# X <- cbind(X, remap_tfs[match(rownames(X), id), .(id, biotype, tf, coverage)])
+
+res.mca <- FactoMineR::MCA(
+  X = X,
+  ncp = 5)
+
+factoextra::fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 45))
+
+factoextra::fviz_mca_ind(res.mca, 
+             label = "none", # hide individual labels
+             habillage = remap_tfs[match(rownames(X), id), factor(tf)], # color by groups 
+             #palette = c("#00AFBB", "#E7B800"),
+             # addEllipses = TRUE, ellipse.type = "confidence",
+             ggtheme = ggplot2::theme_minimal()) 
+```
+
+# Association rules
+
+```{r}
+core_transactions_remap <- arules::transactions(t(remap_promoters_core))
+```
+
+# TF tissue specificity
+
+Here I will define TF tissue specificity as an average tau of the promoters it
+intersect with.
+
+```{r}
+tf_tau <- vapply(X = colnames(remap_promoters_core), 
+                 FUN = function(x) {
+                   i <- remap_promoters_core[, x, drop = T] != 0
+                   ids <- rownames(remap_promoters_core)[i]
+                   promoters_f5_expression[`00Annotation` %in% ids, mean(tau)]
+                 },
+                 FUN.VALUE = numeric(1L))
+remap_tfs[, tau := tf_tau[id]]
+```
