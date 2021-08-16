@@ -1106,48 +1106,48 @@ mtext(
 )
 
 # ChIP-Atlas
-id_core <- chip_atlas_meta_core[, id]
-d_core <- as.dist(as.matrix(d_yule_chip_atlas)[id_core, id_core])
-
-cl_pam <- lapply(
-  X = nclust,
-  FUN = function(i) {
-    cluster::pam(d_core, k = i, cluster.only = TRUE)
-  })
-cl_measure <- lapply(
-  X = labels,
-  FUN = function(l) {
-    cbind(
-      ARI = sapply(cl_pam, aricode::ARI, c1 = chip_atlas_meta_core[[l]]),
-      AMI = sapply(cl_pam, aricode::AMI, c1 = chip_atlas_meta_core[[l]])
-    )
-  })
-names(cl_measure) <- labels
-
-plotMeasureClust(
-  nclust,
-  cl_measure,
-  "ARI",
-  ylim = c(0, 0.65),
-  pos = "topright",
-  main = "Adjusted Rand Index"
-)
-plotMeasureClust(
-  nclust,
-  cl_measure,
-  "AMI",
-  ylim = c(0, 0.8),
-  pos = "bottomright",
-  main = "Adjusted Mutual Information"
-)
-mtext(
-  "Partitioning Around Medoids clustering performance\nfor different labels\nChIP-Atlas selected experiments",
-  side = 3,
-  outer = TRUE,
-  line = -1,
-  font = 2,
-  cex = 1.2
-)
+# id_core <- chip_atlas_meta_core[, id]
+# d_core <- as.dist(as.matrix(d_yule_chip_atlas)[id_core, id_core])
+# 
+# cl_pam <- lapply(
+#   X = nclust,
+#   FUN = function(i) {
+#     cluster::pam(d_core, k = i, cluster.only = TRUE)
+#   })
+# cl_measure <- lapply(
+#   X = labels,
+#   FUN = function(l) {
+#     cbind(
+#       ARI = sapply(cl_pam, aricode::ARI, c1 = chip_atlas_meta_core[[l]]),
+#       AMI = sapply(cl_pam, aricode::AMI, c1 = chip_atlas_meta_core[[l]])
+#     )
+#   })
+# names(cl_measure) <- labels
+# 
+# plotMeasureClust(
+#   nclust,
+#   cl_measure,
+#   "ARI",
+#   ylim = c(0, 0.65),
+#   pos = "topright",
+#   main = "Adjusted Rand Index"
+# )
+# plotMeasureClust(
+#   nclust,
+#   cl_measure,
+#   "AMI",
+#   ylim = c(0, 0.8),
+#   pos = "bottomright",
+#   main = "Adjusted Mutual Information"
+# )
+# mtext(
+#   "Partitioning Around Medoids clustering performance\nfor different labels\nChIP-Atlas selected experiments",
+#   side = 3,
+#   outer = TRUE,
+#   line = -1,
+#   font = 2,
+#   cex = 1.2
+# )
 ```
 
 ## Experiment collapsing
@@ -1245,6 +1245,9 @@ data.table::fwrite(meta_chip_atlas, file = "chip_atlas_metadata_clusters.csv")
 # Explore clustering and collapsed matrices
 
 ```{r}
+meta_remap <- data.table::fread("remap_metadata_clusters.csv")
+meta_chip_atlas <- data.table::fread("chip_atlas_metadata_clusters.csv")
+
 remap_ncl <- meta_remap[, length(unique(cluster))]
 chip_atlas_ncl <- meta_chip_atlas[, length(unique(cluster))]
 
@@ -1266,26 +1269,26 @@ mtext(
   cex = 1.2
 )
 
-purity_dt <- meta_remap[, .(
-  tf_purity = vectorPurity(tf),
-  biotype_purity = vectorPurity(biotype),
-  study_purity = vectorPurity(study),
-  dbd_purity = vectorPurity(tf_dbd),
-  .N
-  ),
-by = cluster]
-
-par(mfrow = c(1, 1), oma = c(0, 0, 0, 0), cex = 0.7, pty = "s")
-
-# clustered by study?
-plotSubtree(hc_remap, meta_remap[cluster == 92, ], "tf")
-mtext("Cluster 92, clustering by study?")
-plotSubtree(hc_remap, meta_remap[cluster == 175, ], "tf")
-mtext("Cluster 175, clustering by study?")
-
-# clustered by biotype?
-plotSubtree(hc_remap, meta_remap[cluster == 46, ], "tf")
-mtext("Cluster 46, clustering by biotye?")
-plotSubtree(hc_remap, meta_remap[cluster == 110, ], "tf")
-mtext("Cluster 110, clustering by biotype?")
+# purity_dt <- meta_remap[, .(
+#   tf_purity = vectorPurity(tf),
+#   biotype_purity = vectorPurity(biotype),
+#   study_purity = vectorPurity(study),
+#   dbd_purity = vectorPurity(tf_dbd),
+#   .N
+#   ),
+# by = cluster]
+# 
+# par(mfrow = c(1, 1), oma = c(0, 0, 0, 0), cex = 0.7, pty = "s")
+# 
+# # clustered by study?
+# plotSubtree(hc_remap, meta_remap[cluster == 92, ], "tf")
+# mtext("Cluster 92, clustering by study?")
+# plotSubtree(hc_remap, meta_remap[cluster == 175, ], "tf")
+# mtext("Cluster 175, clustering by study?")
+# 
+# # clustered by biotype?
+# plotSubtree(hc_remap, meta_remap[cluster == 46, ], "tf")
+# mtext("Cluster 46, clustering by biotye?")
+# plotSubtree(hc_remap, meta_remap[cluster == 110, ], "tf")
+# mtext("Cluster 110, clustering by biotype?")
 ```
