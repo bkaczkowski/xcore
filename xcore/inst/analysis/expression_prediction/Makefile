@@ -12,6 +12,9 @@ INVOKE_OUT = ${TEPIC_OUT}/INVOKE
 DYNAMITE_DIR = $(TEPIC_DIR)/MachineLearningPipelines/DYNAMITE
 DYNAMITE_BIN = $(DYNAMITE_DIR)/runDYNAMITE.sh
 DYNAMITE_OUT = ${TEPIC_OUT}/DYNAMITE
+DREM_DIR = $(PROJECT_DIR)/drem2
+DREM_BIN = $(DREM_DIR)/drem.sh
+DREM_OUT = ${PROJECT_DIR}/DREM_out
 
 .PHONY: clean
 clean: ## delete directories created by runing 'image', 'tepic_invoke'
@@ -34,6 +37,12 @@ install: ## download programs and set up environment
 	gunzip ${INVOKE_DIR}/ExampleData/chr1.fa.gz
 	wget -c -P ${INVOKE_DIR}/ExampleData/ http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.annotation.gtf.gz
 	gunzip ${INVOKE_DIR}/ExampleData/gencode.v26.annotation.gtf.gz
+	@echo "setting up DREM"
+	wget -c http://www.sb.cs.cmu.edu/drem/drem2.zip
+	unzip drem2.zip
+	echo -e '#!/bin/bash\njava -mx1024M -jar ${DREM_DIR}/drem.jar $@' > ${DREM_DIR}/drem.sh
+	chmod a+x ${DREM_DIR}/drem.sh
+
 
 .PHONY: image
 image: ## run IMAGE on it's example data
@@ -156,6 +165,93 @@ tepic_dynamite: ## run TEPIC DYNAMITE pipeline on it's example data
 	echo "$${TEPIC_DYNAMITE_CFG}" > ${DYNAMITE_OUT}/DYNAMITE.cfg
 	${DYNAMITE_BIN} ${DYNAMITE_OUT}/DYNAMITE.cfg
 	Rscript ${DYNAMITE_DIR}/Scripts/generateFeaturePlots.R ${DYNAMITE_OUT}/ Peak_Counts TEM TN
+
+# DREM pipeline
+# =====config==========
+define DREM_CFG
+#Main Input:
+TF-gene_Interaction_Source	User Provided
+TF-gene_Interactions_File	${DREM_DIR}/tfinput_heat.txt
+Expression_Data_File	${DREM_DIR}/expression_heat.txt
+Saved_Model_File	
+Gene_Annotation_Source		Saccharomyces cerevisiae (SGD)
+Gene_Annotation_File	
+Cross_Reference_Source	User Provided
+Cross_Reference_File	
+Normalize_Data[Log normalize data,Normalize data,No normalization/add 0]	No normalization/add 0
+Spot_IDs_in_the_data_file	true
+
+#Repeat Data:
+Repeat_Data_Files(comma delimited list)	
+Repeat_Data_is_from[Different time periods,The same time period]	The same time period
+
+#Filtering:
+Filter_Gene_If_It_Has_No_Static_Input_Data	false
+Maximum_Number_of_Missing_Values	1
+Minimum_Correlation_between_Repeats	0
+Minimum_Absolute_Log_Ratio_Expression	1
+Change_should_be_based_on[Maximum-Minimum,Difference From 0]	Difference From 0
+Pre-filtered_Gene_File
+
+#Search Options
+Allow_Path_Merges	false
+Maximum_number_of_paths_out_of_split	3
+Use_transcription_factor-gene_interaction_data_to_build	true
+Saved_Model[Use As Is/Start Search From/Do Not Use]	Use As Is
+Convergence_Likelihood_%	0.01
+Minimum_Standard_Deviation	0.0
+
+#Model Selection Options
+Model_Selection_Framework[Penalized Likelihood,Train-Test]	Penalized Likelihood
+Penalized_Likelihood_Node_Penalty	40
+Random_Seed	1260
+Main_search_score_%	0
+Main_search_difference_threshold	0
+Delete_path_score_%	0.15
+Delete_path_difference_threshold	0
+Delay_split_score_%	0.15
+Delay_split_difference_threshold	0
+Merge_path_score_%	0.15
+Merge_path_difference_threshold	0
+
+
+#Gene Annotations:						
+Include_Biological_Process	true
+Include_Molecular_Function	true
+Include_Cellular_Process	true
+Only_include_annotations_with_these_evidence_codes	
+Only_include_annotations_with_these_taxon_IDs
+Category_ID_file
+
+#GO Analysis	
+Minimum_GO_level	3
+Minimum_number_of_genes	5
+Number_of_samples_for_randomized_multiple_hypothesis_correction	500
+Multiple_hypothesis_correction_method_enrichment[Bonferroni,Randomization]	Randomization
+
+#Expression Scaling Options
+Regulator_Types_Used_For_Activity_Scoring	None
+Expression_Scaling_Weight	1.0
+Minimum_TF_Expression_After_Scaling	0.5
+
+#Interface
+X-axis_Scale_Factor	1
+Y-axis_Scale_Factor	1
+X-axis_scale[Uniform,Based on Real Time]	Based on Real Time
+Key_Input_X_p-val_10^-X	   3
+Minimum_Split_Percent 0
+Scale_Node_Areas_By_The_Factor	1
+Key_Input_Significance_Based_On[Path Significance Conditional on Split,Path Significance Overall,Split Significance]	Path Significance Conditional on Split
+endef
+export DREM_CFG := $(DREM_CFG)
+# =====config==========
+
+.PHONY: drem
+drem: ## run DREM pipeline on it's example data
+	@echo "Running DREM pipeline"
+	mkdir -p ${DREM_OUT}
+	echo "$${DREM_CFG}" > ${DREM_OUT}/DREM.cfg
+	cd ${DREM_DIR} && ${DREM_BIN} -b ${DREM_OUT}/DREM.cfg ${DREM_OUT}/outmodelfile.txt
 
 # Based on http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 .DEFAULT_GOAL := help
