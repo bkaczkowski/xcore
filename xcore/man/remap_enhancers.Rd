@@ -13,7 +13,7 @@ remap_enhancers
 }
 \description{
 An intersection matrix describing overlaps between ReMap2020's ChIP-seq tracks
-and \code{\link{enhancers}}. To find overlapping regions enhancers were extended
+and \code{\link{enhancers_f5}}. To find overlapping regions enhancers were extended
 by 500bp in both directions.
 }
 \keyword{datasets}
