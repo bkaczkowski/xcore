@@ -9,6 +9,8 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 
 devtools::load_all()
+library("foreach")
+library("doMC")
 ```
 
 # Available software
@@ -138,9 +140,133 @@ https://ismara.unibas.ch/supp/dataset1_IBM_v2/averaged_replicates/averaged_repor
 
 *Here we could directly use our binding data!*
     
-    
-    
-    
+# Modeling gene expression
+Here I am attempting to recreate the modeling procedures used in selected 
+software.
+
+## TEPIC
+
+### INVOKE
+Here we start with expression data and TF affinities summarized to per gene level.  
+
+
+In the example Elastic net regularization was used and alpha was selected
+by testing number of different values 'gaussian' family is default for the glmnet.
+
+```{r}
+expression_data <-
+  system.file(
+    "inst",
+    "analysis",
+    "expression_prediction",
+    "TEPIC",
+    "MachineLearningPipelines",
+    "INVOKE",
+    "ExampleData",
+    "S001S712_gene_quantification_rsem_grape2_crg_GRCh38_20150622_chr1.txt",
+    package = "xcore"
+  ) %>% data.table::fread()
+tf_affinities <- system.file(
+    "inst",
+    "analysis",
+    "expression_prediction",
+    "TEPIC",
+    "MachineLearningPipelines",
+    "INVOKE",
+    "TestRun",
+    "Affinities",
+    "S001S745_ERX616976_GRCh38_hotspot_peaks_20150709_chr1_TEPIC_06_08_17_15_34_52_Decay_Affinity_Gene_View_Filtered.txt",
+    package = "xcore"
+  ) %>% data.table::fread()
+
+# expression is combined with binding data, 
+# genes without expression or binding data are dropped.
+# Expression is in TPM column
+integrated_data <- expression_data[tf_affinities, on = c("GeneID"= "geneID")
+                                   ][! is.na(TPM)]
+i_dups <- duplicated(integrated_data[, -c("GeneID")])
+integrated_data <- integrated_data[! i_dups, ]
+
+# change to log2 and scale
+X <- integrated_data[, -c("GeneID", "TPM")] %>% 
+  as.matrix() %>%
+  `+`(1) %>%
+  log2() %>%
+  scale()
+Y <- integrated_data[, "TPM", drop = FALSE] %>% 
+  as.matrix() %>%
+  `+`(1) %>%
+  log2() %>%
+  scale(center = TRUE, scale = TRUE)
+
+hist(Y, breaks = 40, main = "log2(Expression + 1)\nINVOKE uses gaussian familly")
+
+# for comparision some data from FANTOM5
+promoters_f5_expression <-
+  data.table::fread(
+    file = system.file("inst",
+                       "extdata",
+                       "hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz",
+                       package = "xcore"),
+    header = TRUE)
+hist(log2(promoters_f5_expression_core[[3]] + 1), breaks = 40, main = "One of FANTOM5 log2(Expression + 1).")
+
+# elastic net regression with alpha selection
+doMC::registerDoMC(cores = 4)
+set.seed(12344321)
+nfolds <- 6
+alpha <- seq(from = 0, to = 1, by = 0.1)
+modcv_alpha <- foreach(a = alpha) %dopar%
+  glmnet::cv.glmnet(
+    x = X,
+    y = Y,
+    family = "gaussian",
+    alpha = a,
+    nfolds = nfolds)
+modcv_alpha_cvm <- vapply(X = modcv_alpha, 
+                          FUN = function(m) min(m[["cvm"]]), 
+                          FUN.VALUE = numeric(1L))
+ai <- which.min(modcv_alpha_cvm)
+foreach::registerDoSEQ()
+
+# select best model and get it's coefficients
+finmod <- modcv_alpha[[ai]]
+finmod_coef <- coef(finmod, s = finmod$lambda.min) %>%
+  as.matrix() %>% 
+  as.data.frame()
+finmod_coef$name <- rownames(finmod_coef)
+
+# read coefficient's output from INVOKE
+invoke_coef_1 <- system.file(
+    "inst",
+    "analysis",
+    "expression_prediction",
+    "TEPIC_out",
+    "INVOKE1",
+    "Learning_Results",
+    "Regression_Coefficients_Entire_DataSet_S001S745_ERX616976_GRCh38_hotspot_peaks_20150709_chr1_TEPIC_06_08_17_15_34_52_Decay_Affinity_Gene_View_Filtered_Integrated.txt",
+    package = "xcore") %>% 
+  read.table(header = TRUE)
+invoke_coef_2 <- system.file(
+    "inst",
+    "analysis",
+    "expression_prediction",
+    "TEPIC_out",
+    "INVOKE2",
+    "Learning_Results",
+    "Regression_Coefficients_Entire_DataSet_S001S745_ERX616976_GRCh38_hotspot_peaks_20150709_chr1_TEPIC_06_08_17_15_34_52_Decay_Affinity_Gene_View_Filtered_Integrated.txt",
+    package = "xcore") %>%
+  read.table(header = TRUE)
+
+coef_df <- dplyr::left_join(finmod_coef, invoke_coef_1, by = "name")
+coef_df <- dplyr::left_join(coef_df, invoke_coef_2, by = "name")
+colnames(coef_df) <- c("my code", "name", "INVOKE.1", "INVOKE.2")
+i <- apply(coef_df, 1, function(x) any(is.na(x)))
+colord <- c("name", "my code", "INVOKE.1", "INVOKE.2")
+coef_df <- coef_df[! i, colord]
+coef_df <- coef_df[order(rowSums(coef_df[, -1]), decreasing = TRUE), ]
+knitr::kable(coef_df, row.names = FALSE)
+```
     
     
     
