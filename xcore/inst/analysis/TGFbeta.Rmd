@@ -1,0 +1,1136 @@
+---
+title: "TGFbeta project"
+author: "Migdal"
+date: "8/18/2021"
+output: pdf_document
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+devtools::load_all()
+library(foreach)
+library(Matrix)
+
+doMC::registerDoMC(4L)
+
+remap_sign_meta <- fread("into_signatures/remap_metadata_clusters.csv")
+
+# use this function to make row or column names bold
+# parameters:
+#   mat: the matrix passed to pheatmap
+#   rc_fun: either rownames or colnames
+#   rc_names: vector of names that should appear in boldface
+pheatmap_make_bold_names <- function(mat, rc_fun, rc_names) {
+  bold_names <- rc_fun(mat)
+  ids <- rc_names %>% match(rc_fun(mat))
+  ids %>%
+    purrr::walk(
+      function(i)
+        bold_names[i] <<-
+        bquote(bold(.(rc_fun(mat)[i]))) %>%
+        as.expression()
+    )
+  bold_names
+}
+```
+
+# TGFbeta expression data
+Here I load symbol counts from TGFbeta experiment. The data are filtered and CPM 
+normalized by group, giving a matrix of per time point expression values. 
+For the initial analysis I will only look at 24h time point.
+```{r}
+exprss_files <- list(
+  system.file("inst", "extdata", "TGFbeta_counts_entrez.rda",
+              package = "xcore"),
+  system.file("inst", "extdata", "TGFbeta_counts_symbol.rda",
+              package = "xcore"),
+  system.file("inst", "extdata", "TGFbeta_counts_dpi.rda",
+              package = "xcore"))
+for(e in exprss_files) load(e)
+rm(e)
+
+counts_symbol <- counts_symbol[rowSums(counts_symbol >= 2) >= 3, ]
+
+# delta CPM
+A_logcpm <- counts_symbol[, grep("A_", colnames(counts_symbol))] %>%
+  xcore::normalize_counts(log = FALSE) %>%
+  `+`(1) %>%
+  log2()
+base_idx <- grep("_00h_", colnames(A_logcpm))
+A_logcpm_delta <- A_logcpm - rowMeans(A_logcpm[, base_idx])
+A_logcpm_delta <- A_logcpm_delta[, -base_idx]
+M_logcpm <- counts_symbol[, grep("M_", colnames(counts_symbol))] %>%
+  xcore::normalize_counts(log = FALSE) %>%
+  `+`(1) %>%
+  log2()
+base_idx <- grep("_00h_", colnames(M_logcpm))
+M_logcpm_delta <- M_logcpm - rowMeans(M_logcpm[, base_idx])
+M_logcpm_delta <- M_logcpm_delta[, -base_idx]
+
+# construct sample matrix
+samples <- data.frame(
+  samples_names = counts_symbol %>% colnames(),
+  exp_fac = counts_symbol %>%
+    colnames() %>%
+    sub(pattern = "_R.", replacement = "") %>%
+    as.factor())
+
+# construct design matrix
+design_mat <- model.matrix(~ 0 + exp_fac, data = samples)
+colnames(design_mat) <- sub( "exp_fac", "" , colnames(design_mat))
+rownames(design_mat) <- colnames(counts_symbol)
+
+# construct contrsat matrix
+contrast_mat <- cbind(
+  rep(0, 10),
+  diag(10L)[, 1:5],
+  rep(0, 10),
+  diag(10L)[, 6:10]
+)
+contrast_mat[1:5, 1] <- -1
+contrast_mat[6:10, 7] <- -1
+colnames(contrast_mat) <- colnames(design_mat)
+rownames(contrast_mat) <- colnames(design_mat)[c(2:6, 8:12)]
+
+# DE
+de_res_edgeR <- xcore::edgeR_DE_wrapper(counts = counts_symbol,
+                                        sample_annot = samples,
+                                        design = design_mat,
+                                        contrasts = contrast_mat)
+# divide results by biotype
+A_de <- de_res_edgeR[grep("A_", names(de_res_edgeR))]
+M_de <- de_res_edgeR[grep("M_", names(de_res_edgeR))]
+
+# get fold change matrices
+A_fc <- xcore::get_fc_matrix(A_de)
+M_fc <- xcore::get_fc_matrix(M_de)
+```
+
+# DE results
+
+```{r}
+nm <- sub("[AM]_TGFb_", "", colnames(A_fc))
+bplot <-
+  function(x, m)
+    barplot(
+      height = x,
+      las = 2,
+      main = m,
+      names.arg = nm,
+      ylim = c(0, 1000))
+par(mfrow = c(2, 2), cex = 0.7)
+bplot(colSums(A_fc > 1), "A FC > 1")
+bplot(colSums(M_fc > 1), "M FC > 1")
+bplot(colSums(A_fc < -1), "A FC < -1")
+bplot(colSums(M_fc < -1), "M FC < -1")
+mtext("DE analysis results", line = -2, outer = TRUE, font = 2)
+
+# top variable heatmaps
+# TODO use LRT to select those genes
+sel <- xcore::extract_a_column(A_de, "DE") %>%
+  `*`(A_fc) %>%
+  select_top_var() %>% 
+  rownames()
+pheatmap::pheatmap( 
+  mat = A_logcpm[rownames(A_logcpm) %in% sel, ],
+  cluster_cols = FALSE,
+  scale = "row",
+  gaps_col = c(6, 10, 14, 18, 22),
+  main = "A top variable genes")
+
+sel <- xcore::extract_a_column(M_de, "DE") %>%
+  `*`(M_fc) %>%
+  select_top_var() %>% 
+  rownames()
+pheatmap::pheatmap(
+  M_logcpm[rownames(M_logcpm) %in% sel, ],
+  cluster_cols = FALSE,
+  scale = "row",
+  gaps_col = c(6, 10, 14, 18, 22),
+  main = "M top variable genes")
+```
+
+# Load interaction matrices
+
+```{r}
+load(
+  system.file(
+    "inst",
+    "analysis",
+    "into_signatures",
+    "remap_promoters_collapsed.rda",
+    package = "xcore"
+  )
+)
+
+load(
+  system.file(
+    "inst",
+    "analysis",
+    "into_signatures",
+    "chip_atlas_promoters_collapsed.rda",
+    package = "xcore"
+  )
+)
+
+dpi2symbol <- promoters_f5 %>%
+  S4Vectors::mcols() %>%
+  as.data.frame() %>%
+  dplyr::filter(! (is.na(SYMBOL) | SYMBOL == "")) %>%
+  dplyr::group_by(SYMBOL) %>%
+  dplyr::slice(which.max(score)) %>%
+  with(., setNames(SYMBOL, name))
+
+# if dpi is missing from our dictionary it will be NA and removed in subsequent step
+rownames(remap_promoters_collapsed) <-
+  dpi2symbol[rownames(remap_promoters_collapsed)]
+rownames(chip_atlas_promoters_collapsed) <-
+  dpi2symbol[rownames(chip_atlas_promoters_collapsed)]
+```
+
+# Combine expression with signatures
+Here I use MultiAssayExperiment as a container for expression and signatures.
+They are matched based on promoter ids than intersection of the names is taken. 
+Since we are using SYMBOL counts and DPI signatures so we will need to convert 
+DPI's to SYMBOL's.
+
+```{r}
+mae <- MultiAssayExperiment::MultiAssayExperiment(
+  experiments = MultiAssayExperiment::ExperimentList(
+    A_de = xcore::extract_a_column(A_de, "DE"),
+    A_fc = A_fc,
+    M_de = xcore::extract_a_column(M_de, "DE"),
+    M_fc = M_fc,
+    A_logcpm_delta = A_logcpm_delta,
+    M_logcpm_delta = M_logcpm_delta,
+    remap = remap_promoters_collapsed,
+    chip_atlas = chip_atlas_promoters_collapsed,
+    remap_raw = remap_promoters
+  )
+)
+mae <- MultiAssayExperiment::intersectRows(mae)
+```
+
+# Signatures
+## Bogumil's Motif Activity
+```{r}
+A_activities_remap_fc <- xcore::de_res_to_activity_scores(
+  signature_mat = remap_promoters_collapsed, 
+  de_res = A_de)
+M_activities_remap_fc <- xcore::de_res_to_activity_scores(
+  signature_mat = remap_promoters_collapsed, 
+  de_res = M_de)
+```
+
+# Fishers exact test
+
+```{r}
+# number of DE genes is super low
+apply(mae[["A_de"]], 2, table)
+#    M_TGFb_01h M_TGFb_02h M_TGFb_04h M_TGFb_06h M_TGFb_24h
+# -1          1         15         29         48         66
+# 0       15163      15094      15014      15014      14895
+# 1          29         84        150        131        232
+
+binarized <- list(
+  A_up = mae[["A_de"]] == 1,
+  A_down = mae[["A_de"]] == -1,
+  M_up = mae[["M_de"]] == 1,
+  M_down = mae[["M_de"]] == -1)
+
+
+var <- names(binarized)
+fisher_remap <- foreach(v = var) %dopar%
+  fisherTestSignature(exprss_mat = binarized[[v]],
+                      sign_mat = as.matrix(mae[["remap"]]))
+names(fisher_remap) <- var
+
+# A
+fisher_remap$A <- list()
+fisher_remap$A$p.value <- ifelse(
+  test = fisher_remap$A_up$p.value < fisher_remap$A_down$p.value, 
+  yes = fisher_remap$A_up$p.value,
+  no = fisher_remap$A_down$p.value)
+fisher_remap$A$odds <- ifelse(
+  test = fisher_remap$A_up$p.value < fisher_remap$A_down$p.value, 
+  yes = log2(fisher_remap$A_up$odds + 1),
+  no = -log2(fisher_remap$A_down$odds + 1))
+```
+
+# Ridge regression
+```{r}
+ridge_mod <- foreach(col = iterators::iter(mae[["A_fc"]])) %dopar%
+  runLinearRidge(x = mae[["remap"]], y = col[, 1, drop = TRUE])
+
+A_remap_ridge_coeff <- 
+  lapply(ridge_mod, function(x) coef(x)) %>% do.call(what = cbind)
+colnames(A_remap_ridge_coeff) <- colnames(mae[["A_fc"]])
+rownames(A_remap_ridge_coeff) <- gsub("`", "", rownames(A_remap_ridge_coeff))
+
+doMC::registerDoMC(2L)
+A_remap_ridge_pvals <- foreach(x = iterators::iter(ridge_mod)) %dopar%
+  ridge::pvals(x)
+
+A_remap_ridge_pvalue <- lapply(
+  X = A_remap_ridge_pvals, 
+  FUN = function(x) -log10(x[["pval"]])
+  ) %>% do.call(what = cbind)
+colnames(A_remap_ridge_pvalue) <- colnames(mae[["A_fc"]])
+rownames(A_remap_ridge_pvalue) <- gsub("`", "", rownames(A_remap_ridge_pvalue))
+
+A_remap_ridge_tstat <- lapply(
+  X = A_remap_ridge_pvals, 
+  FUN = function(x) x[["tstat"]]
+  ) %>% do.call(what = cbind)
+colnames(A_remap_ridge_tstat) <- colnames(mae[["A_fc"]])
+rownames(A_remap_ridge_tstat) <- gsub("`", "", rownames(A_remap_ridge_tstat))
+```
+
+# Methods comparison
+
+## motif activity vs ridge regression
+```{r}
+i <- base::intersect(rownames(A_activities_remap_fc), rownames(A_remap_ridge_coeff))
+arcor <- cor(A_activities_remap_fc[i, 5], A_remap_ridge_coeff[i, 5])
+plot(
+  x = A_activities_remap_fc[i, 5],
+  y = A_remap_ridge_coeff[i, 5],
+  main = sprintf("Ridge regression vs Motif Activity\nA 24h Pearson: %.3f", arcor),
+  xlab = "motif activity",
+  ylab = "ridge regression")
+
+## significant coeff only
+j <- rownames(A_remap_ridge_pvalue)[A_remap_ridge_pvalue[, 5] > -log10(0.05)]
+i <- base::intersect(i, j)
+arcor <- cor(A_activities_remap_fc[i, 5], A_remap_ridge_coeff[i, 5])
+plot(
+  x = A_activities_remap_fc[i, 5],
+  y = A_remap_ridge_coeff[i, 5],
+  main = sprintf("Ridge regression vs Motif Activity (significant coeff only)\nA 24h Pearson: %.3f", arcor),
+  xlab = "motif activity",
+  ylab = "ridge regression")
+
+# comparing with poster results
+bogumil <- c("RELA", "PAF1", "STAT1", "STAT2", "IRF1", "HNF1A", "RXRA", "AR", 
+             "SMAD3", "SMAD4", "SMAD2", "EP300", "FOXM1", "TP53", "EP300")
+bold <- remap_sign_meta[tf %in% bogumil, unique(cluster)] %>%
+  paste0("^", ., "_") %>%
+  paste(collapse = "|") %>%
+  grep(x = j, value = TRUE)
+pheatmap::pheatmap(
+  A_remap_ridge_coeff[j,],
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "Significant coeff\n poster motif activity overlapp in bold",
+  labels_row = pheatmap_make_bold_names(A_remap_ridge_coeff[j,],
+                                        rownames,
+                                        bold)
+)
+
+ismara <- c("SIN3A", "FOSL1", "TFDP1", "SMAD4", "SOX3", "SOX4", "HNF1A", "HNF1B", 
+            "IRF2", "STAT2", "IRF8", "IRF1", "AHR", "ARNT2", "FOXM1", "TBL1XR1", 
+            "MXI1", "MYC", "MYCN", "ID4", "TCF4", "SNAI2", "MNT", "HEY1", "HEY2", 
+            "TLX1", "NFIC", "NRF1", "SIX5", "SMARCC2", "HCFC1", "FOXD1", "FOXO1", 
+            "FOXO6", "FOXG1", "FOXP1", "ATF6", "MEIS2", "ELF2", "GABPA", "ELF5", 
+            "ZNF143")
+bold <- remap_sign_meta[tf %in% ismara, unique(cluster)] %>%
+  paste0("^", ., "_") %>%
+  paste(collapse = "|") %>%
+  grep(x = j, value = TRUE)
+pheatmap::pheatmap(
+  A_remap_ridge_coeff[j,],
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "Significant coeff\n poster ismara overlapp in bold",
+  labels_row = pheatmap_make_bold_names(A_remap_ridge_coeff[j,],
+                                        rownames,
+                                        bold)
+)
+```
+
+## fisher results vs ridge results
+
+up/down fisher results could be combined always choose bigger odds ratio and add
+sign, then you can compare odds ratio to coeffs. Take log2 odds ratio.
+Use edgeR "DE" as an input.
+```{r}
+i <- base::intersect(rownames(fisher_remap$A$odds), rownames(A_remap_ridge_coeff))
+frcor <- cor(fisher_remap$A$odds[i, 5], A_remap_ridge_coeff[i, 5])
+plot(
+  x = fisher_remap$A$odds[i, 5],
+  y = A_remap_ridge_coeff[i, 5],
+  main = sprintf("Ridge regression vs Fisher odds\nA 24h Pearson: %.3f", frcor),
+  xlab = "Fisher's odds",
+  ylab = "ridge regression")
+
+## significant coeff only
+j <- rownames(A_remap_ridge_pvalue)[A_remap_ridge_pvalue[, 5] > -log10(0.05)]
+frcor <- cor(fisher_remap$A$odds[j, 5], A_remap_ridge_coeff[j, 5])
+plot(
+  x = fisher_remap$A$odds[j, 5],
+  y = A_remap_ridge_coeff[j, 5],
+  main = sprintf("Ridge regression vs Fisher odds (significant coeff only)\nA 24h Pearson: %.3f", frcor),
+  xlab = "Fisher's odds",
+  ylab = "ridge regression")
+
+## significant odds only
+j <- rownames(fisher_remap$A$p.value)[fisher_remap$A$p.value[, 5] < 0.05]
+frcor <- cor(fisher_remap$A$odds[j, 5], A_remap_ridge_coeff[j, 5])
+plot(
+  x = fisher_remap$A$odds[j, 5],
+  y = A_remap_ridge_coeff[j, 5],
+  main = sprintf("Fisher odds vs Ridge regression (significant odds only)\nA 24h Pearson: %.3f", frcor),
+  xlab = "Fisher's odds",
+  ylab = "ridge regression")
+```
+
+```{r}
+i <- base::intersect(rownames(fisher_remap$A$odds), rownames(A_activities_remap_fc))
+facor <- cor(fisher_remap$A$odds[i, 5], A_activities_remap_fc[i, 5])
+plot(
+  x = fisher_remap$A$odds[i, 5],
+  y = A_activities_remap_fc[i, 5],
+  main = sprintf("Fisher odds vs Motif Activity\nA 24h Pearson: %.3f", facor),
+  xlab = "Fisher's odds",
+  ylab = "motif activity")
+
+## significant odds only
+j <- rownames(fisher_remap$A$p.value)[fisher_remap$A$p.value[, 5] < 0.05]
+facor <- cor(fisher_remap$A$odds[j, 5], A_activities_remap_fc[j, 5])
+plot(
+  x = fisher_remap$A$odds[j, 5],
+  y = A_activities_remap_fc[j, 5],
+  main = sprintf("Fisher odds vs motif activity (significant odds only)\nA 24h Pearson: %.3f", facor),
+  xlab = "Fisher's odds",
+  ylab = "motif activity")
+```
+
+## Looking at the examples of opposite sign results
+```{r}
+# motif activity and fisher down & ridge up
+i <- intersect(
+  x = intersect(rownames(A_activities_remap_fc), rownames(fisher_remap$A$odds)),
+  y = rownames(A_remap_ridge_coeff)
+)
+m <- A_activities_remap_fc[i, 5] < 0 & 
+  fisher_remap$A$odds[i, 5] < 0 &
+  A_remap_ridge_coeff[i, 5] > 0
+mpval <- fisher_remap$A$p.value[i, 5] < 0.05 & A_remap_ridge_pvalue[i, 5] > -log10(0.05)
+
+do.call(cbind, list(A_activities_remap_fc[i, 5][m & mpval],
+                    fisher_remap$A$odds[i, 5][m & mpval],
+                    A_remap_ridge_coeff[i, 5][m & mpval])) %>% head()
+
+sig339 <- mae[["remap"]][, "339_tf.mixed_biotype.mixed_study.mixed_tf_dbd.NA"]
+sel <- names(sig339)[sig339 == 1]
+A_fc[sel, 5] %>% hist(main = "signature 339 FC", breaks = 30)
+
+signif24 <- xcore::extract_a_column(A_de, "DE")[sel, 5]
+signif24 <- names(signif24)[signif24 != 0]
+A_fc[signif24, 5] %>% hist(main = "signature 339 FC (DE != 0)", breaks = 30)
+
+#
+i <- rownames(A_activities_remap_fc)
+(scale(mae[["remap"]])[sel, i] %*% A_activities_remap_fc[, 5]) %>%
+  as.vector() %>%
+  hist(main = "Predicted expression based on motif activities",
+       breaks = 30)
+
+i <- colnames(mae[["remap"]])
+((scale(mae[["remap"]])[sel, ] %*% A_remap_ridge_coeff[i, 5]) + 
+    A_remap_ridge_coeff["(Intercept)", 5]) %>%
+  as.vector() %>%
+  hist(main = "Predicted expression based on ridge regression",
+       breaks = 30)
+
+ridge_p <- ((mae[["remap"]] %*% A_remap_ridge_coeff[i, 5]) + 
+    A_remap_ridge_coeff["(Intercept)", 5])
+mean((mae[["A_fc"]][, 5] - ridge_p[, 1])^2)
+plot(mae[["A_fc"]][, 5], (mae[["A_fc"]][, 5] - ridge_p[, 1])^2)
+
+ridge_p_scaled <- ((scale(mae[["remap"]]) %*% A_remap_ridge_coeff[i, 5]) + 
+    A_remap_ridge_coeff["(Intercept)", 5])
+plot(mae[["A_fc"]][, 5], (mae[["A_fc"]][, 5] - ridge_p_scaled[, 1])^2)
+
+# Heteroskedastic errors
+mae <- c(mae, A_logCPM = xcore::extract_a_column(A_de, "logCPM"))
+mae <- MultiAssayExperiment::intersectRows(mae)
+X <- mae[["remap"]]
+Y <- mae[["A_fc"]][, 5]
+weights <- 1 #+ abs(mae[["A_de"]][, 5]) * 5
+mod.glmnet <- glmnet::cv.glmnet(x = X,
+  y = Y,
+  family = "gaussian",
+  alpha = 0,
+  standarize = TRUE)#,
+  # weights = weights)
+glmnet_p <- predict(object = mod.glmnet$glmnet.fit, 
+                    s = mod.glmnet$lambda.min, 
+                    newx = X)
+plot(Y, (Y - glmnet_p[, 1])^2, main = "24h log2FC vs squered residuals", xlab = "log2FC", ylab = "squered residuals")
+plot(Y, glmnet_p)
+
+cor(Y, glmnet_p)
+
+hist(Y)
+
+plot(mae[["A_logCPM"]][, 5], (Y - glmnet_p[, 1])^2)
+
+# especially DE genes are affected by high error in predictions
+i <- mae[["A_de"]][, 5] != 0
+plot(Y[i], ((Y - glmnet_p[, 1])^2)[i])
+
+# Box-Cox transformation
+Y_boxcox <- caret::BoxCoxTrans(2^unique(Y)) # lambda could not be estimated
+
+car::qqPlot(Y)
+
+# Y is Logistically distributed?
+qqplot(rlogis(length(Y), scale = 0.4), Y)
+qqline(rlogis(length(Y)), col = "red")
+
+fitdistrplus::descdist(Y)
+fit.lognormal <- fitdistrplus::fitdist(2^Y, "lnorm")
+fit.gamma <- fitdistrplus::fitdist(2^Y, "gamma")
+
+# test
+i <- rownames(mae[["remap"]])
+Y <- A_logcpm[i, 26]
+Y <- Y[Y > 1.6]
+X <- mae[["remap"]][names(Y), ]
+offset <- A_logcpm[names(Y), 1]
+hist(Y, main = "logCPM histogram")
+mod3.glmnet <- glmnet::cv.glmnet(x = X,
+  y = Y,
+  family = "gaussian",
+  alpha = 0,
+  standarize = TRUE,
+  offset = offset)
+glmnet_p <- predict(object = mod3.glmnet$glmnet.fit, 
+                    s = mod3.glmnet$lambda.min, 
+                    newx = X, newoffset = offset)
+plot(Y, (Y - glmnet_p[, 1])^2)
+plot(Y, glmnet_p)
+car::qqPlot(Y)
+
+# especially DE genes are affected by high error in predictions
+i <- mae[["A_de"]][, 5] != 0
+plot((Y-offset), ((Y - glmnet_p[, 1])^2), ylab = "residual^2")
+
+# test weights
+i <- rownames(mae[["remap"]])
+Y <- A_logcpm[i, 26]
+offset <- A_logcpm[i, 1]
+weights <- (mae[["A_fc"]][, 5])^30 %>% abs() # this looks superbad :(
+hist(Y, main = "logCPM histogram")
+mod3.glmnet <- glmnet::cv.glmnet(x = X,
+  y = Y,
+  family = "gaussian",
+  alpha = 0,
+  standarize = TRUE,
+  offset = offset, 
+  weights = weights)
+glmnet_p <- predict(object = mod3.glmnet$glmnet.fit, 
+                    s = mod3.glmnet$lambda.min, 
+                    newx = X, newoffset = offset)
+plot(Y, (Y - glmnet_p[, 1])^2)
+plot(Y, glmnet_p)
+car::qqPlot(Y)
+
+# especially DE genes are affected by high error in predictions
+plot((Y-offset), ((Y - glmnet_p[, 1])^2), ylab = "residual^2")
+
+# test heteroscedastic
+get_varbased_weights <- function(y, X) {
+  weights <- sapply(seq(ncol(X)), function(predictor) {
+    uni_model <- lm(y ~ X[, predictor])
+    coeff_variance <- summary(uni_model)$coefficients[2, 2]^2
+  })
+}
+
+i <- rownames(mae[["remap"]])
+Y <- A_logcpm[i, 26]
+X <- mae[["remap"]]
+offset <- A_logcpm[i, 1]
+penalty.factor <- get_varbased_weights(Y-offset, X)
+hist(Y, main = "logCPM histogram")
+mod3.glmnet <- glmnet::cv.glmnet(x = X,
+  y = Y,
+  family = "gaussian",
+  alpha = 0,
+  standarize = FALSE,
+  offset = offset,
+  penalty.factor = penalty.factor)
+glmnet_p <- predict(object = mod3.glmnet$glmnet.fit, 
+                    s = mod3.glmnet$lambda.min, 
+                    newx = X, newoffset = offset)
+plot(Y, (Y - glmnet_p[, 1])^2)
+plot(Y, glmnet_p)
+car::qqPlot(Y)
+
+# especially DE genes are affected by high error in predictions
+i <- mae[["A_de"]][, 5] != 0
+plot((Y-offset), ((Y - glmnet_p[, 1])^2), ylab = "residual^2")
+
+# test binomial
+Y <- as.factor(mae[["A_de"]][, 5] == 1)
+X <- mae[["remap"]]
+weights <- as.vector((table(Y) / length(Y))^-1)[Y]
+hist(Y, main = "logCPM histogram")
+mod4.glmnet <- glmnet::cv.glmnet(x = X,
+  y = Y,
+  family = "binomial",
+  alpha = 0,
+  standarize = TRUE,
+  type.measure = "auc",
+  weights = weights)
+glmnet_p <- predict(object = mod4.glmnet$glmnet.fit, 
+                    s = mod4.glmnet$lambda.min, 
+                    newx = X, type = "class")
+```
+
+# ComplexHeatmap
+
+## Ridge significant
+```{r}
+makeHeatmap <- function(matrix, cluster_columns = FALSE, ...) {
+  col_fun = circlize::colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
+  row_labels <- gsub("_.*?\\.", " ", rownames(matrix))
+  ComplexHeatmap::Heatmap(matrix,
+                          col = col_fun,
+                          cluster_columns = cluster_columns, 
+                          row_labels = row_labels, 
+                          heatmap_legend_param = list(
+                            col_fun = col_fun,
+                            at = c(-2, 0, 2)
+                          ),
+                          ...)
+}
+
+compareHeatmaps <- function(rows, ...) {
+  rows <- intersect(x = rows, y = rownames(A_activities_remap_fc)) %>%
+    intersect(y = rownames(A_remap_ridge_coeff)) %>%
+    intersect(y = rownames(fisher_remap$A$odds))
+  
+  hactiv <- A_activities_remap_fc %>%
+    as.matrix() %>%
+    `[`(rows, 1:5) %>%
+    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    t() %>%
+    makeHeatmap(name = "motif activity", column_title = "motif activity")
+  hridge <- A_remap_ridge_coeff %>%
+    `[`(rows, 1:5) %>%
+    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    t() %>%
+    makeHeatmap(name = "regression", column_title = "regression")
+  hfishe <- fisher_remap$A$odds  %>%
+    `[`(rows, 1:5) %>%
+    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    t() %>%
+    makeHeatmap(name = "fisher", column_title = "fisher")
+  
+  ComplexHeatmap::draw(hactiv + hridge + hfishe, ...)
+}
+
+# top motif activities
+xcore::select_top_var(A_activities_remap_fc) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "motif activity")
+xcore::select_top_mean_up(A_activities_remap_fc) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "motif activity")
+xcore::select_top_mean_down(A_activities_remap_fc) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "motif activity")
+
+# top regression coefficients
+xcore::select_top_mean_up(A_remap_ridge_pvalue) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "regression")
+
+# top fisher odds
+apply(fisher_remap$A$p.value, 1, xcore::fisherMethod) %>%
+  sort() %>%
+  head(30) %>%
+  names() %>%
+  compareHeatmaps(main_heatmap = "fisher")
+```
+
+# Are FC and count Motif Activities correlated?
+```{r}
+A_activities_counts_remap <- xcore::counts_to_activity_scores(
+  signature_mat = remap_promoters_collapsed, 
+  counts = counts_symbol[, 1:26], 
+  control_samples = 1:6, 
+  min_genes_per_sig = 100)
+M_activities_counts_remap <- xcore::counts_to_activity_scores(
+  signature_mat = remap_promoters_collapsed, 
+  counts = counts_symbol[, 27:52], 
+  control_samples = 1:6, 
+  min_genes_per_sig = 100)
+
+par(mfrow = c(1, 2), cex = 0.8, pty = "s")
+j <- grepl("_24h_", colnames(A_activities_counts_remap))
+A_act_counts_remap_24h_mean <- rowMeans(A_activities_counts_remap[, j])
+j <- grepl("_24h", colnames(A_activities_remap_fc))
+A_act_fc_remap_24h <- A_activities_remap_fc[, j]
+aacor <- cor(x = A_act_counts_remap_24h_mean, 
+    y = A_act_fc_remap_24h[names(A_act_counts_remap_24h_mean)])
+plot(
+  x = A_act_counts_remap_24h_mean,
+  y = A_act_fc_remap_24h[names(A_act_counts_remap_24h_mean)],
+  xlab = "counts mean activity",
+  ylab = "FC activity",
+  main = sprintf("A 24h Pearson: %.3f", aacor))
+
+j <- grepl("_24h_", colnames(M_activities_counts_remap))
+M_act_counts_remap_24h_mean <- rowMeans(M_activities_counts_remap[, j])
+j <- grepl("_24h", colnames(M_activities_remap_fc))
+M_act_fc_remap_24h <- M_activities_remap_fc[, j]
+macor <- cor(x = M_act_counts_remap_24h_mean, 
+    y = M_act_fc_remap_24h[names(M_act_counts_remap_24h_mean)])
+plot(
+  x = M_act_counts_remap_24h_mean,
+  y = M_act_fc_remap_24h[names(M_act_counts_remap_24h_mean)],
+  xlab = "counts mean activity",
+  ylab = "FC activity",
+  main = sprintf("M 24h Pearson: %.3f", macor))
+
+mtext(
+  "Counts activity vs FC activity",
+  side = 3,
+  outer = TRUE,
+  line = -1.5,
+  font = 2,
+  cex = 1.2)
+```
+
+# How to meaningfully choose top signatures from Motif Activities?
+```{r}
+pheatmap::pheatmap(select_top_var(A_activities_remap_fc), 
+                   cluster_cols = FALSE,
+                   scale = "row",
+                   main = "A ReMap FC activities top variable")
+pheatmap::pheatmap(
+  select_top_mean_up(A_activities_remap_fc),
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "A ReMap FC activities top mean up",
+  labels_row = pheatmap_make_bold_names(
+    select_top_mean_up(A_activities_remap_fc),
+    rownames,
+    c(
+      "200_tf.EZH2_biotype.mixed_study.mixed_tf_dbd.NA",
+      "227_tf.ESR1_biotype.MCF-7_study.GSE99626_tf_dbd.zf-C4",
+      "60_tf.TP53_biotype.mixed_study.mixed_tf_dbd.P53",
+      "171_tf.SOX2_biotype.mixed_study.mixed_tf_dbd.HMG_box"
+    )
+  )
+)
+pheatmap::pheatmap(
+  select_top_mean_down(A_activities_remap_fc),
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "A ReMap FC activities top mean down",
+  labels_row = pheatmap_make_bold_names(
+    select_top_mean_down(A_activities_remap_fc),
+    rownames,
+    c(
+      "233_tf.AR_biotype.mixed_study.mixed_tf_dbd.zf-C4",
+      "218_tf.ESR1_biotype.MCF-7_study.GSE119702_tf_dbd.zf-C4",
+      "165_tf.NR3C1_biotype.mixed_study.mixed_tf_dbd.zf-C4",
+      "179_tf.AR_biotype.VCaP_study.GSE32892_tf_dbd.zf-C4",
+      "274_tf.PPARG_biotype.HT29_study.GSE77039_tf_dbd.zf-C4",
+      "73_tf.AR_biotype.VCaP_study.mixed_tf_dbd.zf-C4",
+      "107_tf.PGR_biotype.T-47D_study.mixed_tf_dbd.zf-C4"
+    )
+  )
+)
+
+pheatmap::pheatmap(
+  select_top_var(M_activities_remap_fc),
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "M ReMap FC activities top variable",
+  labels_row = pheatmap_make_bold_names(
+    select_top_var(M_activities_remap_fc),
+    rownames,
+    c(
+      "200_tf.EZH2_biotype.mixed_study.mixed_tf_dbd.NA",
+      "218_tf.ESR1_biotype.MCF-7_study.GSE119702_tf_dbd.zf-C4"
+    )
+  )
+)
+pheatmap::pheatmap(
+  select_top_mean_up(M_activities_remap_fc),
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "A ReMap FC activities top mean up",
+  labels_row = pheatmap_make_bold_names(
+    select_top_mean_up(M_activities_remap_fc),
+    rownames,
+    c(
+      "200_tf.EZH2_biotype.mixed_study.mixed_tf_dbd.NA",
+      "179_tf.AR_biotype.VCaP_study.GSE32892_tf_dbd.zf-C4",
+      "363_tf.SIX2_biotype.kidney_study.GSE75948_tf_dbd.Homeobox",
+      "106_tf.AR_biotype.LNCaP_study.mixed_tf_dbd.zf-C4",
+      "218_tf.ESR1_biotype.MCF-7_study.GSE119702_tf_dbd.zf-C4",
+      "233_tf.AR_biotype.mixed_study.mixed_tf_dbd.zf-C4",
+      "349_tf.GATA3_biotype.mixed_study.mixed_tf_dbd.GATA"
+    )
+  )
+)
+pheatmap::pheatmap(
+  select_top_mean_down(M_activities_remap_fc),
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "A ReMap FC activities top mean down",
+  labels_row = pheatmap_make_bold_names(
+    select_top_mean_down(M_activities_remap_fc),
+    rownames,
+    c(
+      "136_tf.CLOCK_biotype.mixed_study.GSE96659_tf_dbd.HLH",
+      "279_tf.ARNTL_biotype.U2OS_study.GSE85096_tf_dbd.HLH",
+      "270_tf.ZNF547_biotype.HEK293_study.mixed_tf_dbd.zf-C2H2",
+      "112_tf.HSF1_biotype.mixed_study.GSE38901_tf_dbd.HSF_DNA-bind",
+      "238_tf.ZEB1_biotype.mixed_study.mixed_tf_dbd.zf-C2H2,Homeobox",
+      "332_tf.AR_biotype.LNCaP_study.GSE37345_tf_dbd.zf-C4",
+      "71_tf.MYC_biotype.P493-6_study.mixed_tf_dbd.HLH"
+    )
+  )
+)
+```
+
+# Is Fisher's FC and logcpm correlated?
+```{r}
+# find CPM threshold that maximizes similarity between FC > 1 and CPM > th
+loss <- function(fc_vec, cpm_vec, fc_th, cpm_th) {
+  length(fc_vec) - sum(fc_vec > fc_th & cpm_vec > cpm_th)
+}
+plot(
+  x = seq(-3, 3, by = 0.1),
+  y = sapply(
+    X = seq(-3, 3, by = 0.1),
+    FUN = function(th)
+      loss(
+        fc_vec = mae[["A_fc"]][, 5],
+        cpm_vec = mae[["A_logcpm_delta"]][, 18],
+        fc_th = 1,
+        cpm_th = th
+      )
+  ),
+  main = "Looking for CPM threshold for up regulated genes",
+  xlab = "threshold",
+  ylab = "loss")
+plot(
+  x = seq(-2, 2, by = 0.1),
+  y = sapply(
+    X = seq(-2, 2, by = 0.1),
+    FUN = function(th)
+      loss(
+        fc_vec = mae[["A_fc"]][, 5],
+        cpm_vec = mae[["A_logcpm_delta"]][, 20],
+        fc_th = -1,
+        cpm_th = th
+      )
+  ),
+  main = "Looking for CPM threshold for down regulated genes",
+  xlab = "threshold",
+  ylab = "loss")
+
+binarized <- c(
+  binarized,
+  list(
+    A_logcpm_delta_up = (mae[["A_logcpm_delta"]] > 0.5) * 1,
+    A_logcpm_delta_down = (mae[["A_logcpm_delta"]] < -0.5) * 1,
+    M_logcpm_delta_up = (mae[["M_logcpm_delta"]] > 0.5) * 1,
+    M_logcpm_delta_down = (mae[["M_logcpm_delta"]] < -0.5) * 1
+  )
+)
+
+var <- c("A_fc_up", "A_fc_down", "M_fc_up", "M_fc_down", "A_logcpm_delta_up",
+         "A_logcpm_delta_down", "M_logcpm_delta_up", "M_logcpm_delta_down")
+fisher_remap <- foreach(v = var) %dopar%
+  fisherTestSignature(exprss_mat = binarized[[v]],
+                      sign_mat = as.matrix(mae[["remap"]]))
+names(fisher_remap) <- var
+
+par(mfrow = c(1, 2), cex = 1, pty = "s")
+A_fc_up_24h <- fisher_remap[["A_fc_up"]][["p.value"]][, "A_TGFb_24h"] %>%
+  log() %>%
+  `*`(-1)
+j <- grepl("_24h_", colnames(fisher_remap[["A_logcpm_delta_up"]]["p.value"]))
+A_logcpm_delta_up_24h <- apply(
+  X = fisher_remap[["A_logcpm_delta_up"]][["p.value"]], 
+  MARGIN = 1, 
+  FUN = function(pvals) -(fisherMethod(pvals, log.p = TRUE)))
+afcor <- cor(x = A_logcpm_delta_up_24h, 
+             y = A_fc_up_24h)
+plot(
+  x = A_fc_up_24h,
+  y = A_logcpm_delta_up_24h,
+  main = sprintf("A UP; Pearson: %.3f", afcor),
+  xlab = "count -log(p-val)",
+  ylab = "FC -log(p-val)")
+
+A_fc_down_24h <- fisher_remap[["A_fc_down"]][["p.value"]][, "A_TGFb_24h"] %>%
+  log() %>%
+  `*`(-1)
+j <- grepl("_24h_", colnames(fisher_remap[["A_logcpm_delta_down"]]["p.value"]))
+A_logcpm_delta_down_24h <- apply(
+  X = fisher_remap[["A_logcpm_delta_down"]][["p.value"]], 
+  MARGIN = 1, 
+  FUN = function(pvals) -(fisherMethod(pvals, log.p = TRUE)))
+afcor <- cor(x = A_logcpm_delta_down_24h, 
+             y = A_fc_down_24h)
+plot(
+  x = A_fc_down_24h,
+  y = A_logcpm_delta_down_24h,
+  main = sprintf("A DOWN; Pearson: %.3f", afcor),
+  xlab = "count -log(p-val)",
+  ylab = "FC -log(p-val)")
+mtext(
+  "Counts Fisher's p-value vs FC Fisher's p-value",
+  side = 3,
+  outer = TRUE,
+  line = -2,
+  font = 2,
+  cex = 1.2)
+```
+
+# How to meaningfully choose top signatures for Fisher?
+```{r}
+pheatmap::pheatmap(select_top_var(fisher_remap[["A_fc_up"]][["odds"]]), 
+                   cluster_cols = FALSE,
+                   scale = "row",
+                   main = "A ReMap FC Fisher's odds UP top variable")
+pheatmap::pheatmap(select_top_mean_up(fisher_remap[["A_fc_up"]][["odds"]]), 
+                   cluster_cols = FALSE,
+                   scale = "row",
+                   main = "A ReMap FC Fisher's odds UP top mean up")
+
+pheatmap::pheatmap(select_top_var(fisher_remap[["A_fc_down"]][["odds"]]),
+                   cluster_cols = FALSE,
+                   scale = "row",
+                   main = "A ReMap FC Fisher's odds DOWN top variable")
+pheatmap::pheatmap(select_top_mean_up(fisher_remap[["A_fc_down"]][["odds"]]), 
+                   cluster_cols = FALSE,
+                   scale = "row",
+                   main = "A ReMap FC Fisher's odds DOWN top mean up")
+```
+
+# Ridge regression: Does FC coeff correlate with counts coeff
+```{r}
+j24h <- grepl("_24h", colnames(mae[["A_logcpm_delta"]]))
+ridge_mod_counts <- 
+  foreach(col = iterators::iter(mae[["A_logcpm_delta"]][, j24h])) %dopar%
+    runLinearRidge(x = mae[["remap"]], y = col[, 1, drop = TRUE])
+coeff_counts <- lapply(ridge_mod_counts, function(x) coef(x)) %>% 
+  do.call(what = cbind) %>% 
+  rowMeans()
+
+rccor <- cor(A_remap_ridge_coeff[, "A_TGFb_24h"], coeff_counts)
+plot(
+  x = A_remap_ridge_coeff[, "A_TGFb_24h"],
+  y = coeff_counts,
+  main = sprintf("Ridge regression counts coef vs FC coef\nPearson: %.3f", rccor),
+  xlab = "FC coef",
+  ylab = "counts mean coef")
+```
+
+# Ridge regression: How to choose top results?
+```{r}
+pheatmap::pheatmap(
+  select_top_mean_up(A_remap_ridge_tstat),
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "A Ridge regression Z-score top mean up",
+  labels_row = pheatmap_make_bold_names(
+    select_top_mean_up(A_remap_ridge_tstat),
+    rownames,
+    c(
+      "200_tf.EZH2_biotype.mixed_study.mixed_tf_dbd.NA",
+      "275_tf.PHIP_biotype.HCT.116_study.GSE101646_tf_dbd.NA",
+      "271_tf.SNAI2_biotype.keratinocyte_study.GSE55421_tf_dbd.zf.C2H2",
+      "246_tf.NR3C1_biotype.Ishikawa_study.mixed_tf_dbd.zf.C4",
+      "367_tf.MED1_biotype.MDA.MB.231_study.GSE95121_tf_dbd.NA",
+      "58_tf.BRD4_biotype.CLL_study.GSE109411_tf_dbd.NA",
+      "60_tf.TP53_biotype.mixed_study.mixed_tf_dbd.P53",
+      "5_tf.BRD4_biotype.SUM159PT_study.GSE87418_tf_dbd.NA",
+      "213_tf.ZBTB7A_biotype.mixed_study.mixed_tf_dbd.zf.C2H2",
+      "283_tf.MED1_biotype.hMSC.TERT4_study.GSE104537_tf_dbd.NA",
+      "171_tf.SO2_biotype.mixed_study.mixed_tf_dbd.HMG_box"
+    )
+  )
+)
+
+pheatmap::pheatmap(
+  select_top_var(A_remap_ridge_coeff),
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "A Ridge regression Z-score top variable")
+pheatmap::pheatmap(
+  select_top_mean_up(A_remap_ridge_coeff),
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "A Ridge regression Z-score top mean up",
+  labels_row = pheatmap_make_bold_names(
+    select_top_mean_up(A_remap_ridge_coeff),
+    rownames,
+    c(
+      "X106_tf.AR_biotype.LNCaP_study.mixed_tf_dbd.zf.C4",
+      "X60_tf.TP53_biotype.mixed_study.mixed_tf_dbd.P53",
+      "X200_tf.EZH2_biotype.mixed_study.mixed_tf_dbd.NA"
+    )
+  )
+)
+pheatmap::pheatmap(
+  select_top_mean_down(A_remap_ridge_coeff),
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "A Ridge regression Z-score top mean down",
+  labels_row = pheatmap_make_bold_names(
+    select_top_mean_down(A_remap_ridge_coeff),
+    rownames,
+    c(
+      "367_tf.MED1_biotype.MDA.MB.231_study.GSE95121_tf_dbd.NA",
+      "233_tf.AR_biotype.mixed_study.mixed_tf_dbd.zf.C4",
+      "179_tf.AR_biotype.VCaP_study.GSE32892_tf_dbd.zf.C4",
+      "58_tf.BRD4_biotype.CLL_study.GSE109411_tf_dbd.NA"
+    )
+  )
+)
+```
+
+# Testing
+
+Small test shows best results when using glmnet CV to select lambda, rather than
+ridge's method.
+```{r eval=FALSE}
+# here we use ridge regression as it allows calculating p-values
+mod.glmnet.mgauss <- glmnet::cv.glmnet(
+  x = mae[["remap"]],
+  y = mae[["A_fc"]],
+  family = "mgaussian",
+  alpha = 0)
+
+mod.glmnet <- glmnet::cv.glmnet(x = mae[["remap"]],
+  y = mae[["A_fc"]][, 5],
+  family = "gaussian",
+  alpha = 0)
+
+mean((mae[["A_fc"]][, 5] - predict(mod.glmnet.mgauss, newx = mae[["remap"]], s = mod.glmnet.mgauss$lambda.min)[, 5, ])^2)
+# 0.4221278
+
+mean((mae[["A_fc"]][, 5] - predict(mod.glmnet, newx = mae[["remap"]], s = mod.glmnet$lambda.min))^2)
+# 0.4213024
+
+mean((mae[["A_fc"]][, 5] - predict(ridge_mod[[5]], ridge_mod[[5]]$model_frame))^2)
+# 0.4714046
+
+rdata <- as.data.frame(cbind(y = mae[["A_fc"]][, 5], as.matrix(mae[["remap"]])))
+newridge <- ridge::linearRidge(
+      formula = y ~ .,
+      data = rdata,
+      lambda = mod.glmnet$lambda.min,
+      scaling = "scale")
+mean((mae[["A_fc"]][, 5] - predict(newridge, newridge$model_frame))^2)
+# 0.4180027
+```
+
+Alpha selection
+```{r eval=FALSE}
+cvAlpha <- function(x, y, alpha_seq, ...) {
+  foldid <- sample(seq_along(alpha_seq), size = length(y), replace = TRUE)
+  cv_alpha <- foreach(alpha = alpha_seq) %dopar%
+    glmnet::cv.glmnet(
+      x = x,
+      y = y,
+      foldid = foldid,
+      alpha = alpha,
+      ...)
+  
+  alpha_cvm <- vapply(X = cv_alpha, 
+                      FUN = function(m) min(m[["cvm"]]), 
+                      FUN.VALUE = numeric(1L))
+  
+  best_cv <- cv_alpha[[which.min(alpha_cvm)]]
+  
+  list(
+    cv = cv_alpha,
+    alpha_cvm = alpha_cvm,
+    best_cv = best_cv
+  )
+}
+
+doMC::registerDoMC(4L)
+alpha_seq <- seq(from = 0, to = 1, by = 0.2)
+mod <-
+  cvAlpha(x = mae[["remap"]],
+          y = mae[["exprss"]],
+          alpha_seq = alpha_seq,
+          standardize = TRUE)
+
+par(mfrow = c(3,2))
+for (i in seq_along(alpha_seq)) {
+  plot(mod$cv[[i]])
+  title(main = eval(substitute(expression(alpha == a), list(a=alpha_seq[i]))), 
+        line = 3)
+}
+
+lapply(X = seq_along(alpha_seq), 
+       FUN = function(i) {
+         i_min <- mod$cv[[i]]$index["min", ]
+         y_hat <- predict(object = mod$cv[[i]]$glmnet.fit, 
+                          newx = mae[["remap"]], 
+                          s = mod$cv[[i]]$lambda.min)
+         rss <- sum((mae[["exprss"]] - y_hat)^2)
+         tss <- sum((mae[["exprss"]] - mean(mae[["exprss"]]))^2)
+         r2 <- 1 - (rss / tss)
+         data.frame(
+          method = "glmnet",
+          alpha = alpha_seq[i], 
+          lambda.min = mod$cv[[i]]$lambda.min, 
+          MSE = mod$cv[[i]]$cvm[i_min], 
+          SD = mod$cv[[i]]$cvsd[i_min],
+          R2 = r2)
+         }) %>%
+  do.call(what = rbind) -> glmnet_res
+
+lm_res <- data.frame(
+  method = "lm",
+  alpha = NA,
+  lambda.min = NA,
+  MSE = NA,
+  SD = NA,
+  R2 = NA)
+foldid <- sample(1:10, size = nrow(mae[["exprss"]]), replace = TRUE)
+mse <- c()
+for (i in 1:10) {
+  train_i <- foldid == i
+  lm_mod <- glmnet::glmnet(
+    x = mae[["remap"]][train_i, ],
+    y = mae[["exprss"]][train_i, ],
+    alpha = 0,
+    lambda = 0)
+  y_hat <- predict(lm_mod, newx = mae[["remap"]][! train_i, ], s = 0)
+  mse <- c(mse, mean((mae[["exprss"]][! train_i, ] - y_hat)^2))
+}
+
+lm_res$MSE <- mean(mse)
+lm_res$SD <- sd(mse)
+lm_res$R2 <- cor(mae[["exprss"]], predict(lm_mod, newx = mae[["remap"]], s = 0))[1]^2
+
+
+rbind(lm_res, glmnet_res) %>%
+  knitr::kable()
+
+# I think what can be seen here is that neither value of alpha gives a significant
+# improvement to the model.
+```
+
+# Heteroscedastic ridge regression
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3962491/
+https://stats.stackexchange.com/questions/359015/ridge-lasso-standardization-of-dummy-indicators
+https://github.com/MichalOleszak/momisc/blob/master/R/hridge.R
