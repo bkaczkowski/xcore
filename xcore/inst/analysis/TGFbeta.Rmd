@@ -187,6 +187,10 @@ rownames(remap_promoters_collapsed) <-
   dpi2symbol[rownames(remap_promoters_collapsed)]
 rownames(chip_atlas_promoters_collapsed) <-
   dpi2symbol[rownames(chip_atlas_promoters_collapsed)]
+
+# remap all
+rownames(remap_promoters) <- 
+  dpi2symbol[rownames(remap_promoters)]
 ```
 
 # Combine expression with signatures
@@ -223,8 +227,7 @@ M_activities_remap_fc <- xcore::de_res_to_activity_scores(
   de_res = M_de)
 ```
 
-# Fishers exact test
-
+## Fishers exact test
 ```{r}
 # number of DE genes is super low
 apply(mae[["A_de"]], 2, table)
@@ -258,7 +261,7 @@ fisher_remap$A$odds <- ifelse(
   no = -log2(fisher_remap$A_down$odds + 1))
 ```
 
-# Ridge regression
+## Ridge regression
 ```{r}
 ridge_mod <- foreach(col = iterators::iter(mae[["A_fc"]])) %dopar%
   runLinearRidge(x = mae[["remap"]], y = col[, 1, drop = TRUE])
@@ -287,127 +290,303 @@ colnames(A_remap_ridge_tstat) <- colnames(mae[["A_fc"]])
 rownames(A_remap_ridge_tstat) <- gsub("`", "", rownames(A_remap_ridge_tstat))
 ```
 
-# Methods comparison
+## Methods comparison
 
-## motif activity vs ridge regression
 ```{r}
-i <- base::intersect(rownames(A_activities_remap_fc), rownames(A_remap_ridge_coeff))
-arcor <- cor(A_activities_remap_fc[i, 5], A_remap_ridge_coeff[i, 5])
-plot(
-  x = A_activities_remap_fc[i, 5],
-  y = A_remap_ridge_coeff[i, 5],
-  main = sprintf("Ridge regression vs Motif Activity\nA 24h Pearson: %.3f", arcor),
-  xlab = "motif activity",
-  ylab = "ridge regression")
+rows <- intersect(x = rownames(fisher_remap$A$odds), y = rownames(A_activities_remap_fc)) %>%
+    intersect(y = rownames(A_remap_ridge_coeff))
+df <- data.frame(
+  fisher = fisher_remap$A$odds[rows, 5],
+  motif_activities = A_activities_remap_fc[rows, 5],
+  regression = A_remap_ridge_coeff[rows, 5])
 
-## significant coeff only
-j <- rownames(A_remap_ridge_pvalue)[A_remap_ridge_pvalue[, 5] > -log10(0.05)]
-i <- base::intersect(i, j)
-arcor <- cor(A_activities_remap_fc[i, 5], A_remap_ridge_coeff[i, 5])
-plot(
-  x = A_activities_remap_fc[i, 5],
-  y = A_remap_ridge_coeff[i, 5],
-  main = sprintf("Ridge regression vs Motif Activity (significant coeff only)\nA 24h Pearson: %.3f", arcor),
-  xlab = "motif activity",
-  ylab = "ridge regression")
+###
+panel.cor <- function(x, y, digits = 3, prefix = "", cex.cor, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * 0.5)
+}
 
-# comparing with poster results
-bogumil <- c("RELA", "PAF1", "STAT1", "STAT2", "IRF1", "HNF1A", "RXRA", "AR", 
-             "SMAD3", "SMAD4", "SMAD2", "EP300", "FOXM1", "TP53", "EP300")
-bold <- remap_sign_meta[tf %in% bogumil, unique(cluster)] %>%
-  paste0("^", ., "_") %>%
-  paste(collapse = "|") %>%
-  grep(x = j, value = TRUE)
-pheatmap::pheatmap(
-  A_remap_ridge_coeff[j,],
-  cluster_cols = FALSE,
-  scale = "row",
-  main = "Significant coeff\n poster motif activity overlapp in bold",
-  labels_row = pheatmap_make_bold_names(A_remap_ridge_coeff[j,],
-                                        rownames,
-                                        bold)
-)
+pairs(df, lower.panel = panel.smooth, upper.panel = panel.cor)
 
-ismara <- c("SIN3A", "FOSL1", "TFDP1", "SMAD4", "SOX3", "SOX4", "HNF1A", "HNF1B", 
-            "IRF2", "STAT2", "IRF8", "IRF1", "AHR", "ARNT2", "FOXM1", "TBL1XR1", 
-            "MXI1", "MYC", "MYCN", "ID4", "TCF4", "SNAI2", "MNT", "HEY1", "HEY2", 
-            "TLX1", "NFIC", "NRF1", "SIX5", "SMARCC2", "HCFC1", "FOXD1", "FOXO1", 
-            "FOXO6", "FOXG1", "FOXP1", "ATF6", "MEIS2", "ELF2", "GABPA", "ELF5", 
-            "ZNF143")
-bold <- remap_sign_meta[tf %in% ismara, unique(cluster)] %>%
-  paste0("^", ., "_") %>%
-  paste(collapse = "|") %>%
-  grep(x = j, value = TRUE)
-pheatmap::pheatmap(
-  A_remap_ridge_coeff[j,],
-  cluster_cols = FALSE,
-  scale = "row",
-  main = "Significant coeff\n poster ismara overlapp in bold",
-  labels_row = pheatmap_make_bold_names(A_remap_ridge_coeff[j,],
-                                        rownames,
-                                        bold)
-)
-```
-
-## fisher results vs ridge results
-
-up/down fisher results could be combined always choose bigger odds ratio and add
-sign, then you can compare odds ratio to coeffs. Take log2 odds ratio.
-Use edgeR "DE" as an input.
-```{r}
-i <- base::intersect(rownames(fisher_remap$A$odds), rownames(A_remap_ridge_coeff))
-frcor <- cor(fisher_remap$A$odds[i, 5], A_remap_ridge_coeff[i, 5])
-plot(
-  x = fisher_remap$A$odds[i, 5],
-  y = A_remap_ridge_coeff[i, 5],
-  main = sprintf("Ridge regression vs Fisher odds\nA 24h Pearson: %.3f", frcor),
-  xlab = "Fisher's odds",
-  ylab = "ridge regression")
-
-## significant coeff only
-j <- rownames(A_remap_ridge_pvalue)[A_remap_ridge_pvalue[, 5] > -log10(0.05)]
-frcor <- cor(fisher_remap$A$odds[j, 5], A_remap_ridge_coeff[j, 5])
-plot(
-  x = fisher_remap$A$odds[j, 5],
-  y = A_remap_ridge_coeff[j, 5],
-  main = sprintf("Ridge regression vs Fisher odds (significant coeff only)\nA 24h Pearson: %.3f", frcor),
-  xlab = "Fisher's odds",
-  ylab = "ridge regression")
+# significant coeff only
+i <- rownames(A_remap_ridge_pvalue)[A_remap_ridge_pvalue[, 5] > -log10(0.05)]
+i <- base::intersect(i, rows)
+pairs(df[i, ], lower.panel = panel.smooth, upper.panel = panel.cor, 
+      main = "significant regression results only")
 
 ## significant odds only
-j <- rownames(fisher_remap$A$p.value)[fisher_remap$A$p.value[, 5] < 0.05]
-frcor <- cor(fisher_remap$A$odds[j, 5], A_remap_ridge_coeff[j, 5])
-plot(
-  x = fisher_remap$A$odds[j, 5],
-  y = A_remap_ridge_coeff[j, 5],
-  main = sprintf("Fisher odds vs Ridge regression (significant odds only)\nA 24h Pearson: %.3f", frcor),
-  xlab = "Fisher's odds",
-  ylab = "ridge regression")
+i <- rownames(fisher_remap$A$p.value)[fisher_remap$A$p.value[, 5] < 0.05]
+i <- base::intersect(i, rows)
+pairs(df[i, ], lower.panel = panel.smooth, upper.panel = panel.cor, 
+      main = "significant Fisher's results only")
 ```
 
+# ComplexHeatmap
 ```{r}
-i <- base::intersect(rownames(fisher_remap$A$odds), rownames(A_activities_remap_fc))
-facor <- cor(fisher_remap$A$odds[i, 5], A_activities_remap_fc[i, 5])
-plot(
-  x = fisher_remap$A$odds[i, 5],
-  y = A_activities_remap_fc[i, 5],
-  main = sprintf("Fisher odds vs Motif Activity\nA 24h Pearson: %.3f", facor),
-  xlab = "Fisher's odds",
-  ylab = "motif activity")
+makeHeatmap <- function(matrix, cluster_columns = FALSE, ...) {
+  col_fun = circlize::colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
+  row_labels <- gsub("_.*?\\.", " ", rownames(matrix))
+  ComplexHeatmap::Heatmap(matrix,
+                          col = col_fun,
+                          cluster_columns = cluster_columns, 
+                          row_labels = row_labels, 
+                          heatmap_legend_param = list(
+                            col_fun = col_fun,
+                            at = c(-2, 0, 2)
+                          ),
+                          ...)
+}
+
+compareHeatmaps <- function(rows, ...) {
+  rows <- intersect(x = rows, y = rownames(A_activities_remap_fc)) %>%
+    intersect(y = rownames(A_remap_ridge_coeff)) %>%
+    intersect(y = rownames(fisher_remap$A$odds))
+  
+  hactiv <- A_activities_remap_fc %>%
+    as.matrix() %>%
+    `[`(rows, 1:5) %>%
+    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    t() %>%
+    makeHeatmap(name = "motif activity", column_title = "motif activity")
+  hridge <- A_remap_ridge_coeff %>%
+    `[`(rows, 1:5) %>%
+    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    t() %>%
+    makeHeatmap(name = "regression", column_title = "regression")
+  hfishe <- fisher_remap$A$odds  %>%
+    `[`(rows, 1:5) %>%
+    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    t() %>%
+    makeHeatmap(name = "fisher", column_title = "fisher")
+  
+  ComplexHeatmap::draw(hactiv + hridge + hfishe, ...)
+}
+
+# top motif activities
+xcore::select_top_var(A_activities_remap_fc) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "motif activity")
+xcore::select_top_mean_up(A_activities_remap_fc) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "motif activity")
+xcore::select_top_mean_down(A_activities_remap_fc) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "motif activity")
+
+# top regression coefficients
+xcore::select_top_mean_up(A_remap_ridge_pvalue) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "regression")
+
+# top fisher odds
+apply(fisher_remap$A$p.value, 1, xcore::fisherMethod) %>%
+  sort() %>%
+  head(30) %>%
+  names() %>%
+  compareHeatmaps(main_heatmap = "fisher")
+```
+
+# Signatures all
+## Bogumil's Motif Activity
+```{r}
+A_activities_remap_all_fc <- xcore::de_res_to_activity_scores(
+  signature_mat = mae[["remap_raw"]], 
+  de_res = A_de)
+```
+
+## Fishers exact test
+```{r}
+# number of DE genes is super low
+apply(mae[["A_de"]], 2, table)
+#    M_TGFb_01h M_TGFb_02h M_TGFb_04h M_TGFb_06h M_TGFb_24h
+# -1          1         15         29         48         66
+# 0       15163      15094      15014      15014      14895
+# 1          29         84        150        131        232
+
+binarized <- list(
+  A_up = mae[["A_de"]] == 1,
+  A_down = mae[["A_de"]] == -1,
+  M_up = mae[["M_de"]] == 1,
+  M_down = mae[["M_de"]] == -1)
+
+
+var <- names(binarized)
+fisher_remap_all <- foreach(v = var) %dopar%
+  fisherTestSignature(exprss_mat = binarized[[v]],
+                      sign_mat = as.matrix(mae[["remap_raw"]]))
+names(fisher_remap_all) <- var
+
+# A
+fisher_remap_all$A <- list()
+fisher_remap_all$A$p.value <- ifelse(
+  test = fisher_remap_all$A_up$p.value < fisher_remap_all$A_down$p.value, 
+  yes = fisher_remap_all$A_up$p.value,
+  no = fisher_remap_all$A_down$p.value)
+fisher_remap_all$A$odds <- ifelse(
+  test = fisher_remap_all$A_up$p.value < fisher_remap_all$A_down$p.value, 
+  yes = log2(fisher_remap_all$A_up$odds + 1),
+  no = -log2(fisher_remap_all$A_down$odds + 1))
+```
+
+## Ridge regression
+```{r}
+ridge_mod_all <- foreach(col = iterators::iter(mae[["A_fc"]])) %dopar%
+  runLinearRidge(x = mae[["remap_raw"]], y = col[, 1, drop = TRUE])
+
+A_remap_ridge_all_coeff <- 
+  lapply(ridge_mod_all, function(x) coef(x)) %>% do.call(what = cbind)
+colnames(A_remap_ridge_all_coeff) <- colnames(mae[["A_fc"]])
+rownames(A_remap_ridge_all_coeff) <- gsub("`", "", rownames(A_remap_ridge_all_coeff))
+
+doMC::registerDoMC(2L)
+A_remap_ridge_all_pvals <- foreach(x = iterators::iter(ridge_mod_all)) %dopar%
+  ridge::pvals(x)
+
+A_remap_ridge_all_pvalue <- lapply(
+  X = A_remap_ridge_all_pvals, 
+  FUN = function(x) -log10(x[["pval"]])
+  ) %>% do.call(what = cbind)
+colnames(A_remap_ridge_all_pvalue) <- colnames(mae[["A_fc"]])
+rownames(A_remap_ridge_all_pvalue) <- gsub("`", "", rownames(A_remap_ridge_all_pvalue))
+```
+
+## Methods comparison
+
+```{r}
+rows <- intersect(x = rownames(fisher_remap_all$A$odds), y = rownames(A_activities_remap_all_fc)) %>%
+    intersect(y = rownames(A_remap_ridge_all_coeff))
+df <- data.frame(
+  fisher = fisher_remap_all$A$odds[rows, 5],
+  motif_activities = A_activities_remap_all_fc[rows, 5],
+  regression = A_remap_ridge_all_coeff[rows, 5])
+
+###
+panel.cor <- function(x, y, digits = 3, prefix = "", cex.cor, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * 0.5)
+}
+
+pairs(df, lower.panel = panel.smooth, upper.panel = panel.cor)
+
+# significant coeff only
+i <- rownames(A_remap_ridge_all_pvalue)[A_remap_ridge_all_pvalue[, 5] > -log10(0.05)]
+i <- base::intersect(i, rows)
+pairs(df[i, ], lower.panel = panel.smooth, upper.panel = panel.cor, 
+      main = "significant regression results only")
 
 ## significant odds only
-j <- rownames(fisher_remap$A$p.value)[fisher_remap$A$p.value[, 5] < 0.05]
-facor <- cor(fisher_remap$A$odds[j, 5], A_activities_remap_fc[j, 5])
-plot(
-  x = fisher_remap$A$odds[j, 5],
-  y = A_activities_remap_fc[j, 5],
-  main = sprintf("Fisher odds vs motif activity (significant odds only)\nA 24h Pearson: %.3f", facor),
-  xlab = "Fisher's odds",
-  ylab = "motif activity")
+i <- rownames(fisher_remap_all$A$p.value)[fisher_remap_all$A$p.value[, 5] < 0.05]
+i <- base::intersect(i, rows)
+pairs(df[i, ], lower.panel = panel.smooth, upper.panel = panel.cor, 
+      main = "significant Fisher's results only")
+```
+
+# ComplexHeatmap
+```{r}
+makeHeatmap <- function(matrix, cluster_columns = FALSE, ...) {
+  col_fun = circlize::colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
+  # row_labels <- gsub("_.*?\\.", " ", rownames(matrix))
+  ComplexHeatmap::Heatmap(matrix,
+                          col = col_fun,
+                          cluster_columns = cluster_columns, 
+                          # row_labels = row_labels, 
+                          heatmap_legend_param = list(
+                            col_fun = col_fun,
+                            at = c(-2, 0, 2)
+                          ),
+                          ...)
+}
+
+compareHeatmaps <- function(rows, ...) {
+  rows <- intersect(x = rows, y = rownames(A_activities_remap_all_fc)) %>%
+    intersect(y = rownames(A_remap_ridge_all_coeff)) %>%
+    intersect(y = rownames(fisher_remap_all$A$odds))
+  
+  hactiv <- A_activities_remap_all_fc %>%
+    as.matrix() %>%
+    `[`(rows, 1:5) %>%
+    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    t() %>%
+    makeHeatmap(name = "motif activity", column_title = "motif activity")
+  hridge <- A_remap_ridge_all_coeff %>%
+    `[`(rows, 1:5) %>%
+    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    t() %>%
+    makeHeatmap(name = "regression", column_title = "regression")
+  hfishe <- fisher_remap_all$A$odds  %>%
+    `[`(rows, 1:5) %>%
+    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    t() %>%
+    makeHeatmap(name = "fisher", column_title = "fisher")
+  
+  ComplexHeatmap::draw(hactiv + hridge + hfishe, ...)
+}
+
+# top motif activities
+xcore::select_top_var(A_activities_remap_all_fc) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "motif activity")
+xcore::select_top_mean_up(A_activities_remap_all_fc) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "motif activity")
+xcore::select_top_mean_down(A_activities_remap_all_fc) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "motif activity")
+
+# top regression coefficients
+xcore::select_top_mean_up(A_remap_ridge_all_pvalue) %>%
+  rownames() %>%
+  compareHeatmaps(main_heatmap = "regression")
+
+# top fisher odds
+apply(fisher_remap_all$A$p.value, 1, xcore::fisherMethod) %>%
+  sort() %>%
+  head(30) %>%
+  names() %>%
+  compareHeatmaps(main_heatmap = "fisher")
+```
+
+# Heteroskedastic errors
+```{r}
+Y <- mae[["A_fc"]][, 5]
+X <- mae[["remap"]]
+
+hist(Y, main = "A FC histogram")
+car::qqPlot(Y)
+
+mod.errors <- glmnet::cv.glmnet(
+  x = X,
+  y = Y,
+  family = "gaussian",
+  alpha = 0,
+  standarize = TRUE)
+Yhat <- predict(
+  object = mod.errors$glmnet.fit, 
+  s = mod.errors$lambda.min, 
+  newx = X)
+
+# https://stackoverflow.com/questions/40901445/function-to-calculate-r2-r-squared-in-r
+plot(Y, 
+     Yhat, 
+     main = sprintf("A 24h FC vs predicted FC\nR^2: %.3f", cor(Y, Yhat)^2))
+
+plot(Y, (Y - Yhat[, 1])^2, main = "residuals^2 vs FC")
 ```
 
 ## Looking at the examples of opposite sign results
-```{r}
+```{r eval=FALSE}
 # motif activity and fisher down & ridge up
 i <- intersect(
   x = intersect(rownames(A_activities_remap_fc), rownames(fisher_remap$A$odds)),
@@ -452,8 +631,51 @@ plot(mae[["A_fc"]][, 5], (mae[["A_fc"]][, 5] - ridge_p[, 1])^2)
 ridge_p_scaled <- ((scale(mae[["remap"]]) %*% A_remap_ridge_coeff[i, 5]) + 
     A_remap_ridge_coeff["(Intercept)", 5])
 plot(mae[["A_fc"]][, 5], (mae[["A_fc"]][, 5] - ridge_p_scaled[, 1])^2)
+```
 
-# Heteroskedastic errors
+# Comparing with poster results
+```{r eval=FALSE}
+# comparing with poster results
+bogumil <- c("RELA", "PAF1", "STAT1", "STAT2", "IRF1", "HNF1A", "RXRA", "AR", 
+             "SMAD3", "SMAD4", "SMAD2", "EP300", "FOXM1", "TP53", "EP300")
+bold <- remap_sign_meta[tf %in% bogumil, unique(cluster)] %>%
+  paste0("^", ., "_") %>%
+  paste(collapse = "|") %>%
+  grep(x = j, value = TRUE)
+pheatmap::pheatmap(
+  A_remap_ridge_coeff[j,],
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "Significant coeff\n poster motif activity overlapp in bold",
+  labels_row = pheatmap_make_bold_names(A_remap_ridge_coeff[j,],
+                                        rownames,
+                                        bold)
+)
+
+ismara <- c("SIN3A", "FOSL1", "TFDP1", "SMAD4", "SOX3", "SOX4", "HNF1A", "HNF1B", 
+            "IRF2", "STAT2", "IRF8", "IRF1", "AHR", "ARNT2", "FOXM1", "TBL1XR1", 
+            "MXI1", "MYC", "MYCN", "ID4", "TCF4", "SNAI2", "MNT", "HEY1", "HEY2", 
+            "TLX1", "NFIC", "NRF1", "SIX5", "SMARCC2", "HCFC1", "FOXD1", "FOXO1", 
+            "FOXO6", "FOXG1", "FOXP1", "ATF6", "MEIS2", "ELF2", "GABPA", "ELF5", 
+            "ZNF143")
+bold <- remap_sign_meta[tf %in% ismara, unique(cluster)] %>%
+  paste0("^", ., "_") %>%
+  paste(collapse = "|") %>%
+  grep(x = j, value = TRUE)
+pheatmap::pheatmap(
+  A_remap_ridge_coeff[j,],
+  cluster_cols = FALSE,
+  scale = "row",
+  main = "Significant coeff\n poster ismara overlapp in bold",
+  labels_row = pheatmap_make_bold_names(A_remap_ridge_coeff[j,],
+                                        rownames,
+                                        bold)
+)
+```
+
+
+# Heteroskedastic errors - tests
+```{r eval=FALSE}
 mae <- c(mae, A_logCPM = xcore::extract_a_column(A_de, "logCPM"))
 mae <- MultiAssayExperiment::intersectRows(mae)
 X <- mae[["remap"]]
@@ -497,7 +719,6 @@ fit.gamma <- fitdistrplus::fitdist(2^Y, "gamma")
 # test
 i <- rownames(mae[["remap"]])
 Y <- A_logcpm[i, 26]
-Y <- Y[Y > 1.6]
 X <- mae[["remap"]][names(Y), ]
 offset <- A_logcpm[names(Y), 1]
 hist(Y, main = "logCPM histogram")
@@ -590,75 +811,8 @@ glmnet_p <- predict(object = mod4.glmnet$glmnet.fit,
                     newx = X, type = "class")
 ```
 
-# ComplexHeatmap
-
-## Ridge significant
-```{r}
-makeHeatmap <- function(matrix, cluster_columns = FALSE, ...) {
-  col_fun = circlize::colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
-  row_labels <- gsub("_.*?\\.", " ", rownames(matrix))
-  ComplexHeatmap::Heatmap(matrix,
-                          col = col_fun,
-                          cluster_columns = cluster_columns, 
-                          row_labels = row_labels, 
-                          heatmap_legend_param = list(
-                            col_fun = col_fun,
-                            at = c(-2, 0, 2)
-                          ),
-                          ...)
-}
-
-compareHeatmaps <- function(rows, ...) {
-  rows <- intersect(x = rows, y = rownames(A_activities_remap_fc)) %>%
-    intersect(y = rownames(A_remap_ridge_coeff)) %>%
-    intersect(y = rownames(fisher_remap$A$odds))
-  
-  hactiv <- A_activities_remap_fc %>%
-    as.matrix() %>%
-    `[`(rows, 1:5) %>%
-    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
-    t() %>%
-    makeHeatmap(name = "motif activity", column_title = "motif activity")
-  hridge <- A_remap_ridge_coeff %>%
-    `[`(rows, 1:5) %>%
-    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
-    t() %>%
-    makeHeatmap(name = "regression", column_title = "regression")
-  hfishe <- fisher_remap$A$odds  %>%
-    `[`(rows, 1:5) %>%
-    apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
-    t() %>%
-    makeHeatmap(name = "fisher", column_title = "fisher")
-  
-  ComplexHeatmap::draw(hactiv + hridge + hfishe, ...)
-}
-
-# top motif activities
-xcore::select_top_var(A_activities_remap_fc) %>%
-  rownames() %>%
-  compareHeatmaps(main_heatmap = "motif activity")
-xcore::select_top_mean_up(A_activities_remap_fc) %>%
-  rownames() %>%
-  compareHeatmaps(main_heatmap = "motif activity")
-xcore::select_top_mean_down(A_activities_remap_fc) %>%
-  rownames() %>%
-  compareHeatmaps(main_heatmap = "motif activity")
-
-# top regression coefficients
-xcore::select_top_mean_up(A_remap_ridge_pvalue) %>%
-  rownames() %>%
-  compareHeatmaps(main_heatmap = "regression")
-
-# top fisher odds
-apply(fisher_remap$A$p.value, 1, xcore::fisherMethod) %>%
-  sort() %>%
-  head(30) %>%
-  names() %>%
-  compareHeatmaps(main_heatmap = "fisher")
-```
-
 # Are FC and count Motif Activities correlated?
-```{r}
+```{r eval=FALSE}
 A_activities_counts_remap <- xcore::counts_to_activity_scores(
   signature_mat = remap_promoters_collapsed, 
   counts = counts_symbol[, 1:26], 
