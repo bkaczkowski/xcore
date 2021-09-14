@@ -819,21 +819,11 @@ apply(M_fisher_remap_collapsed$p.value, 1, xcore::fisherMethod) %>%
 ```{r fig.height=5, fig.width=21}
 # 24h subset
 j <- grepl("24h", colnames(dataA[["Y"]]))
-
 xnames <- setdiff(names(dataA), c("U", "Y", "DE"))
-models_cv <- list()
-for (nm in xnames) {
-  models_cv[[nm]] <- foreach(y = iterators::iter(dataA[["Y"]][, j])) %dopar%
-    glmnet::cv.glmnet(
-      x = dataA[[nm]],
-      y = y[, 1],
-      alpha = 0,
-      offset = dataA[["U"]])
-}
 
 MSE <- list()
 for (nm in xnames) {
-  for(mod in models_cv[[nm]]) {
+  for(mod in regression_models[["A_549"]][[nm]]) {
     stat <-
       foreach(y = iterators::iter(dataA[["Y"]][, j]), .combine = c) %dopar%
         estimateStat(
@@ -859,7 +849,7 @@ abline(h = mse_bplot$conf[1, 2], col = "blue", lty = 2)
 
 RSQ <- list()
 for (nm in xnames) {
-  for(mod in models_cv[[nm]]) {
+  for(mod in regression_models[["A_549"]][[nm]]) {
     stat <-
       foreach(y = iterators::iter(dataA[["Y"]][, j]), .combine = c) %dopar%
         estimateStat(
@@ -886,21 +876,11 @@ on M 24h
 ```{r fig.height=7, fig.width=15}
 # 24h subset
 j <- grepl("24h", colnames(dataM[["Y"]]))
-
 xnames <- setdiff(names(dataM), c("U", "Y", "DE"))
-models_cv <- list()
-for (nm in xnames) {
-  models_cv[[nm]] <- foreach(y = iterators::iter(dataM[["Y"]][, j])) %dopar%
-    glmnet::cv.glmnet(
-      x = dataM[[nm]],
-      y = y[, 1],
-      alpha = 0,
-      offset = dataM[["U"]])
-}
 
 MSE <- list()
 for (nm in xnames) {
-  for(mod in models_cv[[nm]]) {
+  for(mod in regression_models[["MDA_MB_231"]][[nm]]) {
     stat <-
       foreach(y = iterators::iter(dataM[["Y"]][, j]), .combine = c) %dopar%
         estimateStat(
@@ -926,7 +906,7 @@ abline(h = mse_bplot$conf[1, 2], col = "blue", lty = 2)
 
 RSQ <- list()
 for (nm in xnames) {
-  for(mod in models_cv[[nm]]) {
+  for(mod in regression_models[["MDA_MB_231"]][[nm]]) {
     stat <-
       foreach(y = iterators::iter(dataM[["Y"]][, j]), .combine = c) %dopar%
         estimateStat(
