@@ -66,9 +66,6 @@ exprss_files <- list(
               package = "xcore"))
 for(e in exprss_files) load(e)
 rm(e)
-
-# TODO DPI level analysis
-# counts_symbol <- counts_dpi
 ```
 
 # Differential expression analysis
@@ -435,179 +432,34 @@ M_fisher_remap_collapsed$odds <- ifelse(
 
 ## Ridge regression
 ```{r eval=FALSE}
-regression_models <- list(A_549 = list(), MDA_MB_231 = list())
+regression <- list(A_549 = list(), MDA_MB_231 = list())
 
 # A-549
-Xnms <- setdiff(names(dataA), c("U", "Y", "DE", "remap_core_raw"))
-for (xnm in Xnms) {
-  regression_models[["A_549"]][[xnm]] <-
-    foreach(y = iterators::iter(dataA[["Y"]])) %dopar%
-      runLinearRidge(x = dataA[[xnm]], 
-                    y = y[, 1, drop = TRUE],
-                    offset = dataA[["U"]])
-  names(regression_models[["A_549"]][[xnm]]) <- colnames(dataA[["Y"]])
-}
+xnames <- setdiff(names(dataA), c("U", "Y", "DE", "remap_core_raw")
+designA <- design_mat[grepl("A_", rownames(design_mat)), grepl("A_", colnames(design_mat))]
+regression[["A_549"]] <- linearRidgePipeline(
+  mae = dataA,
+  yname = "Y",
+  uname = "U",
+  xnames = xnames,
+  design = designA)
 
 # MDA-MB-231
-Xnms <- setdiff(names(dataM), c("U", "Y", "DE", "remap_core_raw"))
-for (xnm in Xnms) {
-  regression_models[["MDA_MB_231"]][[xnm]] <-
-    foreach(y = iterators::iter(dataM[["Y"]])) %dopar%
-      runLinearRidge(x = dataM[[xnm]], 
-                    y = y[, 1, drop = TRUE],
-                    offset = dataM[["U"]])
-  names(regression_models[["MDA_MB_231"]][[xnm]]) <- colnames(dataM[["Y"]])
-}
+xnames <- setdiff(names(dataM), c("U", "Y", "DE", "remap_core_raw")
+designA <- design_mat[grepl("M_", rownames(design_mat)), grepl("M_", colnames(design_mat))]
+regression[["MDA_MB_231"]] <- linearRidgePipeline(
+  mae = dataM,
+  yname = "Y",
+  uname = "U",
+  xnames = xnames,
+  design = designA)
 
-# simple replicates handling
-regression_simple_avg <- list(A_549 = list(), MDA_MB_231 = list())
-
-# A-549
-Xnms <- setdiff(names(dataA), c("U", "Y", "DE", "remap_core_raw"))
-groups <- dataA[["Y"]] %>% 
-  colnames() %>% 
-  sub(pattern = ".*([0-9][0-9]h).*", replacement = "\\1") %>%
-  unique()
-for (xnm in Xnms) {
-  regression_simple_avg[["A_549"]][[xnm]] <- 
-    foreach(gr = groups) %dopar%
-      {
-        i <- grep(gr, names(regression_models[["A_549"]][[xnm]]))
-        getAvgCoeff(regression_models[["A_549"]][[xnm]][i])
-      }
-  regression_simple_avg[["A_549"]][[xnm]] <- 
-    do.call(what = cbind, 
-            args = lapply(regression_simple_avg[["A_549"]][[xnm]], function (x) x[, "z"]))
-  colnames(regression_simple_avg[["A_549"]][[xnm]]) <- groups
-}
-
-# MDA-MB-231
-Xnms <- setdiff(names(dataM), c("U", "Y", "DE", "remap_core_raw"))
-groups <- dataM[["Y"]] %>% 
-  colnames() %>% 
-  sub(pattern = ".*([0-9][0-9]h).*", replacement = "\\1") %>%
-  unique()
-for (xnm in Xnms) {
-  regression_simple_avg[["MDA_MB_231"]][[xnm]] <- 
-    foreach(gr = groups) %dopar%
-      {
-        i <- grep(gr, names(regression_models[["MDA_MB_231"]][[xnm]]))
-        getAvgCoeff(regression_models[["MDA_MB_231"]][[xnm]][i])
-      }
-  regression_simple_avg[["MDA_MB_231"]][[xnm]] <- 
-    do.call(what = cbind, 
-            args = lapply(regression_simple_avg[["MDA_MB_231"]][[xnm]], function (x) x[, "z"]))
-  colnames(regression_simple_avg[["MDA_MB_231"]][[xnm]]) <- groups
-}
-
-# elaborate replicates handling
-regression_elaborate_pvalues <- list(A_549 = list(), MDA_MB_231 = list())
-regression_elaborate_avg <- list(A_549 = list(), MDA_MB_231 = list())
-
-# A-549
-Xnms <- setdiff(names(dataA), c("U", "Y", "DE", "remap_core_raw"))
-groups <- dataA[["Y"]] %>% 
-  colnames() %>% 
-  sub(pattern = ".*([0-9][0-9]h).*", replacement = "\\1") %>%
-  unique()
-for (xnm in Xnms) {
-  # calculate p-values
-  X <- scale(dataA[[xnm]])
-  svdX <- svd(X)
-  regression_elaborate_pvalues[["A_549"]][[xnm]] <-
-    foreach(id = colnames(dataA[["Y"]])) %dopar%
-      {
-        y <- dataA[["Y"]][, id] - dataA[["U"]]
-        lambda <- regression_models[["A_549"]][[xnm]][[id]]$lambda.min
-        beta <- coef(regression_models[["A_549"]][[xnm]][[id]], s = lambda)
-        beta <- beta[-1, ] # drop intercept
-        pval_test <- ridgePValues(
-          x = X,
-          y = y, 
-          beta = beta,
-          lambda = lambda, 
-          standardizex = FALSE, 
-          svdX = svdX
-        )
-      }
-  names(regression_elaborate_pvalues[["A_549"]][[xnm]]) <- colnames(dataA[["Y"]])
-  
-  # calculate averaged z-scores
-  regression_elaborate_avg[["A_549"]][[xnm]] <- foreach(gr = groups) %dopar%
-    {
-      i <- grep(gr, names(regression_elaborate_pvalues[["A_549"]][[xnm]]))
-      se <- lapply(regression_elaborate_pvalues[["A_549"]][[xnm]][i], function (x) x$se)
-      se <- do.call(cbind, se)
-      se <- apply(se, 1, function (x) sqrt(sum(x * x) / length(x))) # Cohen, J. (1988)
-      estimate <- lapply(regression_elaborate_pvalues[["A_549"]][[xnm]][i], function (x) x$coef)
-      estimate <- do.call(cbind, estimate)
-      estimate <- apply(estimate, 1, function (x) mean(x))
-      estimate / se
-    }
-  regression_elaborate_avg[["A_549"]][[xnm]] <- 
-    do.call(cbind, regression_elaborate_avg[["A_549"]][[xnm]])
-  rownames(regression_elaborate_avg[["A_549"]][[xnm]]) <- colnames(X)
-  colnames(regression_elaborate_avg[["A_549"]][[xnm]]) <- groups
-}
-
-# MDA-MB-231
-Xnms <- setdiff(names(dataM), c("U", "Y", "DE", "remap_core_raw"))
-groups <- dataM[["Y"]] %>% 
-  colnames() %>% 
-  sub(pattern = ".*([0-9][0-9]h).*", replacement = "\\1") %>%
-  unique()
-for (xnm in Xnms) {
-  # calculate p-values
-  X <- scale(dataM[[xnm]])
-  svdX <- svd(X)
-  regression_elaborate_pvalues[["MDA_MB_231"]][[xnm]] <-
-    foreach(id = colnames(dataM[["Y"]])) %dopar%
-      {
-        y <- dataM[["Y"]][, id] - dataM[["U"]]
-        lambda <- regression_models[["MDA_MB_231"]][[xnm]][[id]]$lambda.min
-        beta <- coef(regression_models[["MDA_MB_231"]][[xnm]][[id]], s = lambda)
-        beta <- beta[-1, ] # drop intercept
-        pval_test <- ridgePValues(
-          x = X,
-          y = y, 
-          beta = beta,
-          lambda = lambda, 
-          standardizex = FALSE, 
-          svdX = svdX
-        )
-      }
-  names(regression_elaborate_pvalues[["MDA_MB_231"]][[xnm]]) <- colnames(dataM[["Y"]])
-  
-  # calculate averaged z-scores
-  regression_elaborate_avg[["MDA_MB_231"]][[xnm]] <- foreach(gr = groups) %dopar%
-    {
-      i <- grep(gr, names(regression_elaborate_pvalues[["MDA_MB_231"]][[xnm]]))
-      se <- lapply(regression_elaborate_pvalues[["MDA_MB_231"]][[xnm]][i], function (x) x$se)
-      se <- do.call(cbind, se)
-      se <- apply(se, 1, function (x) sqrt(sum(x * x) / length(x))) # Cohen, J. (1988)
-      estimate <- lapply(regression_elaborate_pvalues[["MDA_MB_231"]][[xnm]][i], function (x) x$coef)
-      estimate <- do.call(cbind, estimate)
-      estimate <- apply(estimate, 1, function (x) mean(x))
-      estimate / se
-    }
-  regression_elaborate_avg[["MDA_MB_231"]][[xnm]] <- 
-    do.call(cbind, regression_elaborate_avg[["MDA_MB_231"]][[xnm]])
-  rownames(regression_elaborate_avg[["MDA_MB_231"]][[xnm]]) <- colnames(X)
-  colnames(regression_elaborate_avg[["MDA_MB_231"]][[xnm]]) <- groups
-}
-
-save(regression_models, file = "regression_models.rda")
-save(regression_simple_avg, file = "regression_simple_avg.rda")
-save(regression_elaborate_pvalues, file = "regression_elaborate_pvalues.rda")
-save(regression_elaborate_avg, file = "regression_elaborate_avg.rda")
+save(regression, file = "regression.rda")
 ```
 
 # load regression ressults
 ```{r}
-load("regression_models.rda")
-load("regression_simple_avg.rda")
-load("regression_elaborate_pvalues.rda")
-load("regression_elaborate_avg.rda")
+load("regression.rda")
 ```
 
 # Methods comparison - core_collapsed
@@ -617,13 +469,13 @@ load("regression_elaborate_avg.rda")
 rows <- intersect(
   x = rownames(A_fisher_remap_collapsed$odds),
   y = rownames(A_activities_remap_collapsed_fc)) %>%
-    intersect(y = rownames(regression_elaborate_avg[["A_549"]][["remap_core_collapsed"]]))
+    intersect(y = rownames(regression[["A_549"]][["regression_elaborate_avg"]][["remap_core_collapsed"]]))
 df <- data.frame(
   fisher = A_fisher_remap_collapsed$odds[rows, 5],
   motif_activities_counts = A_activities_remap_collapsed[rows, 6],
   motif_activities_FC = A_activities_remap_collapsed_fc[rows, 5],
-  regression_simple = regression_simple_avg[["A_549"]][["remap_core_collapsed"]][rows, 6],
-  regression_elaborate = regression_elaborate_avg[["A_549"]][["remap_core_collapsed"]][rows, 6])
+  regression_simple = regression[["A_549"]][["regression_simple_avg"]][["remap_core_collapsed"]][rows, 6],
+  regression_elaborate = regression[["A_549"]][["regression_elaborate_avg"]][["remap_core_collapsed"]][rows, 6])
 
 pairs(df, lower.panel = panel.smooth, upper.panel = panel.cor)
 
@@ -653,13 +505,13 @@ pairs(df[i,],
 rows <- intersect(
   x = rownames(M_fisher_remap_collapsed$odds),
   y = rownames(M_activities_remap_collapsed_fc)) %>%
-    intersect(y = rownames(regression_elaborate_avg[["MDA_MB_231"]][["remap_core_collapsed"]]))
+    intersect(y = rownames(regression[["MDA_MB_231"]][["regression_elaborate_avg"]][["remap_core_collapsed"]]))
 df <- data.frame(
   fisher = M_fisher_remap_collapsed$odds[rows, 5],
   motif_activities_counts = M_activities_remap_collapsed[rows, 6],
   motif_activities_FC = M_activities_remap_collapsed_fc[rows, 5],
-  regression_simple = regression_simple_avg[["MDA_MB_231"]][["remap_core_collapsed"]][rows, 6],
-  regression_elaborate = regression_elaborate_avg[["MDA_MB_231"]][["remap_core_collapsed"]][rows, 6])
+  regression_simple = regression[["MDA_MB_231"]][["regression_simple_avg"]][["remap_core_collapsed"]][rows, 6],
+  regression_elaborate = regression[["MDA_MB_231"]][["regression_elaborate_avg"]][["remap_core_collapsed"]][rows, 6])
 
 pairs(df, lower.panel = panel.smooth, upper.panel = panel.cor)
 
@@ -703,7 +555,7 @@ makeHeatmap <- function(matrix, cluster_columns = FALSE, ...) {
 
 compareHeatmaps <- function(rows, ...) {
   rows <- intersect(x = rows, y = rownames(A_activities_remap_collapsed_fc)) %>%
-    intersect(y = rownames(regression_elaborate_avg[["A_549"]][["remap_core_collapsed"]])) %>%
+    intersect(y = rownames(regression[["A_549"]][["regression_elaborate_avg"]][["remap_core_collapsed"]])) %>%
     intersect(y = rownames(A_fisher_remap_collapsed$odds))
 
   hactiv <- A_activities_remap_collapsed_fc %>%
@@ -712,7 +564,7 @@ compareHeatmaps <- function(rows, ...) {
     apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
     t() %>%
     makeHeatmap(name = "motif activity", column_title = "motif activity")
-  hridge <- regression_elaborate_avg[["A_549"]][["remap_core_collapsed"]] %>%
+  hridge <- regression[["A_549"]][["regression_elaborate_avg"]][["remap_core_collapsed"]] %>%
     `[`(rows, 1:6) %>%
     apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
     t() %>%
@@ -738,13 +590,13 @@ xcore::select_top_mean_down(A_activities_remap_collapsed_fc) %>%
   compareHeatmaps(main_heatmap = "motif activity", column_title = "top mean down, A-549")
 
 # top regression coefficients
-xcore::select_top_var(regression_elaborate_avg[["A_549"]][["remap_core_collapsed"]]) %>%
+xcore::select_top_var(regression[["A_549"]][["regression_elaborate_avg"]][["remap_core_collapsed"]]) %>%
   rownames() %>%
   compareHeatmaps(main_heatmap = "regression", column_title = "top variable, A-549")
-xcore::select_top_mean_up(regression_elaborate_avg[["A_549"]][["remap_core_collapsed"]]) %>%
+xcore::select_top_mean_up(regression[["A_549"]][["regression_elaborate_avg"]][["remap_core_collapsed"]]) %>%
   rownames() %>%
   compareHeatmaps(main_heatmap = "regression", column_title = "top mean up, A-549")
-xcore::select_top_mean_down(regression_elaborate_avg[["A_549"]][["remap_core_collapsed"]]) %>%
+xcore::select_top_mean_down(regression[["A_549"]][["regression_elaborate_avg"]][["remap_core_collapsed"]]) %>%
   rownames() %>%
   compareHeatmaps(main_heatmap = "regression", column_title = "top mean down, A-549")
 
@@ -760,7 +612,7 @@ apply(A_fisher_remap_collapsed$p.value, 1, xcore::fisherMethod) %>%
 ```{r}
 compareHeatmaps <- function(rows, ...) {
   rows <- intersect(x = rows, y = rownames(M_activities_remap_collapsed_fc)) %>%
-    intersect(y = rownames(regression_elaborate_avg[["MDA_MB_231"]][["remap_core_collapsed"]])) %>%
+    intersect(y = rownames(regression[["MDA_MB_231"]][["regression_elaborate_avg"]][["remap_core_collapsed"]])) %>%
     intersect(y = rownames(M_fisher_remap_collapsed$odds))
 
   hactiv <- M_activities_remap_collapsed_fc %>%
@@ -769,7 +621,7 @@ compareHeatmaps <- function(rows, ...) {
     apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
     t() %>%
     makeHeatmap(name = "motif activity", column_title = "motif activity")
-  hridge <- regression_elaborate_avg[["MDA_MB_231"]][["remap_core_collapsed"]] %>%
+  hridge <- regression[["MDA_MB_231"]][["regression_elaborate_avg"]][["remap_core_collapsed"]] %>%
     `[`(rows, 1:6) %>%
     apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
     t() %>%
@@ -795,13 +647,13 @@ xcore::select_top_mean_down(M_activities_remap_collapsed_fc) %>%
   compareHeatmaps(main_heatmap = "motif activity", column_title = "top mean down, MDA-MB-231")
 
 # top regression coefficients
-xcore::select_top_var(regression_elaborate_avg[["MDA_MB_231"]][["remap_core_collapsed"]]) %>%
+xcore::select_top_var(regression[["MDA_MB_231"]][["regression_elaborate_avg"]][["remap_core_collapsed"]]) %>%
   rownames() %>%
   compareHeatmaps(main_heatmap = "regression", column_title = "top variable, MDA-MB-231")
-xcore::select_top_mean_up(regression_elaborate_avg[["MDA_MB_231"]][["remap_core_collapsed"]]) %>%
+xcore::select_top_mean_up(regression[["MDA_MB_231"]][["regression_elaborate_avg"]][["remap_core_collapsed"]]) %>%
   rownames() %>%
   compareHeatmaps(main_heatmap = "regression", column_title = "top mean up, MDA-MB-231")
-xcore::select_top_mean_down(regression_elaborate_avg[["MDA_MB_231"]][["remap_core_collapsed"]]) %>%
+xcore::select_top_mean_down(regression[["MDA_MB_231"]][["regression_elaborate_avg"]][["remap_core_collapsed"]]) %>%
   rownames() %>%
   compareHeatmaps(main_heatmap = "regression", column_title = "top mean down, MDA-MB-231")
 
@@ -816,14 +668,14 @@ apply(M_fisher_remap_collapsed$p.value, 1, xcore::fisherMethod) %>%
 # Different signatures comparison
 
 ## A-549 24h
-```{r fig.height=5, fig.width=21}
+```{r fig.height=10, fig.width=15}
 # 24h subset
 j <- grepl("24h", colnames(dataA[["Y"]]))
 xnames <- setdiff(names(dataA), c("U", "Y", "DE"))
 
 MSE <- list()
 for (nm in xnames) {
-  for(mod in regression_models[["A_549"]][[nm]]) {
+  for(mod in regression[["A_549"]][["regression_models"]][[nm]][j]) {
     stat <-
       foreach(y = iterators::iter(dataA[["Y"]][, j]), .combine = c) %dopar%
         estimateStat(
@@ -849,7 +701,7 @@ abline(h = mse_bplot$conf[1, 2], col = "blue", lty = 2)
 
 RSQ <- list()
 for (nm in xnames) {
-  for(mod in regression_models[["A_549"]][[nm]]) {
+  for(mod in regression[["A_549"]][["regression_models"]][[nm]][j]) {
     stat <-
       foreach(y = iterators::iter(dataA[["Y"]][, j]), .combine = c) %dopar%
         estimateStat(
@@ -873,14 +725,14 @@ rsq_bplot <-
 abline(h = median(RSQ[["remap_core_collapsed_rand"]]), col = "red", lty = 2)
 ```
 on M 24h
-```{r fig.height=7, fig.width=15}
+```{r fig.height=10, fig.width=15}
 # 24h subset
 j <- grepl("24h", colnames(dataM[["Y"]]))
 xnames <- setdiff(names(dataM), c("U", "Y", "DE"))
 
 MSE <- list()
 for (nm in xnames) {
-  for(mod in regression_models[["MDA_MB_231"]][[nm]]) {
+  for(mod in regression[["MDA_MB_231"]][["regression_models"]][[nm]][j]) {
     stat <-
       foreach(y = iterators::iter(dataM[["Y"]][, j]), .combine = c) %dopar%
         estimateStat(
@@ -906,7 +758,7 @@ abline(h = mse_bplot$conf[1, 2], col = "blue", lty = 2)
 
 RSQ <- list()
 for (nm in xnames) {
-  for(mod in regression_models[["MDA_MB_231"]][[nm]]) {
+  for(mod in regression[["MDA_MB_231"]][["regression_models"]][[nm]][j]) {
     stat <-
       foreach(y = iterators::iter(dataM[["Y"]][, j]), .combine = c) %dopar%
         estimateStat(
@@ -2058,7 +1910,7 @@ regpval <- lapply(i, function(j) {
 })
 regpval <- do.call(cbind, regpval)
 regpval <- apply(regpval, 1, fisherMethod)
-i <- rownames(regression_elaborate_avg[["A_549"]][["remap_core_collapsed"]])[regpval < log(0.05)]
+i <- rownames(regression[["A_549"]][["regression_elaborate_avg"]][["remap_core_collapsed"]])[regpval < log(0.05)]
 pairs(df[i, ], lower.panel = panel.smooth, upper.panel = panel.cor,
       main = "significant regression results only")
 ```
