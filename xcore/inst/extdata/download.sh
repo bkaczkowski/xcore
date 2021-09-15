@@ -101,3 +101,6 @@ downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly
 downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.only_intergenic_p_lncRNA.gtf.gz
 downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.only_lncRNA.gtf.gz
 downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.only_mRNA.gtf.gz
+
+# jaspar hg38 tfbs
+downloadDataset http://expdata.cmmt.ubc.ca/JASPAR/downloads/UCSC_tracks/2020/JASPAR2020_hg38.bb
