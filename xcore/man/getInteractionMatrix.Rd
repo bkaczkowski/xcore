@@ -15,7 +15,7 @@ getInteractionMatrix(a, b, ext = 500, count = FALSE)
 should be extended in upstream and downstream directions.}
 
 \item{count}{Logical indicating if matrix should hold number of overlaps
-between \code{a} and \code{b} or only presence / absence indicators.}
+between \code{a} and \code{b} or if FALSE presence / absence indicators.}
 }
 \value{
 Sparse matrix of class dgCMatrix, with rows corresponding to
