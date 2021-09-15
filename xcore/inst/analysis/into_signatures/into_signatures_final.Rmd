@@ -839,8 +839,8 @@ save(d_yule_chip_atlas, file = "d_yule_chip_atlas.rda")
 ```
 
 ```{r}
-load(system.file("inst", "analysis", "d_yule_remap.rda", package = "xcore"))
-load(system.file("inst", "analysis", "d_yule_chip_atlas.rda", package = "xcore"))
+load(system.file("inst", "analysis", "into_signatures", "d_yule_remap.rda", package = "xcore"))
+load(system.file("inst", "analysis", "into_signatures", "d_yule_chip_atlas.rda", package = "xcore"))
 ```
 
 ## Clustering experiments
@@ -1104,55 +1104,11 @@ mtext(
   font = 2,
   cex = 1.2
 )
-
-# ChIP-Atlas
-id_core <- chip_atlas_meta_core[, id]
-d_core <- as.dist(as.matrix(d_yule_chip_atlas)[id_core, id_core])
-
-cl_pam <- lapply(
-  X = nclust,
-  FUN = function(i) {
-    cluster::pam(d_core, k = i, cluster.only = TRUE)
-  })
-cl_measure <- lapply(
-  X = labels,
-  FUN = function(l) {
-    cbind(
-      ARI = sapply(cl_pam, aricode::ARI, c1 = chip_atlas_meta_core[[l]]),
-      AMI = sapply(cl_pam, aricode::AMI, c1 = chip_atlas_meta_core[[l]])
-    )
-  })
-names(cl_measure) <- labels
-
-plotMeasureClust(
-  nclust,
-  cl_measure,
-  "ARI",
-  ylim = c(0, 0.65),
-  pos = "topright",
-  main = "Adjusted Rand Index"
-)
-plotMeasureClust(
-  nclust,
-  cl_measure,
-  "AMI",
-  ylim = c(0, 0.8),
-  pos = "bottomright",
-  main = "Adjusted Mutual Information"
-)
-mtext(
-  "Partitioning Around Medoids clustering performance\nfor different labels\nChIP-Atlas selected experiments",
-  side = 3,
-  outer = TRUE,
-  line = -1,
-  font = 2,
-  cex = 1.2
-)
 ```
 
 ## Experiment collapsing
 
-```{r eval=FALSE}
+```{r eval=TRUE}
 # ReMap2020
 ids_remap <- labels(d_yule_remap)
 meta_remap <- remap_meta[id %in% ids_remap, ]
@@ -1192,7 +1148,7 @@ remap_promoters_collapsed <-
                             alpha = 0.5, # 0.5 corresponds to majority vote
                             purity_feature = "tf", 
                             min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(remap_promoters_core_collapsed, file = "remap_promoters_collapsed.rda")
+save(remap_promoters_collapsed, file = "remap_promoters_collapsed.rda")
 
 meta_remap[, cluster := cl_remap]
 data.table::fwrite(meta_remap, file = "remap_metadata_clusters.csv")
@@ -1236,7 +1192,7 @@ chip_atlas_promoters_collapsed <-
                             alpha = 0.5, # 0.5 corresponds to majority vote
                             purity_feature = "tf", 
                             min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(chip_atlas_promoters_core_collapsed, file = "chip_atlas_promoters_collapsed.rda")
+save(chip_atlas_promoters_collapsed, file = "chip_atlas_promoters_collapsed.rda")
 
 meta_chip_atlas[, cluster := cl_chip_atlas]
 data.table::fwrite(meta_chip_atlas, file = "chip_atlas_metadata_clusters.csv")
