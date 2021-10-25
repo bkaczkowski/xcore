@@ -524,11 +524,17 @@ estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = R2, 
   out
 }
 
-rsq <- function(y, yhat, x, offset) cor(y - offset, yhat - offset)^2
-rsq.adj <- function(y, yhat, x) {
-  1 - (1 - rsq(y, yhat)) * ((length(y) - 1) / (length(y) - ncol(x) - 1))
+# https://stats.stackexchange.com/questions/186396/appropriate-way-to-calculate-cross-validated-r-square
+# 1-(sum((data[,1] - predictions)^2) / ((n-1) * var(test[,1]))
+rsq <- function(y, yhat, x, offset) {
+  y <- y - offset
+  yhat <- yhat - offset
+  1 - (sum((y - yhat)^2) / (var(y) * (length(y) - 1)))
 }
+pearson.sq <- function(y, yhat, x, offset) cor(y - offset, yhat - offset)^2
 mse <- function(y, yhat, ...) mean((y - yhat)^2)
+mae <- function(y, yhat, ...) mean(abs(y - yhat))
+spearman.sq <- function(y, yhat, x, offset) cor(y - offset, yhat - offset, method = "spearman")^2
 
 #'
 getAvgCoeff <- function(models, lambda = "lambda.min", drop_intercept = TRUE) {
