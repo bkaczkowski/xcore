@@ -277,9 +277,9 @@ collapseInteractionMatrix <- function(mat,
     if (purity > min_pruning_purity) {
       pruned_meta <- pruneClusterMeta(meta[m, ], purity_feature)
       m <- pruned_meta[["id"]]
-      nice_name <- makeClusterName(pruned_meta, mixed_th = min_pruning_purity)
+      nice_name <- makeClusterName2(pruned_meta, mixed_th = min_pruning_purity)
     } else {
-      nice_name <- makeClusterName(meta[m, ], mixed_th = min_pruning_purity)
+      nice_name <- makeClusterName2(meta[m, ], mixed_th = min_pruning_purity)
     }
     nice_name <- paste(clu, nice_name, sep = "_")
 
