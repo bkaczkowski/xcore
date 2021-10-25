@@ -54,6 +54,41 @@
 #'
 "promoters_f5"
 
+#' Core promoters GenomicRanges object
+#'
+#' A dataset containing core promoters selected from \code{promoters_f5}. 
+#' Selection criteria were GENCODE confirmation and ENCODE ROADMAP confirmation.
+#' Further for each gene single promoter with highest FANTOM5 score was selected.
+#'
+#' @format A \code{GenomicRanges} object of length 14191, with 16 metadata columns:
+#' \describe{
+#'   \item{name}{Promotor name.}
+#'   \item{score}{Numeric vector.}
+#'   \item{SYMBOL_F5_annot}{Gene symbol of associated gene as defined by FANTOM5 annotation.}
+#'   \item{ENTREZID_F5_annot}{ENTREZ ID of associated gene as defined by FANTOM5 annotation.}
+#'   \item{SYMBOL_gencode}{Gene symbol of associated gene as defined by GENCODE annotation.}
+#'   \item{ENTREZID_gencode}{ENTREZ ID of associated gene as defined by GENCODE annotation.}
+#'   \item{gene_type_gencode}{Gene type of associated gene as defined by GENCODE annotation.}
+#'   \item{SYMBOL_ucsc}{Gene symbol of associated gene as defined by UCSC annotation.}
+#'   \item{ENTREZID_ucsc}{ENTREZ ID of associated gene as defined by UCSC annotation.}
+#'   \item{ENTREZID}{ENTREZ ID of associated gene as defined by all three annotation sources.
+#'                   Prevalence of annotations: UCSC > GENCODE > FANTOM5.}
+#'   \item{SYMBOL}{Gene symbol of associated gene as defined by all three annotation sources.
+#'                 Prevalence of annotations: UCSC > GENCODE > FANTOM5.}
+#'   \item{tau}{Numeric Tau tissue specificity score calculated based on FANTOM5
+#'              expression data.}
+#'   \item{protein_atlas_tissue_specificity}{Character giving tissue specificity
+#'                                           class as defined in Protein Atlas.}
+#'   \item{protein_atlas_cell_specificity}{Character giving cell type specificity
+#'                                           class as defined in Protein Atlas.}
+#'   \item{encode_blacklist}{Logical indicating overlap with ENCODE black
+#'                           listed regions.}
+#'   \item{ensembl_sm}{Logical indicating overlap with ENSEMBL soft masked
+#'                     regions.}
+#' }
+#'
+"promoters_f5_core"
+
 #' Detailed promoters GenomicRanges object
 #'
 #' A dataset containing FANTOM5's hg38 promoters with FANTOM5's annotations.
