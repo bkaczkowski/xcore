@@ -247,7 +247,7 @@ linearRidgePipeline <- function(mae,
           i <- groups == gr
           se <- lapply(regression_elaborate_pvalues[[xnm]][i], function (x) x$se)
           se <- do.call(cbind, se)
-          se <- apply(se, 1, function (x) sqrt(sum(x * x) / length(x))) # Cohen, J. (1988)
+          se <- apply(se, 1, function (x) sqrt(sum(x * x) / length(x))) # Cohen, J. (1988) TODO check out https://www.statisticshowto.com/find-pooled-sample-standard-error/, https://www.statisticshowto.com/pooled-standard-deviation/
           estimate <- lapply(regression_elaborate_pvalues[[xnm]][i], function (x) x$coef)
           estimate <- do.call(cbind, estimate)
           estimate <- apply(estimate, 1, function (x) mean(x))
