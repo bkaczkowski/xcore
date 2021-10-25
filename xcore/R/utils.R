@@ -23,13 +23,11 @@ NULL
 #'
 #' @export
 intersectGR <- function(a, b, ...) {
+  warning("deprecated! use IRanges::subsetByOverlaps instead")
   stopifnot(is(a, "GRanges"))
   stopifnot(is(b, "GRanges"))
 
-  hits <- GenomicRanges::findOverlaps(query = b, subject = a, ...)
-  i <- S4Vectors::subjectHits(hits)
-
-  return(a[i, ])
+  IRanges::subsetByOverlaps(x = a, ranges = b, ...)
 }
 
 #' Compute interaction matrix
