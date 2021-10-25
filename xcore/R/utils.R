@@ -500,15 +500,16 @@ addSignatures <- function(mae, ..., intersect_rows = TRUE) {
 }
 
 #' Estimate a goodness of fit stat
-estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = R2) {
+estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = R2, alpha = 0) {
   if (method == "cv") {
     out <- c()
     part <- sample(1:nfold, size = length(y), replace = TRUE)
+
     for (p in 1:nfold) {
       py <- y[part != p]
       px <- x[part != p, ]
       poffset <- u[part != p, ]
-      mod <- glmnet::glmnet(x = px, y = py, offset = poffset, lambda = s, alpha = 0)
+      mod <- glmnet::glmnet(x = px, y = py, offset = poffset, lambda = s, alpha = alpha)
 
       # evaluate on held-out fold
       py <- y[part == p]
