@@ -1,0 +1,1019 @@
+---
+title: "TGFbeta project"
+author: "Migdal"
+date: "8/18/2021"
+output: pdf_document
+---
+
+# Notes
+Subtracting U before modeling or including it as an offset gives equivalent
+results.
+
+Using intercept or not gives similar results, especially mean estimates on 
+parameters are perfectly correlated.
+
+```{r include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+devtools::load_all()
+library(foreach)
+library(Matrix)
+
+doMC::registerDoMC(4L)
+```
+
+# TGFbeta expression data
+Here I load symbol counts from TGFbeta experiment. The data are filtered and CPM 
+normalized by group, giving a matrix of per time point expression values. 
+For the initial analysis I will only look at 24h time point.
+```{r}
+exprss_files <- list(
+  system.file("inst", "extdata", "TGFbeta_counts_entrez.rda",
+              package = "xcore"),
+  system.file("inst", "extdata", "TGFbeta_counts_symbol.rda",
+              package = "xcore"),
+  system.file("inst", "extdata", "TGFbeta_counts_dpi.rda",
+              package = "xcore"))
+for(e in exprss_files) load(e)
+rm(e)
+```
+
+# Create design matrix
+Here we look at 24h samples only
+```{r}
+# construct sample matrix
+samples <- data.frame(
+  samples_names = counts_symbol %>% colnames(),
+  exp_fac = counts_symbol %>%
+    colnames() %>%
+    sub(pattern = "_R.", replacement = ""), 
+  stringsAsFactors = FALSE) %>%
+  dplyr::filter(grepl("24", samples_names))
+
+# construct design matrix
+design_mat <- model.matrix(~ 0 + exp_fac, data = samples)
+colnames(design_mat) <- sub( "exp_fac", "" , colnames(design_mat))
+rownames(design_mat) <- samples$samples_names
+```
+
+# Prepare count input for regression
+```{r}
+symbol2dpi <- stats::setNames(promoters_f5_core$name, promoters_f5_core$SYMBOL)
+
+# A-549
+## SYMBOL
+mat <- counts_symbol[, grep("A_", colnames(counts_symbol))]
+rownames(mat) <- symbol2dpi[rownames(mat)]
+base_idx <- grepl("_00h_", colnames(mat))
+group <- sub(".*_([0-9]*)h_.*", "\\1", colnames(mat)) %>% factor()
+dataA_symbol <- prepareCountsForRegression(
+  mat = mat,
+  base_idx = base_idx,
+  group = group,
+  log2 = TRUE,
+  pseudo_count = 1L)
+j <- grepl("24h", colnames(dataA_symbol[["Y"]]))
+dataA_symbol[["Y"]] <- dataA_symbol[["Y"]][, j]
+
+## DPI
+mat <- counts_dpi[, grep("A_", colnames(counts_dpi))]
+base_idx <- grepl("_00h_", colnames(mat))
+group <- sub(".*_([0-9]*)h_.*", "\\1", colnames(mat)) %>% factor()
+dataA_dpi <- prepareCountsForRegression(
+  mat = mat,
+  base_idx = base_idx,
+  group = group,
+  log2 = TRUE,
+  pseudo_count = 1L)
+j <- grepl("24h", colnames(dataA_dpi[["Y"]]))
+dataA_dpi[["Y"]] <- dataA_dpi[["Y"]][, j]
+
+# MDA-MB-231
+## SYMBOL
+mat <- counts_symbol[, grep("M_", colnames(counts_symbol))]
+rownames(mat) <- symbol2dpi[rownames(mat)]
+base_idx <- grepl("_00h_", colnames(mat))
+group <- sub(".*_([0-9]*)h_.*", "\\1", colnames(mat)) %>% factor()
+dataM_symbol <- prepareCountsForRegression(
+  mat = mat,
+  base_idx = base_idx,
+  group = group,
+  log2 = TRUE,
+  pseudo_count = 1L)
+j <- grepl("24h", colnames(dataM_symbol[["Y"]]))
+dataM_symbol[["Y"]] <- dataM_symbol[["Y"]][, j]
+
+## DPI
+mat <- counts_dpi[, grep("M_", colnames(counts_dpi))]
+base_idx <- grepl("_00h_", colnames(mat))
+group <- sub(".*_([0-9]*)h_.*", "\\1", colnames(mat)) %>% factor()
+dataM_dpi <- prepareCountsForRegression(
+  mat = mat,
+  base_idx = base_idx,
+  group = group,
+  log2 = TRUE,
+  pseudo_count = 1L)
+j <- grepl("24h", colnames(dataM_dpi[["Y"]]))
+dataM_dpi[["Y"]] <- dataM_dpi[["Y"]][, j]
+```
+
+# Load signatures
+
+```{r}
+collapsed_sig_names <- list.files(pattern = ".*_promoters.*rda$") %>% 
+  grep(pattern = "remap_promoters_pearson_", value = TRUE) %>%
+  grep(pattern = "_0.5.rda", value = TRUE) %>%
+  sub(pattern = "\\.rda", replacement = "")
+collapsed_sig_files <- list.files(pattern = ".*_promoters.*rda$", full.names = TRUE) %>% 
+  grep(pattern = "remap_promoters_pearson_", value = TRUE) %>%
+  grep(pattern = "_0.5.rda", value = TRUE)
+for (sig in collapsed_sig_files) load(sig)
+
+# hot fix
+for (sig in collapsed_sig_names) {
+  s <- get(sig)
+  if (is.null(colnames(s))) {
+    colnames(s) <- colnames(get(sub("_rowsum", "_0.3",  sig)))
+    assign(x=sig, value=s)
+  }
+}
+
+# Jaspar
+jaspar_input <-
+    system.file("inst", "extdata", "JASPAR2020_hg38.promoters_f5.4kb.bed.gz", package = "xcore")
+jaspar <- rtracklayer::import(jaspar_input)
+jaspar <- getInteractionMatrix(promoters_f5, jaspar, count = FALSE)
+```
+
+# Combine expression with signatures
+Here I use MultiAssayExperiment as a container for expression and signatures.
+They are matched based on promoter ids than intersection of the names is taken. 
+Since we are using SYMBOL counts and DPI signatures so we will need to convert 
+DPI's to SYMBOL's.
+
+Additionally we filter out signatures overlapping less than *50 promoters*.
+
+```{r}
+
+signatures_to_add <- lapply(collapsed_sig_names, get)
+names(signatures_to_add) <- collapsed_sig_names
+signatures_to_add[["remap"]] <- remap_promoters
+signatures_to_add[["jaspar"]] <- jaspar 
+
+# A-549
+## SYMBOL
+signatures_to_add[["mae"]] <- dataA_symbol
+dataA_symbol <- do.call(addSignatures, signatures_to_add)
+# filter signatures
+signatures <- setdiff(names(dataA_symbol), c("Y", "U"))
+for (sig in signatures) {
+  mask <- Matrix::colSums(dataA_symbol[[sig]] != 0)
+  mask <- mask > 0 & mask < nrow(dataA_symbol[[sig]])
+  suppressMessages(dataA_symbol[[sig]] <- dataA_symbol[[sig]][, mask])
+}
+
+## DPI
+signatures_to_add[["mae"]] <- dataA_dpi
+dataA_dpi <- do.call(addSignatures, signatures_to_add)
+# filter signatures
+signatures <- setdiff(names(dataA_dpi), c("Y", "U"))
+for (sig in signatures) {
+  mask <- Matrix::colSums(dataA_dpi[[sig]] != 0)
+  mask <- mask > 0 & mask < nrow(dataA_dpi[[sig]])
+  suppressMessages(dataA_dpi[[sig]] <- dataA_dpi[[sig]][, mask])
+}
+
+# MDA-MB-231
+## SYMBOL
+signatures_to_add[["mae"]] <- dataM_symbol
+dataM_symbol <- do.call(addSignatures, signatures_to_add)
+# filter signatures
+signatures <- setdiff(names(dataM_symbol), c("Y", "U"))
+for (sig in signatures) {
+  mask <- Matrix::colSums(dataM_symbol[[sig]] != 0)
+  mask <- mask > 0 & mask < nrow(dataM_symbol[[sig]])
+  suppressMessages(dataM_symbol[[sig]] <- dataM_symbol[[sig]][, mask])
+}
+
+## DPI
+signatures_to_add[["mae"]] <- dataM_dpi
+dataM_dpi <- do.call(addSignatures, signatures_to_add)
+# filter signatures
+signatures <- setdiff(names(dataM_dpi), c("Y", "U"))
+for (sig in signatures) {
+  mask <- Matrix::colSums(dataM_dpi[[sig]] != 0)
+  mask <- mask > 0 & mask < nrow(dataM_dpi[[sig]])
+  suppressMessages(dataM_dpi[[sig]] <- dataM_dpi[[sig]][, mask])
+}
+
+for (sig in collapsed_sig_names) {rm(list = sig)}
+gc()
+```
+
+# Regression type selection
+```{r}
+regression_type <- list(A_549 = list(), MDA_MB_231 = list())
+
+xname <- "remap"
+
+regression_type[["A_549"]][["lasso"]] <- 
+  foreach(y = iterators::iter(dataA_dpi[["Y"]])) %dopar%
+    glmnet::cv.glmnet(
+      x = dataA_dpi[[xname]],
+      y = y,
+      family = "gaussian",
+      alpha = 1,
+      standarize = TRUE,
+      offset = dataA_dpi[["U"]]
+    )
+
+regression_type[["A_549"]][["elasticnet"]] <- 
+  foreach(y = iterators::iter(dataA_dpi[["Y"]])) %dopar%
+    glmnet::cv.glmnet(
+      x = dataA_dpi[[xname]],
+      y = y,
+      family = "gaussian",
+      alpha = 0.5,
+      standarize = TRUE,
+      offset = dataA_dpi[["U"]]
+    ) 
+
+regression_type[["A_549"]][["ridge"]] <- 
+  foreach(y = iterators::iter(dataA_dpi[["Y"]])) %dopar%
+    glmnet::cv.glmnet(
+      x = dataA_dpi[[xname]],
+      y = y,
+      family = "gaussian",
+      alpha = 0,
+      standarize = TRUE,
+      offset = dataA_dpi[["U"]]
+    ) 
+
+regression_type[["MDA_MB_231"]][["lasso"]] <- 
+  foreach(y = iterators::iter(dataM_dpi[["Y"]])) %dopar%
+    glmnet::cv.glmnet(
+      x = dataM_dpi[[xname]],
+      y = y,
+      family = "gaussian",
+      alpha = 1,
+      standarize = TRUE,
+      offset = dataM_dpi[["U"]]
+    )
+
+regression_type[["MDA_MB_231"]][["elasticnet"]] <- 
+  foreach(y = iterators::iter(dataM_dpi[["Y"]])) %dopar%
+    glmnet::cv.glmnet(
+      x = dataM_dpi[[xname]],
+      y = y,
+      family = "gaussian",
+      alpha = 0.5,
+      standarize = TRUE,
+      offset = dataM_dpi[["U"]]
+    ) 
+
+regression_type[["MDA_MB_231"]][["ridge"]] <- 
+  foreach(y = iterators::iter(dataM_dpi[["Y"]])) %dopar%
+    glmnet::cv.glmnet(
+      x = dataM_dpi[[xname]],
+      y = y,
+      family = "gaussian",
+      alpha = 0,
+      standarize = TRUE,
+      offset = dataM_dpi[["U"]]
+    ) 
+```
+
+```{r}
+A549 <- list()
+for (nm in names(regression_type$A_549)) {
+  stat <-
+    foreach(i = seq_len(4L), .combine = c) %dopar%
+    estimateStat(
+      x = dataA_dpi[[xname]],
+      y = dataA_dpi[["Y"]][, i],
+      u = dataA_dpi[["U"]],
+      s = regression_type[["A_549"]][[nm]][[i]]$lambda.min,
+      statistic = rsq,
+      alpha = switch (nm,
+        "lasso" = 1,
+        "elasticnet" = 0.5,
+        "ridge" = 0
+      ))
+  A549[[nm]] <- stat
+}
+
+graphics::boxplot(
+  A549,
+  main = expression(paste("CV ", R^2, " across replicates, ReMap2020, A-549 24h DPI")),
+  ylab = expression(R^2),
+  xlab = "",
+  las = 2)
+
+MDAMB231 <- list()
+for (nm in names(regression_type$MDA_MB_231)) {
+  stat <-
+    foreach(i = seq_len(4L), .combine = c) %dopar%
+    estimateStat(
+      x = dataM_dpi[[xname]],
+      y = dataM_dpi[["Y"]][, i],
+      u = dataM_dpi[["U"]],
+      s = regression_type[["MDA_MB_231"]][[nm]][[i]]$lambda.min,
+      statistic = rsq,
+      alpha = switch (nm,
+        "lasso" = 1,
+        "elasticnet" = 0.5,
+        "ridge" = 0
+      ))
+  MDAMB231[[nm]] <- stat
+}
+
+graphics::boxplot(
+  MDAMB231,
+  main = expression(paste("CV ", R^2, " across replicates, ReMap2020, MDA-MB-231 24h DPI")),
+  ylab = expression(R^2),
+  xlab = "",
+  las = 2)
+```
+
+# load regression ressults
+```{r eval=TRUE}
+load("regression.rda")
+```
+
+# Signatures processing
+## Ridge regression
+```{r eval=FALSE}
+regression <- list(A_549 = list(), MDA_MB_231 = list())
+
+# A-549
+designA <- design_mat[
+  grepl("A_", rownames(design_mat)), 
+  grepl("A_", colnames(design_mat)), 
+  drop = FALSE
+  ]
+
+## SYMBOL
+xnames <- setdiff(names(dataA_symbol), c("U", "Y"))
+regression[["A_549"]][["SYMBOL"]] <- linearRidgePipeline(
+  mae = dataA_symbol,
+  yname = "Y",
+  uname = "U",
+  xnames = xnames,
+  design = designA, 
+  simple_replicates_avg = FALSE, 
+  elaborate_replicates_avg = FALSE,
+  precalcmodels = regression[["A_549"]][["SYMBOL"]][["regression_models"]])
+save(regression, file = "regression.rda")
+
+## DPI
+xnames <- setdiff(names(dataA_dpi), c("U", "Y"))
+regression[["A_549"]][["DPI"]] <- linearRidgePipeline(
+  mae = dataA_dpi,
+  yname = "Y",
+  uname = "U",
+  xnames = xnames,
+  design = designA, 
+  simple_replicates_avg = FALSE, 
+  elaborate_replicates_avg = FALSE,
+  precalcmodels = regression[["A_549"]][["DPI"]][["regression_models"]])
+save(regression, file = "regression.rda")
+
+# MDA-MB-231
+designM <- design_mat[
+  grepl("M_", rownames(design_mat)), 
+  grepl("M_", colnames(design_mat)), 
+  drop = FALSE
+  ]
+
+## SYMBOL
+xnames <- setdiff(names(dataM_symbol), c("U", "Y"))
+regression[["MDA_MB_231"]][["SYMBOL"]] <- linearRidgePipeline(
+  mae = dataM_symbol,
+  yname = "Y",
+  uname = "U",
+  xnames = xnames,
+  design = designM, 
+  simple_replicates_avg = FALSE, 
+  elaborate_replicates_avg = FALSE,
+  precalcmodels = regression[["MDA_MB_231"]][["SYMBOL"]][["regression_models"]])
+save(regression, file = "regression.rda")
+
+## DPI
+xnames <- setdiff(names(dataM_dpi), c("U", "Y"))
+regression[["MDA_MB_231"]][["DPI"]] <- linearRidgePipeline(
+  mae = dataM_dpi,
+  yname = "Y",
+  uname = "U",
+  xnames = xnames,
+  design = designM, 
+  simple_replicates_avg = FALSE, 
+  elaborate_replicates_avg = FALSE,
+  precalcmodels = regression[["MDA_MB_231"]][["DPI"]][["regression_models"]])
+save(regression, file = "regression.rda")
+```
+
+# R2
+## A-549 24h
+```{r}
+xnames <- setdiff(names(dataA_dpi), c("U", "Y"))
+rsqA <- list(symbol = list(), dpi = list())
+for (nm in xnames) {
+  # symbol
+  stat <-
+    foreach(i = seq_len(4L), .combine = c) %dopar%
+    estimateStat(
+      x = dataA_symbol[[nm]],
+      y = dataA_symbol[["Y"]][, i],
+      u = dataA_symbol[["U"]],
+      s = regression[["A_549"]][["SYMBOL"]][["regression_models"]][[nm]][[i]]$lambda.min,
+      statistic = rsq)
+  rsqA[["symbol"]][[nm]] <- stat
+  
+  # dpi
+  stat <-
+    foreach(i = seq_len(4L), .combine = c) %dopar%
+    estimateStat(
+      x = dataA_dpi[[nm]],
+      y = dataA_dpi[["Y"]][, i],
+      u = dataA_dpi[["U"]],
+      s = regression[["A_549"]][["SYMBOL"]][["regression_models"]][[nm]][[i]]$lambda.min,
+      statistic = rsq)
+  rsqA[["dpi"]][[nm]] <- stat
+}
+```
+
+```{r}
+ord <-
+  c(
+    "remap",
+    "remap_promoters_pearson_0.1_0.5",
+    "remap_promoters_pearson_0.5_0.5",
+    "remap_promoters_pearson_0.55_0.5",
+    "remap_promoters_pearson_0.65_0.5",
+    "remap_promoters_pearson_0.7_0.5",
+    "remap_promoters_pearson_0.75_0.5",
+    "remap_promoters_pearson_0.8_0.5",
+    "remap_promoters_pearson_0.85_0.5",
+    "remap_promoters_pearson_0.9_0.5",
+    "remap_promoters_pearson_1.3_0.5",
+    "remap_promoters_pearson_1.7_0.5",
+    "jaspar"
+  )
+
+xsize <- vapply(ord, function(x) ncol(dataA_dpi[[x]]), FUN.VALUE = numeric(1L))
+
+# scatter plot with error bars
+par(mar = c(10, 4, 4, 2) + 0.1)
+plot(
+  x = NULL,
+  y = NULL,
+  xlim = c(max(xsize), min(xsize)),
+  ylim = c(0, max(unlist(rsqA$dpi))),
+  xlab = "",
+  ylab = expression(R ^ 2),
+  xaxt = "n",
+  main = expression(paste("CV ", R ^ 2, " across replicates, A-549 24h"))
+)
+axis(
+  side = 1,
+  at = xsize,
+  labels = ord %>%
+    sub(pattern = "remap_promoters_", replacement = "") %>%
+    sub(pattern = "_0.5$", replacement = "") %>% 
+    paste0(" (",xsize, ")"),
+  las = 2
+)
+symbol_means <- vapply(ord, function(x) mean(rsqA[["symbol"]][[x]]), FUN.VALUE = numeric(1L))
+symbol_sd <- vapply(ord, function(x) sd(rsqA[["symbol"]][[x]]), FUN.VALUE = numeric(1L))
+points(
+  x = xsize - 30,
+  y = symbol_means,
+  pch = 16
+)
+arrows(
+  x0 = xsize - 30, 
+  y0 = symbol_means - symbol_sd, 
+  y1 = symbol_means + symbol_sd, 
+  length = 0.05, 
+  angle = 90, 
+  code = 3
+)
+dpi_means <- vapply(ord, function(x) mean(rsqA[["dpi"]][[x]]), FUN.VALUE = numeric(1L))
+dpi_sd <- vapply(ord, function(x) sd(rsqA[["dpi"]][[x]]), FUN.VALUE = numeric(1L))
+points(
+  x = xsize + 30,
+  y = dpi_means,
+  pch = 1
+)
+arrows(
+  x0 = xsize + 30, 
+  y0 = dpi_means - dpi_sd, 
+  y1 = dpi_means + dpi_sd, 
+  length = 0.05, 
+  angle = 90, 
+  code = 3
+)
+legend(
+  "topright",
+  legend = c("dpi", "symbol"),
+  pch = c(1, 16)
+)
+
+# boxplot with two groups
+df <- rbind(
+  data.frame(
+    value = unlist(rsqA$dpi),
+    xname = ordered(
+      x = rep(names(rsqA$dpi), each = length(rsqA$dpi$remap)) %>%
+        sub(pattern = "remap_promoters_", replacement = "") %>%
+        sub(pattern = "_0.5$", replacement = ""), 
+      levels = ord %>%
+        sub(pattern = "remap_promoters_", replacement = "") %>%
+        sub(pattern = "_0.5$", replacement = "")
+    ),
+    type = "dpi",
+    stringsAsFactors = FALSE,
+    row.names = NULL),
+  data.frame(
+    value = unlist(rsqA$symbol),
+    xname = ordered(
+      x = rep(names(rsqA$symbol), each = length(rsqA$symbol$remap)) %>%
+        sub(pattern = "remap_promoters_", replacement = "") %>%
+        sub(pattern = "_0.5$", replacement = ""), 
+      levels = ord %>%
+        sub(pattern = "remap_promoters_", replacement = "") %>%
+        sub(pattern = "_0.5$", replacement = "")
+    ),
+    type = "symbol",
+    stringsAsFactors = FALSE,
+    row.names = NULL)
+)
+
+ggplot2::ggplot(df, ggplot2::aes(x = xname, y = value, fill = type)) + 
+    ggplot2::geom_boxplot() +
+    ggplot2::ylim(0, 0.35) +
+    ggplot2::xlab("molecular signature") +
+    ggplot2::ylab(expression(R^2)) +
+    ggplot2::ggtitle(expression(paste("CV ", R ^ 2, " across replicates, A-549 24h"))) + 
+    ggplot2::theme_bw(base_size = 14)
+
+plot(x = xsize,
+     y = dpi_means,
+     main = expression(paste(R^2, "vs # predictors",  " ReMap2020, A-549 24h")),
+     xlab = "# predictors",
+     ylab = expression(R^2))
+```
+
+## MDA_MB_231 24h
+```{r}
+xnames <- setdiff(names(dataM_dpi), c("U", "Y"))
+rsqM <- list(symbol = list(), dpi = list())
+for (nm in xnames) {
+  # symbol
+  stat <-
+    foreach(i = seq_len(4L), .combine = c) %dopar%
+    estimateStat(
+      x = dataM_symbol[[nm]],
+      y = dataM_symbol[["Y"]][, i],
+      u = dataM_symbol[["U"]],
+      s = regression[["MDA_MB_231"]][["SYMBOL"]][["regression_models"]][[nm]][[i]]$lambda.min,
+      statistic = rsq)
+  rsqM[["symbol"]][[nm]] <- stat
+  
+  # dpi
+  stat <-
+    foreach(i = seq_len(4L), .combine = c) %dopar%
+    estimateStat(
+      x = dataM_dpi[[nm]],
+      y = dataM_dpi[["Y"]][, i],
+      u = dataM_dpi[["U"]],
+      s = regression[["MDA_MB_231"]][["SYMBOL"]][["regression_models"]][[nm]][[i]]$lambda.min,
+      statistic = rsq)
+  rsqM[["dpi"]][[nm]] <- stat
+}
+```
+
+```{r}
+ord <-
+  c(
+    "remap",
+    "remap_promoters_pearson_0.1_0.5",
+    "remap_promoters_pearson_0.5_0.5",
+    "remap_promoters_pearson_0.9_0.5",
+    "remap_promoters_pearson_1.3_0.5",
+    "remap_promoters_pearson_1.7_0.5",
+    "jaspar"
+  )
+
+xsize <- vapply(ord, function(x) ncol(dataM_dpi[[x]]), FUN.VALUE = numeric(1L))
+
+# scatter plot with error bars
+par(mar = c(10, 4, 4, 2) + 0.1)
+plot(
+  x = NULL,
+  y = NULL,
+  xlim = c(max(xsize), min(xsize)),
+  ylim = c(0, max(unlist(rsqA$dpi))),
+  xlab = "",
+  ylab = expression(R ^ 2),
+  xaxt = "n",
+  main = expression(paste("CV ", R ^ 2, " across replicates, MDA-MB-231 24h"))
+)
+axis(
+  side = 1,
+  at = xsize,
+  labels = ord %>%
+    sub(pattern = "remap_promoters_", replacement = "") %>%
+    sub(pattern = "_0.5$", replacement = "") %>% 
+    paste0(" (",xsize, ")"),
+  las = 2
+)
+symbol_means <- vapply(ord, function(x) mean(rsqM[["symbol"]][[x]]), FUN.VALUE = numeric(1L))
+symbol_sd <- vapply(ord, function(x) sd(rsqM[["symbol"]][[x]]), FUN.VALUE = numeric(1L))
+points(
+  x = xsize - 30,
+  y = symbol_means,
+  pch = 16
+)
+arrows(
+  x0 = xsize - 30, 
+  y0 = symbol_means - symbol_sd, 
+  y1 = symbol_means + symbol_sd, 
+  length = 0.05, 
+  angle = 90, 
+  code = 3
+)
+dpi_means <- vapply(ord, function(x) mean(rsqM[["dpi"]][[x]]), FUN.VALUE = numeric(1L))
+dpi_sd <- vapply(ord, function(x) sd(rsqM[["dpi"]][[x]]), FUN.VALUE = numeric(1L))
+points(
+  x = xsize + 30,
+  y = dpi_means,
+  pch = 1
+)
+arrows(
+  x0 = xsize + 30, 
+  y0 = dpi_means - dpi_sd, 
+  y1 = dpi_means + dpi_sd, 
+  length = 0.05, 
+  angle = 90, 
+  code = 3
+)
+legend(
+  "topright",
+  legend = c("dpi", "symbol"),
+  pch = c(1, 16)
+)
+
+# boxplot with two groups
+df <- rbind(
+  data.frame(
+    value = unlist(rsqM$dpi),
+    xname = ordered(
+      x = rep(names(rsqM$dpi), each = length(rsqM$dpi$remap)) %>%
+        sub(pattern = "remap_promoters_", replacement = "") %>%
+        sub(pattern = "_0.5$", replacement = ""), 
+      levels = ord %>%
+        sub(pattern = "remap_promoters_", replacement = "") %>%
+        sub(pattern = "_0.5$", replacement = "")
+    ),
+    type = "dpi",
+    stringsAsFactors = FALSE,
+    row.names = NULL),
+  data.frame(
+    value = unlist(rsqM$symbol),
+    xname = ordered(
+      x = rep(names(rsqM$symbol), each = length(rsqM$symbol$remap)) %>%
+        sub(pattern = "remap_promoters_", replacement = "") %>%
+        sub(pattern = "_0.5$", replacement = ""), 
+      levels = ord %>%
+        sub(pattern = "remap_promoters_", replacement = "") %>%
+        sub(pattern = "_0.5$", replacement = "")
+    ),
+    type = "symbol",
+    stringsAsFactors = FALSE,
+    row.names = NULL)
+)
+
+ggplot2::ggplot(df, ggplot2::aes(x = xname, y = value, fill = type)) + 
+    ggplot2::geom_boxplot() +
+    ggplot2::ylim(0, 0.35) +
+    ggplot2::xlab("molecular signature") +
+    ggplot2::ylab(expression(R^2)) +
+    ggplot2::ggtitle(expression(paste("CV ", R ^ 2, " across replicates, MDA-MB-231 24h"))) + 
+    ggplot2::theme_bw(base_size = 16)
+```
+
+# Different signatures comparison
+
+## A-549 24h
+```{r eval=FALSE, fig.height=10, fig.width=15}
+# 24h subset
+j <- grepl("24h", colnames(dataA[["Y"]]))
+xnames <- setdiff(names(dataA), c("U", "Y", "DE"))
+
+RSQA <- list()
+for (nm in xnames) {
+  stat <-
+    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+    estimateStat(
+      x = dataA[[nm]],
+      y = dataA[["Y"]][, j][, i],
+      u = dataA[["U"]],
+      s = regression[["A_549"]][["regression_models"]][[nm]][j][[i]]$lambda.min,
+      statistic = rsq)
+  RSQA[[nm]] <- c(RSQA[[nm]], stat)
+}
+```
+
+```{r eval=FALSE}
+par(mar = c(6, 4, 4, 2) + 0.1)
+rsq_bplot <-
+  graphics::boxplot(RSQA,
+        main = expression(paste("CV ", R^2, " across replicates, A-549")),
+        ylab = expression(R^2),
+        xlab = "",
+        notch = TRUE,
+        las=2,
+        cex.axis = 0.8)
+abline(h = median(RSQA[["remap_core_raw"]]), col = "red", lty = 2)
+
+par(mar = c(2, 4, 4, 2) + 0.1)
+rsq_means <- vapply(RSQA, mean, FUN.VALUE = numeric(1L))
+nvar <- vapply(xnames, function(nm) ncol(dataA[[nm]]), numeric(1L))
+plot(x = nvar,
+     y = rsq_means,
+     main = expression(paste(R^2, "vs # variables")))
+
+rsq_se <- vapply(RSQA, function(x) sqrt(var(x)/length(x)), FUN.VALUE = numeric(1L))
+
+# R^2 vs # signatures
+plot(
+  x = NULL,
+  y = NULL,
+  xlim = c(min(nvar), max(nvar)),
+  ylim = c(min(rsq_means), max(rsq_means)),
+  main = expression(paste(R^2, " vs # signatures")),
+  xlab = "# signatures",
+  ylab = expression(R^2)
+)
+gr <- names(RSQA) %>% 
+  sub(pattern = "remap_promoters_core_", replacement = "") %>%
+  sub(pattern = "_[0-9]\\.[0-9]_", replacement = "_") %>%
+  factor()
+cols <- setNames(paintVector(levels(gr)), levels(gr))
+names(cols) <- levels(gr)
+r <- 1
+for (i in levels(gr)) {
+  if (i == "remap_core_raw") next()
+  lines(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i], type = 'b')
+  r = r + 1
+}
+abline(h = mean(RSQA[["remap_core_raw"]]), col = "red", lty = 2)
+legend("bottomright", legend = levels(gr), col = cols, cex = 0.8, lty = 1)
+
+# R^2 vs # signatures per collapsing method
+plot(
+  x = NULL,
+  y = NULL,
+  xlim = c(min(nvar), max(nvar)),
+  ylim = c(min(rsq_means), max(rsq_means)),
+  main = expression(paste(R^2, " vs # signatures, collapsing methods")),
+  xlab = "# signatures",
+  ylab = expression(R^2)
+)
+gr <- names(RSQA) %>% 
+  sub(pattern = "remap_promoters_core_", replacement = "") %>%
+  sub(pattern = ".*_", replacement = "") %>%
+  factor()
+cols <- setNames(paintVector(levels(gr)), levels(gr))
+names(cols) <- levels(gr)
+for (i in levels(gr)) {
+  if (i == "raw") next()
+  lines(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i], type = 'b')
+  r = r + 1
+}
+abline(h = mean(RSQA[["remap_core_raw"]]), col = "red", lty = 2)
+legend(
+  "bottomright",
+  legend = c("majority vote (0.3)", "majority vote (0.5)", "rowSum"),
+  col = cols[levels(gr)][levels(gr) != "raw"],
+  cex = 1,
+  lty = 1
+)
+
+# R^2 vs # signatures per distance
+plot(
+  x = NULL,
+  y = NULL,
+  xlim = c(min(nvar), max(nvar)),
+  ylim = c(min(rsq_means), max(rsq_means)),
+  main = expression(paste(R^2, " vs # signatures, distances")),
+  xlab = "# signatures",
+  ylab = expression(R^2)
+)
+gr <- names(RSQA) %>% 
+  sub(pattern = "remap_promoters_core_", replacement = "") %>%
+  sub(pattern = "_.*", replacement = "") %>%
+  factor()
+cols <- setNames(paintVector(levels(gr)), levels(gr))
+names(cols) <- levels(gr)
+for (i in levels(gr)) {
+  if (i == "raw") next()
+  points(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i])
+  r = r + 1
+}
+abline(h = mean(RSQA[["remap_core_raw"]]), col = "red", lty = 2)
+legend(
+  "bottomright",
+  legend = levels(gr),
+  col = cols[levels(gr)][levels(gr) != "raw"],
+  cex = 1,
+  lty = 1
+)
+```
+on M 24h
+```{r fig.height=10, fig.width=15}
+# 24h subset
+j <- grepl("24h", colnames(dataM[["Y"]]))
+xnames <- setdiff(names(dataM), c("U", "Y", "DE"))
+
+RSQM <- list()
+for (nm in xnames) {
+  stat <-
+    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+    estimateStat(
+      x = dataM[[nm]],
+      y = dataM[["Y"]][, j][, i],
+      u = dataM[["U"]],
+      s = regression[["MDA_MB_231"]][["regression_models"]][[nm]][j][[i]]$lambda.min,
+      statistic = rsq)
+  RSQM[[nm]] <- c(RSQM[[nm]], stat)
+}
+```
+
+```{r}
+par(mar = c(14, 4, 4, 2) + 0.1)
+rsq_bplot <-
+  graphics::boxplot(RSQM,
+        main = expression(paste("CV ", R^2, " across replicates, MDA-MB-231")),
+        ylab = expression(R^2),
+        xlab = "",
+        notch = TRUE,
+        las=2,
+        cex.axis = 0.8)
+abline(h = median(RSQM[["remap_core_collapsed_rand"]]), col = "red", lty = 2)
+
+par(mar = c(2, 4, 4, 2) + 0.1)
+rsq_means <- vapply(RSQM, mean, FUN.VALUE = numeric(1L))
+nvar <- vapply(xnames, function(nm) ncol(dataM[[nm]]), numeric(1L))
+plot(x = nvar,
+     y = rsq_means,
+     main = expression(paste(R^2, "vs # variables")))
+
+
+rsq_se <- vapply(RSQM, function(x) sqrt(var(x)/length(x)), FUN.VALUE = numeric(1L))
+
+# R^2 vs # signatures
+plot(
+  x = NULL,
+  y = NULL,
+  xlim = c(min(nvar), max(nvar)),
+  ylim = c(min(rsq_means), max(rsq_means)),
+  main = expression(paste(R^2, " vs # signatures")),
+  xlab = "# signatures",
+  ylab = expression(R^2)
+)
+gr <- names(RSQM) %>% 
+  sub(pattern = "remap_promoters_core_", replacement = "") %>%
+  sub(pattern = "_[0-9]\\.[0-9]_", replacement = "_") %>%
+  factor()
+cols <- setNames(paintVector(levels(gr)), levels(gr))
+names(cols) <- levels(gr)
+for (i in levels(gr)) {
+  if (i == "remap_core_raw") next()
+  lines(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i], type = 'b')
+  r = r + 1
+}
+abline(h = mean(RSQM[["remap_core_raw"]]), col = "red", lty = 2)
+legend("bottomright", legend = levels(gr), col = cols, cex = 0.8, lty = 1)
+
+# R^2 vs # signatures per collapsing method
+plot(
+  x = NULL,
+  y = NULL,
+  xlim = c(min(nvar), max(nvar)),
+  ylim = c(min(rsq_means), max(rsq_means)),
+  main = expression(paste(R^2, " vs # signatures, collapsing methods")),
+  xlab = "# signatures",
+  ylab = expression(R^2)
+)
+gr <- names(RSQM) %>% 
+  sub(pattern = "remap_promoters_core_", replacement = "") %>%
+  sub(pattern = ".*_", replacement = "") %>%
+  factor()
+cols <- setNames(paintVector(levels(gr)), levels(gr))
+names(cols) <- levels(gr)
+for (i in levels(gr)) {
+  if (i == "raw") next()
+  points(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i])
+  r = r + 1
+}
+abline(h = mean(RSQM[["remap_core_raw"]]), col = "red", lty = 2)
+legend(
+  "bottomright",
+  legend = c("majority vote (0.3)", "majority vote (0.5)", "rowSum"),
+  col = cols[levels(gr)][levels(gr) != "raw"],
+  cex = 1,
+  lty = 1
+)
+
+# R^2 vs # signatures per distance
+plot(
+  x = NULL,
+  y = NULL,
+  xlim = c(min(nvar), max(nvar)),
+  ylim = c(min(rsq_means), max(rsq_means)),
+  main = expression(paste(R^2, " vs # signatures, distances")),
+  xlab = "# signatures",
+  ylab = expression(R^2)
+)
+gr <- names(RSQM) %>% 
+  sub(pattern = "remap_promoters_core_", replacement = "") %>%
+  sub(pattern = "_.*", replacement = "") %>%
+  factor()
+cols <- setNames(paintVector(levels(gr)), levels(gr))
+names(cols) <- levels(gr)
+for (i in levels(gr)) {
+  if (i == "raw") next()
+  lines(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i], type = 'b')
+  r = r + 1
+}
+abline(h = mean(RSQM[["remap_core_raw"]]), col = "red", lty = 2)
+legend(
+  "bottomright",
+  legend = levels(gr),
+  col = cols[levels(gr)][levels(gr) != "raw"],
+  cex = 1,
+  lty = 1
+)
+```
+
+# R^2 stability
+```{r}
+to_remove <- seq(from = 0, to = 1500, length.out = 10)
+loops <- 5
+stability_r2_models <- list()
+designA <- design_mat[
+  grepl("A_", rownames(design_mat)), 
+  grepl("A_", colnames(design_mat)), 
+  drop = FALSE
+  ]
+RSQsub <- c()
+for (i in seq_along(to_remove)) {
+  for (j in seq_len(loops)) {
+    mae <- dataA_symbol[, , names(dataA_symbol) %in% c("U", "Y", "remap")]
+    subx <- mae[["remap_core_raw"]]
+    totake <- sample(x = seq_len(ncol(subx)), 
+                     size = ncol(subx) - to_remove[i], 
+                     replace = FALSE)
+    subx <- subx[, totake]
+    mae <- addSignatures(mae, subx = subx)
+    stability_r2_models <-
+      linearRidgePipeline(
+        mae = mae,
+        yname = "Y",
+        uname = "U",
+        xnames = "subx",
+        design = designA,
+        simple_replicates_avg = FALSE,
+        elaborate_replicates_avg = FALSE
+      )
+    
+    stat <-
+      foreach(m = seq_len(sum(design_mat)), .combine = c) %dopar% {
+        estimateStat(
+          x = mae[["subx"]],
+          y = mae[["Y"]][, m],
+          u = mae[["U"]],
+          s = stability_r2_models[["regression_models"]][["subx"]][[m]]$lambda.min,
+          statistic = rsq)
+      }
+    new_names <- rep(as.character(ncol(subx)), length(stat))
+    names(stat) <- new_names
+    
+    RSQsub <- c(RSQsub, stat)
+  }
+}
+```
+
+```{r}
+load("RSQsub.rda")
+```
+
+```{r}
+save.image(file = "testingX.rda")
+```
+
+```{r eval=FALSE}
+load("testingX.rda")
+```
