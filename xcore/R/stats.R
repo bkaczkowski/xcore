@@ -152,17 +152,27 @@ linearRidgePipeline <- function(mae,
                                 parallel = TRUE,
                                 simple_replicates_avg = TRUE,
                                 elaborate_replicates_avg = TRUE,
+                                precalcmodels = NULL,
                                 ...) {
   stopifnot(is(mae, "MultiAssayExperiment"))
   stopifnot(base::intersect(yname, uname) == 0)
   stopifnot(base::intersect(yname, xnames) == 0)
   stopifnot(base::intersect(yname, uname) == 0)
+  stopifnot(is.matrix(design))
   stopifnot(all(rownames(design) %in% colnames(mae[[yname]])))
   stopifnot(all(rowSums(design) == 1))
+  if (! is.null(precalcmodels)) {
+    stopifnot(all(names(precalcmodels) %in% xnames))
+  }
 
+  print("started regression")
   regression_models <- list()
   for (xnm in xnames) {
     regression_models[[xnm]] <- list()
+    if (xnm %in% names(precalcmodels)) {
+      regression_models[[xnm]] <- precalcmodels[[xnm]]
+      next()
+    }
     for (j in seq_len(ncol(mae[[yname]]))) {
       regression_models[[xnm]][[j]] <- runLinearRidge(
         x = mae[[xnm]],
@@ -189,6 +199,7 @@ linearRidgePipeline <- function(mae,
   # can be tested like this table((names(groups) %>% sub(pattern = "_R[0-9][0-9]*$", replacement = "")) == groups)
 
   # simple replicates handling
+  print("simple replicates handling")
   regression_simple_avg <- list()
   if (simple_replicates_avg) {
     for (xnm in xnames) {
@@ -203,6 +214,7 @@ linearRidgePipeline <- function(mae,
   }
 
   # elaborate replicates handling
+  print("elaborate replicates handling")
   regression_elaborate_pvalues <- list()
   regression_elaborate_avg <- list()
   if (elaborate_replicates_avg) {
