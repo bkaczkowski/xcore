@@ -10,9 +10,10 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 devtools::load_all()
 library(foreach)
-library(Matrix)
 
-doMC::registerDoMC(4L)
+doMC::registerDoMC(20L)
+
+def.par <- par(no.readonly = TRUE)
 ```
 
 # Gene expression modeling in context of TGFbeta treatment
@@ -213,18 +214,18 @@ dataM_dpi <- filterFun(dataM_dpi)
 
 ## Regression type selection
 
-```{r}
+```{r eval=FALSE}
 regression_type <- list(A_549 = list(), MDA_MB_231 = list())
 mask_24h <- colnames(dataA_dpi[["Y"]]) %>% grepl(pattern = "24h")
 xname <- "remap"
 
 runCvGlmnetFun <- function(mae, xname, ymask) {
-  foreach(type = c("lasso", "elasticnet", "ridge")) %dopar% 
+  res <- foreach(type = c("lasso", "elasticnet", "ridge")) %dopar% 
     {
       alpha <- switch(type, "lasso" = 1, "elasticnet" = 0.5, "ridge" = 0)
-      foreach(y = iterators::iter(mae[["Y"]])) %dopar%
+      foreach(y = iterators::iter(mae[["Y"]][, ymask])) %dopar%
         glmnet::cv.glmnet(
-          x = dataA_dpi[[xname]][, ymask],
+          x = mae[[xname]][, ymask],
           y = y,
           family = "gaussian",
           alpha = alpha,
@@ -232,64 +233,111 @@ runCvGlmnetFun <- function(mae, xname, ymask) {
           offset = mae[["U"]]
       )
     }
+  names(res) <- c("lasso", "elasticnet", "ridge")
+  
+  return(res)
+}
+
+estimateR2 <- function(mae, regression_res, xname = xname, ymask = mask_24h) {
+  res <- foreach(nm = names(regression_res)) %dopar%
+    {
+      foreach(i = seq_len(4L), .combine = c) %dopar%
+        estimateStat(
+          x = mae[[xname]],
+          y = mae[["Y"]][, ymask][, i],
+          u = mae[["U"]],
+          s = regression_res[[nm]][[i]]$lambda.min,
+          statistic = rsq,
+          alpha = switch (nm,
+            "lasso" = 1,
+            "elasticnet" = 0.5,
+            "ridge" = 0
+          ))
+  }
+  names(res) <- names(regression_res)
+  
+  return(res)
 }
 
 regression_type[["A_549"]] <- 
-  runCvGlmnetFun(mae = dataA_dpi[["Y"]], xname = xname, ymask = mask_24h)
+  runCvGlmnetFun(mae = dataA_dpi, xname = xname, ymask = mask_24h)
+A549 <-
+  estimateR2(
+    mae = dataA_dpi,
+    regression_res = regression_type$A_549,
+    xname = xname,
+    ymask = mask_24h
+  )
+
 regression_type[["MDA_MB_231"]] <- 
-  runCvGlmnetFun(mae = dataM_dpi[["Y"]], xname = xname, ymask = mask_24h)
+  runCvGlmnetFun(mae = dataM_dpi, xname = xname, ymask = mask_24h)
+MDAMB231 <-
+  estimateR2(
+    mae = dataM_dpi,
+    regression_res = regression_type$MDA_MB_231,
+    xname = xname,
+    ymask = mask_24h
+  )
+
+save(A549, MDAMB231, file = "regression_type_selection.rda")
 ```
 
 ```{r}
-A549 <- list()
-for (nm in names(regression_type$A_549)) {
-  stat <-
-    foreach(i = seq_len(4L), .combine = c) %dopar%
-    estimateStat(
-      x = dataA_dpi[[xname]],
-      y = dataA_dpi[["Y"]][, i],
-      u = dataA_dpi[["U"]],
-      s = regression_type[["A_549"]][[nm]][[i]]$lambda.min,
-      statistic = rsq,
-      alpha = switch (nm,
-        "lasso" = 1,
-        "elasticnet" = 0.5,
-        "ridge" = 0
-      ))
-  A549[[nm]] <- stat
-}
+load("regression_type_selection.rda")
+
+# define layout
+nf <- graphics::layout(
+  mat = matrix(
+    data = c(1, 2, 1, 3),
+    nrow = 2,
+    ncol = 2),
+  heights = c(1, 7))
+
+# title
+par(mar = c(1, 1, 1, 1))
+plot.new()
+text(x = 0.5, 
+     y = c(0.6, 0.2), 
+     labels = c(
+       "Regularized regression methods comparison",
+       expression(paste("CV ", R^2, " across replicates, ReMap2020"))
+     ),
+     cex = 1.5, 
+     font = 2)
+
+
+# boxplots
+par(mar = c(6.1, 5.1, 1.1, 2.1), font.main = 1, cex.main = 1.1, cex = 1.0)
 
 graphics::boxplot(
   A549,
-  main = expression(paste("CV ", R^2, " across replicates, ReMap2020, A-549 24h DPI")),
+  main = "A-549 24h DPI",
   ylab = expression(R^2),
   xlab = "",
+  ylim = c(0.10, 0.36),
   las = 2)
-
-MDAMB231 <- list()
-for (nm in names(regression_type$MDA_MB_231)) {
-  stat <-
-    foreach(i = seq_len(4L), .combine = c) %dopar%
-    estimateStat(
-      x = dataM_dpi[[xname]],
-      y = dataM_dpi[["Y"]][, i],
-      u = dataM_dpi[["U"]],
-      s = regression_type[["MDA_MB_231"]][[nm]][[i]]$lambda.min,
-      statistic = rsq,
-      alpha = switch (nm,
-        "lasso" = 1,
-        "elasticnet" = 0.5,
-        "ridge" = 0
-      ))
-  MDAMB231[[nm]] <- stat
-}
+graphics::stripchart(
+  A549,
+  method = "jitter",
+  pch = 20,
+  vertical = TRUE,
+  add = TRUE
+)
 
 graphics::boxplot(
   MDAMB231,
-  main = expression(paste("CV ", R^2, " across replicates, ReMap2020, MDA-MB-231 24h DPI")),
+  main = "MDA-MB-231 24h DPI",
   ylab = expression(R^2),
   xlab = "",
+  ylim = c(0.10, 0.36),
   las = 2)
+graphics::stripchart(
+  MDAMB231,
+  method = "jitter",
+  pch = 20,
+  vertical = TRUE,
+  add = TRUE
+)
 ```
 
 ## Ridge regression
@@ -311,18 +359,24 @@ samples <- data.frame(
 design_mat <- model.matrix(~ 0 + exp_fac, data = samples)
 colnames(design_mat) <- sub( "exp_fac", "" , colnames(design_mat))
 rownames(design_mat) <- colnames(counts_symbol)
-```
 
-```{r eval=FALSE}
-regression <- list(A_549 = list(), MDA_MB_231 = list())
-
-# A-549
 designA <- design_mat[
   grepl("A_", rownames(design_mat)), 
   grepl("A_", colnames(design_mat)), 
   drop = FALSE
   ]
 
+designM <- design_mat[
+  grepl("M_", rownames(design_mat)), 
+  grepl("M_", colnames(design_mat)), 
+  drop = FALSE
+  ]
+```
+
+```{r eval=FALSE}
+# regression <- list(A_549 = list(), MDA_MB_231 = list())
+
+# A-549
 ## SYMBOL
 xnames <- setdiff(names(dataA_symbol), c("U", "Y"))
 regression[["A_549"]][["SYMBOL"]] <- linearRidgePipeline(
@@ -350,12 +404,6 @@ regression[["A_549"]][["DPI"]] <- linearRidgePipeline(
 save(regression, file = "regression.rda")
 
 # MDA-MB-231
-designM <- design_mat[
-  grepl("M_", rownames(design_mat)), 
-  grepl("M_", colnames(design_mat)), 
-  drop = FALSE
-  ]
-
 ## SYMBOL
 xnames <- setdiff(names(dataM_symbol), c("U", "Y"))
 regression[["MDA_MB_231"]][["SYMBOL"]] <- linearRidgePipeline(
@@ -383,272 +431,20 @@ regression[["MDA_MB_231"]][["DPI"]] <- linearRidgePipeline(
 save(regression, file = "regression.rda")
 ```
 
-# Different signatures comparison
-## A-549 24h
-```{r eval=FALSE, fig.height=10, fig.width=15}
-# 24h subset
-j <- grepl("24h", colnames(dataA[["Y"]]))
-xnames <- setdiff(names(dataA), c("U", "Y", "DE"))
-
-RSQA <- list()
-for (nm in xnames) {
-  stat <-
-    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
-    estimateStat(
-      x = dataA[[nm]],
-      y = dataA[["Y"]][, j][, i],
-      u = dataA[["U"]],
-      s = regression[["A_549"]][["regression_models"]][[nm]][j][[i]]$lambda.min,
-      statistic = rsq)
-  RSQA[[nm]] <- c(RSQA[[nm]], stat)
-}
-```
+# R2 for different molecular  signatures, 0 vs 24 hours
 
 ```{r eval=FALSE}
-par(mar = c(6, 4, 4, 2) + 0.1)
-rsq_bplot <-
-  graphics::boxplot(RSQA,
-        main = expression(paste("CV ", R^2, " across replicates, A-549")),
-        ylab = expression(R^2),
-        xlab = "",
-        notch = TRUE,
-        las=2,
-        cex.axis = 0.8)
-abline(h = median(RSQA[["remap_core_raw"]]), col = "red", lty = 2)
-
-par(mar = c(2, 4, 4, 2) + 0.1)
-rsq_means <- vapply(RSQA, mean, FUN.VALUE = numeric(1L))
-nvar <- vapply(xnames, function(nm) ncol(dataA[[nm]]), numeric(1L))
-plot(x = nvar,
-     y = rsq_means,
-     main = expression(paste(R^2, "vs # variables")))
-
-rsq_se <- vapply(RSQA, function(x) sqrt(var(x)/length(x)), FUN.VALUE = numeric(1L))
-
-# R^2 vs # signatures
-plot(
-  x = NULL,
-  y = NULL,
-  xlim = c(min(nvar), max(nvar)),
-  ylim = c(min(rsq_means), max(rsq_means)),
-  main = expression(paste(R^2, " vs # signatures")),
-  xlab = "# signatures",
-  ylab = expression(R^2)
-)
-gr <- names(RSQA) %>% 
-  sub(pattern = "remap_promoters_core_", replacement = "") %>%
-  sub(pattern = "_[0-9]\\.[0-9]_", replacement = "_") %>%
-  factor()
-cols <- setNames(paintVector(levels(gr)), levels(gr))
-names(cols) <- levels(gr)
-r <- 1
-for (i in levels(gr)) {
-  if (i == "remap_core_raw") next()
-  lines(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i], type = 'b')
-  r = r + 1
-}
-abline(h = mean(RSQA[["remap_core_raw"]]), col = "red", lty = 2)
-legend("bottomright", legend = levels(gr), col = cols, cex = 0.8, lty = 1)
-
-# R^2 vs # signatures per collapsing method
-plot(
-  x = NULL,
-  y = NULL,
-  xlim = c(min(nvar), max(nvar)),
-  ylim = c(min(rsq_means), max(rsq_means)),
-  main = expression(paste(R^2, " vs # signatures, collapsing methods")),
-  xlab = "# signatures",
-  ylab = expression(R^2)
-)
-gr <- names(RSQA) %>% 
-  sub(pattern = "remap_promoters_core_", replacement = "") %>%
-  sub(pattern = ".*_", replacement = "") %>%
-  factor()
-cols <- setNames(paintVector(levels(gr)), levels(gr))
-names(cols) <- levels(gr)
-for (i in levels(gr)) {
-  if (i == "raw") next()
-  lines(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i], type = 'b')
-  r = r + 1
-}
-abline(h = mean(RSQA[["remap_core_raw"]]), col = "red", lty = 2)
-legend(
-  "bottomright",
-  legend = c("majority vote (0.3)", "majority vote (0.5)", "rowSum"),
-  col = cols[levels(gr)][levels(gr) != "raw"],
-  cex = 1,
-  lty = 1
-)
-
-# R^2 vs # signatures per distance
-plot(
-  x = NULL,
-  y = NULL,
-  xlim = c(min(nvar), max(nvar)),
-  ylim = c(min(rsq_means), max(rsq_means)),
-  main = expression(paste(R^2, " vs # signatures, distances")),
-  xlab = "# signatures",
-  ylab = expression(R^2)
-)
-gr <- names(RSQA) %>% 
-  sub(pattern = "remap_promoters_core_", replacement = "") %>%
-  sub(pattern = "_.*", replacement = "") %>%
-  factor()
-cols <- setNames(paintVector(levels(gr)), levels(gr))
-names(cols) <- levels(gr)
-for (i in levels(gr)) {
-  if (i == "raw") next()
-  points(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i])
-  r = r + 1
-}
-abline(h = mean(RSQA[["remap_core_raw"]]), col = "red", lty = 2)
-legend(
-  "bottomright",
-  legend = levels(gr),
-  col = cols[levels(gr)][levels(gr) != "raw"],
-  cex = 1,
-  lty = 1
-)
-```
-on M 24h
-```{r fig.height=10, fig.width=15}
-# 24h subset
-j <- grepl("24h", colnames(dataM[["Y"]]))
-xnames <- setdiff(names(dataM), c("U", "Y", "DE"))
-
-RSQM <- list()
-for (nm in xnames) {
-  stat <-
-    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
-    estimateStat(
-      x = dataM[[nm]],
-      y = dataM[["Y"]][, j][, i],
-      u = dataM[["U"]],
-      s = regression[["MDA_MB_231"]][["regression_models"]][[nm]][j][[i]]$lambda.min,
-      statistic = rsq)
-  RSQM[[nm]] <- c(RSQM[[nm]], stat)
-}
-```
-
-```{r}
-par(mar = c(14, 4, 4, 2) + 0.1)
-rsq_bplot <-
-  graphics::boxplot(RSQM,
-        main = expression(paste("CV ", R^2, " across replicates, MDA-MB-231")),
-        ylab = expression(R^2),
-        xlab = "",
-        notch = TRUE,
-        las=2,
-        cex.axis = 0.8)
-abline(h = median(RSQM[["remap_core_collapsed_rand"]]), col = "red", lty = 2)
-
-par(mar = c(2, 4, 4, 2) + 0.1)
-rsq_means <- vapply(RSQM, mean, FUN.VALUE = numeric(1L))
-nvar <- vapply(xnames, function(nm) ncol(dataM[[nm]]), numeric(1L))
-plot(x = nvar,
-     y = rsq_means,
-     main = expression(paste(R^2, "vs # variables")))
-
-
-rsq_se <- vapply(RSQM, function(x) sqrt(var(x)/length(x)), FUN.VALUE = numeric(1L))
-
-# R^2 vs # signatures
-plot(
-  x = NULL,
-  y = NULL,
-  xlim = c(min(nvar), max(nvar)),
-  ylim = c(min(rsq_means), max(rsq_means)),
-  main = expression(paste(R^2, " vs # signatures")),
-  xlab = "# signatures",
-  ylab = expression(R^2)
-)
-gr <- names(RSQM) %>% 
-  sub(pattern = "remap_promoters_core_", replacement = "") %>%
-  sub(pattern = "_[0-9]\\.[0-9]_", replacement = "_") %>%
-  factor()
-cols <- setNames(paintVector(levels(gr)), levels(gr))
-names(cols) <- levels(gr)
-for (i in levels(gr)) {
-  if (i == "remap_core_raw") next()
-  lines(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i], type = 'b')
-  r = r + 1
-}
-abline(h = mean(RSQM[["remap_core_raw"]]), col = "red", lty = 2)
-legend("bottomright", legend = levels(gr), col = cols, cex = 0.8, lty = 1)
-
-# R^2 vs # signatures per collapsing method
-plot(
-  x = NULL,
-  y = NULL,
-  xlim = c(min(nvar), max(nvar)),
-  ylim = c(min(rsq_means), max(rsq_means)),
-  main = expression(paste(R^2, " vs # signatures, collapsing methods")),
-  xlab = "# signatures",
-  ylab = expression(R^2)
-)
-gr <- names(RSQM) %>% 
-  sub(pattern = "remap_promoters_core_", replacement = "") %>%
-  sub(pattern = ".*_", replacement = "") %>%
-  factor()
-cols <- setNames(paintVector(levels(gr)), levels(gr))
-names(cols) <- levels(gr)
-for (i in levels(gr)) {
-  if (i == "raw") next()
-  points(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i])
-  r = r + 1
-}
-abline(h = mean(RSQM[["remap_core_raw"]]), col = "red", lty = 2)
-legend(
-  "bottomright",
-  legend = c("majority vote (0.3)", "majority vote (0.5)", "rowSum"),
-  col = cols[levels(gr)][levels(gr) != "raw"],
-  cex = 1,
-  lty = 1
-)
-
-# R^2 vs # signatures per distance
-plot(
-  x = NULL,
-  y = NULL,
-  xlim = c(min(nvar), max(nvar)),
-  ylim = c(min(rsq_means), max(rsq_means)),
-  main = expression(paste(R^2, " vs # signatures, distances")),
-  xlab = "# signatures",
-  ylab = expression(R^2)
-)
-gr <- names(RSQM) %>% 
-  sub(pattern = "remap_promoters_core_", replacement = "") %>%
-  sub(pattern = "_.*", replacement = "") %>%
-  factor()
-cols <- setNames(paintVector(levels(gr)), levels(gr))
-names(cols) <- levels(gr)
-for (i in levels(gr)) {
-  if (i == "raw") next()
-  lines(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i], type = 'b')
-  r = r + 1
-}
-abline(h = mean(RSQM[["remap_core_raw"]]), col = "red", lty = 2)
-legend(
-  "bottomright",
-  legend = levels(gr),
-  col = cols[levels(gr)][levels(gr) != "raw"],
-  cex = 1,
-  lty = 1
-)
-```
-
-### Collapsing leads to loss of model accuracy
-#### A-549 24h
-```{r}
+## A-549 24h
+j <- grepl("24h", colnames(dataA_dpi[["Y"]]))
 xnames <- setdiff(names(dataA_dpi), c("U", "Y"))
 rsqA <- list(symbol = list(), dpi = list())
 for (nm in xnames) {
   # symbol
   stat <-
-    foreach(i = seq_len(4L), .combine = c) %dopar%
+    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
     estimateStat(
       x = dataA_symbol[[nm]],
-      y = dataA_symbol[["Y"]][, i],
+      y = dataA_symbol[["Y"]][, j][, i],
       u = dataA_symbol[["U"]],
       s = regression[["A_549"]][["SYMBOL"]][["regression_models"]][[nm]][[i]]$lambda.min,
       statistic = rsq)
@@ -656,16 +452,111 @@ for (nm in xnames) {
   
   # dpi
   stat <-
-    foreach(i = seq_len(4L), .combine = c) %dopar%
+    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
     estimateStat(
       x = dataA_dpi[[nm]],
-      y = dataA_dpi[["Y"]][, i],
+      y = dataA_dpi[["Y"]][, j][, i],
       u = dataA_dpi[["U"]],
-      s = regression[["A_549"]][["SYMBOL"]][["regression_models"]][[nm]][[i]]$lambda.min,
+      s = regression[["A_549"]][["DPI"]][["regression_models"]][[nm]][[i]]$lambda.min,
       statistic = rsq)
   rsqA[["dpi"]][[nm]] <- stat
 }
+
+save(rsqA, file = "rsqA.rda")
+
+## MDA-MB-231 24h
+j <- grepl("24h", colnames(dataM_dpi[["Y"]]))
+xnames <- setdiff(names(dataM_dpi), c("U", "Y"))
+rsqM <- list(symbol = list(), dpi = list())
+for (nm in xnames) {
+  # symbol
+  stat <-
+    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+    estimateStat(
+      x = dataM_symbol[[nm]],
+      y = dataM_symbol[["Y"]][, j][, i],
+      u = dataM_symbol[["U"]],
+      s = regression[["MDA_MB_231"]][["SYMBOL"]][["regression_models"]][[nm]][[i]]$lambda.min,
+      statistic = rsq)
+  rsqM[["symbol"]][[nm]] <- stat
+  
+  # dpi
+  stat <-
+    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+    estimateStat(
+      x = dataM_dpi[[nm]],
+      y = dataM_dpi[["Y"]][, j][, i],
+      u = dataM_dpi[["U"]],
+      s = regression[["MDA_MB_231"]][["DPI"]][["regression_models"]][[nm]][[i]]$lambda.min,
+      statistic = rsq)
+  rsqM[["dpi"]][[nm]] <- stat
+}
+
+save(rsqM, file = "rsqM.rda")
 ```
+
+```{r}
+load("rsqA.rda")
+load("rsqM.rda")
+```
+
+```{r}
+xlabs <- c(
+  "ReMap2020",
+  "ChIP-Atlas",
+  "SwissRegulon",
+  "Jaspar",
+  "randomized\nReMap2020",
+  "randomized\nChIP-Atlas"
+)
+
+# define layout
+nf <- graphics::layout(
+  mat = matrix(
+    data = c(1, 2, 1, 3),
+    nrow = 2,
+    ncol = 2),
+  heights = c(1, 7))
+
+# title
+par(mar = c(1, 1, 1, 1))
+plot.new()
+text(x = 0.5, 
+     y = c(0.6, 0.2), 
+     labels = c(
+       "Molecular signatures sets comparison",
+       expression(paste("CV ", R^2, " across replicates, 24h DPI"))
+     ),
+     cex = 1.5, 
+     font = 2)
+
+
+# boxplots
+par(mar = c(7.1, 5.1, 1.1, 1.1), font.main = 1, cex.main = 1.1, cex = 1.0)
+
+graphics::boxplot(
+  x = rsqA$dpi,
+  names = xlabs,
+  main = "A-549",
+  ylab = expression(R^2),
+  xlab = "",
+  ylim = c(0, 0.35),
+  las = 2,
+  cex.axis = 1)
+
+graphics::boxplot(
+  x = rsqM$dpi,
+  names = xlabs,
+  main = "MDA-MB-549",
+  ylab = expression(R^2),
+  xlab = "",
+  ylim = c(0, 0.35),
+  las = 2,
+  cex.axis = 1)
+```
+
+### Collapsing leads to loss of model accuracy
+#### A-549 24h
 
 ```{r}
 ord <-
@@ -789,148 +680,558 @@ plot(x = xsize,
      ylab = expression(R^2))
 ```
 
-#### MDA_MB_231 24h
-```{r}
-xnames <- setdiff(names(dataM_dpi), c("U", "Y"))
-rsqM <- list(symbol = list(), dpi = list())
-for (nm in xnames) {
-  # symbol
-  stat <-
-    foreach(i = seq_len(4L), .combine = c) %dopar%
-    estimateStat(
-      x = dataM_symbol[[nm]],
-      y = dataM_symbol[["Y"]][, i],
-      u = dataM_symbol[["U"]],
-      s = regression[["MDA_MB_231"]][["SYMBOL"]][["regression_models"]][[nm]][[i]]$lambda.min,
-      statistic = rsq)
-  rsqM[["symbol"]][[nm]] <- stat
-  
-  # dpi
-  stat <-
-    foreach(i = seq_len(4L), .combine = c) %dopar%
-    estimateStat(
-      x = dataM_dpi[[nm]],
-      y = dataM_dpi[["Y"]][, i],
-      u = dataM_dpi[["U"]],
-      s = regression[["MDA_MB_231"]][["SYMBOL"]][["regression_models"]][[nm]][[i]]$lambda.min,
-      statistic = rsq)
-  rsqM[["dpi"]][[nm]] <- stat
-}
+# Significant signatures selection
+
+```{r eval=FALSE}
+top_regression <- list(A_549 = list(), MDA_MB_231 = list())
+xnames <- c("remap", "chip_atlas")
+
+designA <- design_mat[
+  grepl("A_", rownames(design_mat)), 
+  grepl("A_", colnames(design_mat)), 
+  drop = FALSE
+  ]
+top_regression[["A_549"]][["DPI"]] <- linearRidgePipeline(
+  mae = dataA_dpi,
+  yname = "Y",
+  uname = "U",
+  xnames = xnames,
+  design = designA, 
+  simple_replicates_avg = TRUE, 
+  elaborate_replicates_avg = TRUE,
+  precalcmodels = regression[["A_549"]][["DPI"]][["regression_models"]][xnames])
+
+save(top_regression, file = "top_regression.rda")
+
+designM <- design_mat[
+  grepl("M_", rownames(design_mat)), 
+  grepl("M_", colnames(design_mat)), 
+  drop = FALSE
+  ]
+top_regression[["MDA_MB_231"]][["DPI"]] <- linearRidgePipeline(
+  mae = dataM_dpi,
+  yname = "Y",
+  uname = "U",
+  xnames = xnames,
+  design = designM, 
+  simple_replicates_avg = TRUE, 
+  elaborate_replicates_avg = TRUE,
+  precalcmodels = regression[["MDA_MB_231"]][["DPI"]][["regression_models"]][xnames])
+
+save(top_regression, file = "top_regression.rda")
 ```
 
 ```{r}
-ord <-
-  c(
-    "remap",
-    "remap_promoters_pearson_0.1_0.5",
-    "remap_promoters_pearson_0.5_0.5",
-    "remap_promoters_pearson_0.9_0.5",
-    "remap_promoters_pearson_1.3_0.5",
-    "remap_promoters_pearson_1.7_0.5",
-    "jaspar"
-  )
-
-xsize <- vapply(ord, function(x) ncol(dataM_dpi[[x]]), FUN.VALUE = numeric(1L))
-
-# scatter plot with error bars
-par(mar = c(10, 4, 4, 2) + 0.1)
-plot(
-  x = NULL,
-  y = NULL,
-  xlim = c(max(xsize), min(xsize)),
-  ylim = c(0, max(unlist(rsqA$dpi))),
-  xlab = "",
-  ylab = expression(R ^ 2),
-  xaxt = "n",
-  main = expression(paste("CV ", R ^ 2, " across replicates, MDA-MB-231 24h"))
-)
-axis(
-  side = 1,
-  at = xsize,
-  labels = ord %>%
-    sub(pattern = "remap_promoters_", replacement = "") %>%
-    sub(pattern = "_0.5$", replacement = "") %>% 
-    paste0(" (",xsize, ")"),
-  las = 2
-)
-symbol_means <- vapply(ord, function(x) mean(rsqM[["symbol"]][[x]]), FUN.VALUE = numeric(1L))
-symbol_sd <- vapply(ord, function(x) sd(rsqM[["symbol"]][[x]]), FUN.VALUE = numeric(1L))
-points(
-  x = xsize - 30,
-  y = symbol_means,
-  pch = 16
-)
-arrows(
-  x0 = xsize - 30, 
-  y0 = symbol_means - symbol_sd, 
-  y1 = symbol_means + symbol_sd, 
-  length = 0.05, 
-  angle = 90, 
-  code = 3
-)
-dpi_means <- vapply(ord, function(x) mean(rsqM[["dpi"]][[x]]), FUN.VALUE = numeric(1L))
-dpi_sd <- vapply(ord, function(x) sd(rsqM[["dpi"]][[x]]), FUN.VALUE = numeric(1L))
-points(
-  x = xsize + 30,
-  y = dpi_means,
-  pch = 1
-)
-arrows(
-  x0 = xsize + 30, 
-  y0 = dpi_means - dpi_sd, 
-  y1 = dpi_means + dpi_sd, 
-  length = 0.05, 
-  angle = 90, 
-  code = 3
-)
-legend(
-  "topright",
-  legend = c("dpi", "symbol"),
-  pch = c(1, 16)
-)
-
-# boxplot with two groups
-df <- rbind(
-  data.frame(
-    value = unlist(rsqM$dpi),
-    xname = ordered(
-      x = rep(names(rsqM$dpi), each = length(rsqM$dpi$remap)) %>%
-        sub(pattern = "remap_promoters_", replacement = "") %>%
-        sub(pattern = "_0.5$", replacement = ""), 
-      levels = ord %>%
-        sub(pattern = "remap_promoters_", replacement = "") %>%
-        sub(pattern = "_0.5$", replacement = "")
-    ),
-    type = "dpi",
-    stringsAsFactors = FALSE,
-    row.names = NULL),
-  data.frame(
-    value = unlist(rsqM$symbol),
-    xname = ordered(
-      x = rep(names(rsqM$symbol), each = length(rsqM$symbol$remap)) %>%
-        sub(pattern = "remap_promoters_", replacement = "") %>%
-        sub(pattern = "_0.5$", replacement = ""), 
-      levels = ord %>%
-        sub(pattern = "remap_promoters_", replacement = "") %>%
-        sub(pattern = "_0.5$", replacement = "")
-    ),
-    type = "symbol",
-    stringsAsFactors = FALSE,
-    row.names = NULL)
-)
-
-ggplot2::ggplot(df, ggplot2::aes(x = xname, y = value, fill = type)) + 
-    ggplot2::geom_boxplot() +
-    ggplot2::ylim(0, 0.35) +
-    ggplot2::xlab("molecular signature") +
-    ggplot2::ylab(expression(R^2)) +
-    ggplot2::ggtitle(expression(paste("CV ", R ^ 2, " across replicates, MDA-MB-231 24h"))) + 
-    ggplot2::theme_bw(base_size = 16)
+load("top_regression.rda")
 ```
 
 # Stability of best signatures selection between replicates
 ## TODO rewrite as heatmaps
-A-549 24h
+
+## ReMap2020 24h top signatures across replicates
+
+```{r}
+makeHeatmap <-
+  function(matrix,
+           cluster_rows = FALSE,
+           cluster_columns = FALSE,
+           row_labels = gsub("\\.", " ", rownames(matrix)),
+           ...) {
+  col_fun = circlize::colorRamp2(c(-0.04, 0, 0.08), c("blue", "white", "red"))
+  ComplexHeatmap::Heatmap(matrix,
+                          col = col_fun,
+                          cluster_rows = cluster_rows,
+                          cluster_columns = cluster_columns,
+                          row_labels = row_labels,
+                          heatmap_legend_param = list(
+                            col_fun = col_fun,
+                            at = c(-0.04, 0, 0.08)
+                          ),
+                          ...)
+}
+
+sel <- c("A_TGFb_24h_R1", "A_TGFb_24h_R2", "A_TGFb_24h_R3", "A_TGFb_24h_R4")
+signatures_mat_24_A549 <- do.call(
+  what = cbind,
+  args = lapply(
+    X = sel, 
+    FUN = function(x) top_regression$A_549$DPI$regression_elaborate_pvalues$remap[[x]][["coef"]]
+  )
+)
+colnames(signatures_mat_24_A549) <- c("R1", "R2", "R3", "R4")
+
+sel <- c("M_TGFb_24h_R1", "M_TGFb_24h_R2", "M_TGFb_24h_R3", "M_TGFb_24h_R4")
+signatures_mat_24_MDA_MB_231 <- do.call(
+  what = cbind,
+  args = lapply(
+    X = sel, 
+    FUN = function(x) top_regression$MDA_MB_231$DPI$regression_elaborate_pvalues$remap[[x]][["coef"]]
+  )
+)
+colnames(signatures_mat_24_MDA_MB_231) <- c("R1", "R2", "R3", "R4")
+
+top10A_549 <- top_regression$A_549$DPI$regression_elaborate_avg$remap %>%
+  `[`(, 2:6) %>% # do not select 0h
+  apply(MARGIN = 1, FUN = function(zscore) 2 * (1 - pnorm(abs(zscore)))) %>%
+  apply(MARGIN = 2, FUN = fisherMethod) %>%
+  sort() %>%
+  head(15) %>%
+  names()
+
+top10MDA_MB_231 <- top_regression$MDA_MB_231$DPI$regression_elaborate_avg$remap %>%
+  `[`(, 2:6) %>% # do not select 0h
+  apply(MARGIN = 1, FUN = function(zscore) 2 * (1 - pnorm(abs(zscore)))) %>%
+  apply(MARGIN = 2, FUN = fisherMethod) %>%
+  sort() %>%
+  head(15) %>%
+  names()
+
+ComplexHeatmap::draw(
+    makeHeatmap(signatures_mat_24_A549[top10A_549, ], name = "A-549", column_title = "A-549") +
+      makeHeatmap(signatures_mat_24_MDA_MB_231[top10MDA_MB_231, ], name = "MDA-MB-231", column_title = "MDA-MB-231"), 
+    main_heatmap = "MDA-MB-231", 
+    cluster_rows = TRUE, 
+    show_row_dend = FALSE,
+    auto_adjust = FALSE)
+```
+
+## ChIP-Atlas 24h top signatures across replicates
+
+!!!here ony change was from remap to chip_atlas!!!
+
+```{r}
+makeHeatmap <-
+  function(matrix,
+           cluster_rows = FALSE,
+           cluster_columns = FALSE,
+           row_labels = gsub("\\.", " ", rownames(matrix)),
+           ...) {
+  col_fun = circlize::colorRamp2(c(-0.04, 0, 0.08), c("blue", "white", "red"))
+  ComplexHeatmap::Heatmap(matrix,
+                          col = col_fun,
+                          cluster_rows = cluster_rows,
+                          cluster_columns = cluster_columns,
+                          row_labels = row_labels,
+                          heatmap_legend_param = list(
+                            col_fun = col_fun,
+                            at = c(-0.04, 0, 0.08)
+                          ),
+                          ...)
+}
+
+sel <- c("A_TGFb_24h_R1", "A_TGFb_24h_R2", "A_TGFb_24h_R3", "A_TGFb_24h_R4")
+signatures_mat_24_A549 <- do.call(
+  what = cbind,
+  args = lapply(
+    X = sel, 
+    FUN = function(x) top_regression$A_549$DPI$regression_elaborate_pvalues$chip_atlas[[x]][["coef"]]
+  )
+)
+colnames(signatures_mat_24_A549) <- c("R1", "R2", "R3", "R4")
+
+sel <- c("M_TGFb_24h_R1", "M_TGFb_24h_R2", "M_TGFb_24h_R3", "M_TGFb_24h_R4")
+signatures_mat_24_MDA_MB_231 <- do.call(
+  what = cbind,
+  args = lapply(
+    X = sel, 
+    FUN = function(x) top_regression$MDA_MB_231$DPI$regression_elaborate_pvalues$chip_atlas[[x]][["coef"]]
+  )
+)
+colnames(signatures_mat_24_MDA_MB_231) <- c("R1", "R2", "R3", "R4")
+
+top10A_549 <- top_regression$A_549$DPI$regression_elaborate_avg$chip_atlas %>%
+  `[`(, 2:6) %>% # do not select 0h
+  apply(MARGIN = 1, FUN = function(zscore) 2 * (1 - pnorm(abs(zscore)))) %>%
+  apply(MARGIN = 2, FUN = fisherMethod) %>%
+  sort() %>%
+  head(15) %>%
+  names()
+
+top10MDA_MB_231 <- top_regression$MDA_MB_231$DPI$regression_elaborate_avg$chip_atlas %>%
+  `[`(, 2:6) %>% # do not select 0h
+  apply(MARGIN = 1, FUN = function(zscore) 2 * (1 - pnorm(abs(zscore)))) %>%
+  apply(MARGIN = 2, FUN = fisherMethod) %>%
+  sort() %>%
+  head(15) %>%
+  names()
+
+ComplexHeatmap::draw(
+    makeHeatmap(signatures_mat_24_A549[top10A_549, ], name = "A-549", column_title = "A-549") +
+      makeHeatmap(signatures_mat_24_MDA_MB_231[top10MDA_MB_231, ], name = "MDA-MB-231", column_title = "MDA-MB-231"), 
+    main_heatmap = "MDA-MB-231", 
+    cluster_rows = TRUE, 
+    show_row_dend = FALSE,
+    auto_adjust = FALSE)
+```
+
+# Top scoring signatures in TGFbeta - heatmaps
+
+## ReMap2020
+
+```{r}
+makeHeatmap <-
+  function(matrix,
+           cluster_rows = FALSE,
+           cluster_columns = FALSE,
+           row_labels = gsub("\\.", " ", rownames(matrix)),
+           ...) {
+  col_fun = circlize::colorRamp2(c(-0.04, 0, 0.08), c("blue", "white", "red"))
+  ComplexHeatmap::Heatmap(matrix,
+                          col = col_fun,
+                          cluster_rows = cluster_rows,
+                          cluster_columns = cluster_columns,
+                          row_labels = row_labels,
+                          heatmap_legend_param = list(
+                            col_fun = col_fun,
+                            at = c(-0.04, 0, 0.08)
+                          ),
+                          ...)
+}
+
+compareHeatmaps <- function(rows, ...) {
+  # am <- top_regression$A_549$DPI$regression_elaborate_avg$remap
+  am <- applyOverDFList(
+    list_of_df = top_regression$A_549$DPI$regression_elaborate_pvalues$remap, 
+    col_name = "coef", 
+    fun = mean, 
+    groups = design2factor(designA))
+  if (! all(mask <- rows %in% rownames(am))) {
+    toadd <- rows[! mask]
+    toadd <-
+      matrix(
+        data = NA,
+        nrow = length(toadd),
+        ncol = 6,
+        dimnames = list(toadd, colnames(am))
+      )
+    am <- rbind(am, toadd)
+  }
+  ah <- am %>%
+    `[`(rows, 1:6) %>%
+    # apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    # t() %>%
+    makeHeatmap(name = "A-549", column_title = "A-549")
+  
+  # mm <- top_regression$MDA_MB_231$DPI$regression_elaborate_avg$remap
+  mm <- applyOverDFList(
+    list_of_df = top_regression$MDA_MB_231$DPI$regression_elaborate_pvalues$remap, 
+    col_name = "coef", 
+    fun = mean, 
+    groups = design2factor(designM))
+  if (! all(mask <- rows %in% rownames(mm))) {
+    toadd <- rows[! mask]
+    toadd <-
+      matrix(
+        data = NA,
+        nrow = length(toadd),
+        ncol = 6,
+        dimnames = list(toadd, NULL)
+      )
+    mm <- rbind(mm, colnames(mm))
+  }
+  mh <- mm %>%
+    `[`(rows, 1:6) %>%
+    # apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    # t() %>%
+    makeHeatmap(name = "MDA-MB-231", column_title = "MDA-MB-231")
+
+  ComplexHeatmap::draw(
+    mh + ah, 
+    main_heatmap = "MDA-MB-231", 
+    cluster_rows = TRUE, 
+    show_row_dend = FALSE,
+    ...)
+}
+
+top10A_549 <- top_regression$A_549$DPI$regression_elaborate_avg$remap %>%
+  `[`(, 2:6) %>% # do not select 0h
+  apply(MARGIN = 1, FUN = function(zscore) 2 * (1 - pnorm(abs(zscore)))) %>%
+  apply(MARGIN = 2, FUN = fisherMethod) %>%
+  sort() %>%
+  head(10) %>%
+  names()
+
+top10MDA_MB_231 <- top_regression$MDA_MB_231$DPI$regression_elaborate_avg$remap %>%
+  `[`(, 2:6) %>% # do not select 0h
+  apply(MARGIN = 1, FUN = function(zscore) 2 * (1 - pnorm(abs(zscore)))) %>%
+  apply(MARGIN = 2, FUN = fisherMethod) %>%
+  sort() %>%
+  head(10) %>%
+  names()
+
+rows <- base::union(top10A_549, top10MDA_MB_231)
+
+compareHeatmaps(rows, 
+                column_title = "TGFb treatment top ReMap2020 signatures", 
+                heatmap_legend_side = "left")
+```
+
+## ChIP-Atlas
+
+```{r}
+makeHeatmap <-
+  function(matrix,
+           cluster_rows = FALSE,
+           cluster_columns = FALSE,
+           row_labels = gsub("\\.", " ", rownames(matrix)),
+           ...) {
+  col_fun = circlize::colorRamp2(c(-0.04, 0, 0.08), c("blue", "white", "red"))
+  ComplexHeatmap::Heatmap(matrix,
+                          col = col_fun,
+                          cluster_rows = cluster_rows,
+                          cluster_columns = cluster_columns,
+                          row_labels = row_labels,
+                          heatmap_legend_param = list(
+                            col_fun = col_fun,
+                            at = c(-0.04, 0, 0.08)
+                          ),
+                          ...)
+}
+
+compareHeatmaps <- function(rows, ...) {
+  am <- applyOverDFList(
+    list_of_df = top_regression$A_549$DPI$regression_elaborate_pvalues$chip_atlas, 
+    col_name = "coef", 
+    fun = mean, 
+    groups = design2factor(designA))
+  if (! all(mask <- rows %in% rownames(am))) {
+    toadd <- rows[! mask]
+    toadd <-
+      matrix(
+        data = NA,
+        nrow = length(toadd),
+        ncol = 6,
+        dimnames = list(toadd, colnames(am))
+      )
+    am <- rbind(am, toadd)
+  }
+  ah <- am %>%
+    `[`(rows, 1:6) %>%
+    # apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    # t() %>%
+    makeHeatmap(name = "A-549", column_title = "A-549")
+  
+  mm <- applyOverDFList(
+    list_of_df = top_regression$MDA_MB_231$DPI$regression_elaborate_pvalues$chip_atlas, 
+    col_name = "coef", 
+    fun = mean, 
+    groups = design2factor(designM))
+  if (! all(mask <- rows %in% rownames(mm))) {
+    toadd <- rows[! mask]
+    toadd <-
+      matrix(
+        data = NA,
+        nrow = length(toadd),
+        ncol = 6,
+        dimnames = list(toadd, NULL)
+      )
+    mm <- rbind(mm, colnames(mm))
+  }
+  mh <- mm %>%
+    `[`(rows, 1:6) %>%
+    # apply(MARGIN = 1, FUN = scale, center = FALSE) %>%
+    # t() %>%
+    makeHeatmap(name = "MDA-MB-231", column_title = "MDA-MB-231")
+
+  ComplexHeatmap::draw(
+    mh + ah, 
+    main_heatmap = "MDA-MB-231", 
+    cluster_rows = TRUE, 
+    show_row_dend = FALSE,
+    ...)
+}
+
+top10A_549 <- top_regression$A_549$DPI$regression_elaborate_avg$chip_atlas %>%
+  `[`(, 2:6) %>% # do not select 0h
+  apply(MARGIN = 1, FUN = function(zscore) 2 * (1 - pnorm(abs(zscore)))) %>%
+  apply(MARGIN = 2, FUN = fisherMethod) %>%
+  sort() %>%
+  head(10) %>%
+  names()
+
+top10MDA_MB_231 <- top_regression$MDA_MB_231$DPI$regression_elaborate_avg$chip_atlas %>%
+  `[`(, 2:6) %>% # do not select 0h
+  apply(MARGIN = 1, FUN = function(zscore) 2 * (1 - pnorm(abs(zscore)))) %>%
+  apply(MARGIN = 2, FUN = fisherMethod) %>%
+  sort() %>%
+  head(10) %>%
+  names()
+
+rows <- base::union(top10A_549, top10MDA_MB_231)
+
+compareHeatmaps(rows, 
+                column_title = "TGFb treatment top ChIP-Atlas signatures", 
+                heatmap_legend_side = "left")
+```
+
+# Signature score vs # features 24h
+
+```{r}
+sig_th <- 1.96
+
+# define layout
+nf <- graphics::layout(
+  mat = matrix(
+    data = c(1, 2, 4, 5, 1, 3, 4, 6),
+    nrow = 4,
+    ncol = 2),
+  heights = c(1, 4, 1, 4))
+
+par(mar = c(1, 1, 1, 1))
+plot.new()
+text(x = 0.5, 
+     y = 0.5, 
+     labels = "A-549 24h DPI",
+     cex = 1.5, 
+     font = 2)
+par(mar = def.par$mar)
+
+y <- top_regression$A_549$DPI$regression_elaborate_avg$remap[, "A_TGFb_24h"] %>% abs()
+x <- colSums(dataA_dpi[["remap"]])[names(y)] %>% log10()
+plot(x = x,
+     y = y,
+     xlab = "log10(signature coverage)",
+     ylab = "abs(Z-score)",
+     main = "ReMap2020")
+abline(h = sig_th, col = "red", lty = 2)
+
+y <- top_regression$A_549$DPI$regression_elaborate_avg$chip_atlas[, "A_TGFb_24h"] %>% abs()
+x <- colSums(dataA_dpi[["chip_atlas"]])[names(y)] %>% log10()
+plot(x = x,
+     y = y,
+     xlab = "log10(signature coverage)",
+     ylab = "abs(Z-score)",
+     main = "ChIP-Atlas")
+abline(h = sig_th, col = "red", lty = 2)
+
+par(mar = c(1, 1, 1, 1))
+plot.new()
+text(x = 0.5, 
+     y = 0.5, 
+     labels = "MDA-MB-231 24h DPI",
+     cex = 1.5, 
+     font = 2)
+par(mar = def.par$mar)
+
+y <- top_regression$MDA_MB_231$DPI$regression_elaborate_avg$remap[, "M_TGFb_24h"] %>% abs()
+x <- colSums(dataM_dpi[["remap"]])[names(y)] %>% log10()
+plot(x = x,
+     y = y,
+     xlab = "log10(signature coverage)",
+     ylab = "abs(Z-score)",
+     main = "ReMap2020")
+abline(h = sig_th, col = "red", lty = 2)
+
+y <- top_regression$MDA_MB_231$DPI$regression_elaborate_avg$chip_atlas[, "M_TGFb_24h"] %>% abs()
+x <- colSums(dataM_dpi[["chip_atlas"]])[names(y)] %>% log10()
+plot(x = x,
+     y = y,
+     xlab = "log10(signature coverage)",
+     ylab = "abs(Z-score)",
+     main = "ChIP-Atlas")
+abline(h = sig_th, col = "red", lty = 2)
+```
+
+# Notes
+
+```{r}
+par(mar = c(2, 4, 4, 2) + 0.1)
+rsq_means <- vapply(RSQA, mean, FUN.VALUE = numeric(1L))
+nvar <- vapply(xnames, function(nm) ncol(dataA[[nm]]), numeric(1L))
+plot(x = nvar,
+     y = rsq_means,
+     main = expression(paste(R^2, "vs # variables")))
+
+rsq_se <- vapply(RSQA, function(x) sqrt(var(x)/length(x)), FUN.VALUE = numeric(1L))
+
+# R^2 vs # signatures
+plot(
+  x = NULL,
+  y = NULL,
+  xlim = c(min(nvar), max(nvar)),
+  ylim = c(min(rsq_means), max(rsq_means)),
+  main = expression(paste(R^2, " vs # signatures")),
+  xlab = "# signatures",
+  ylab = expression(R^2)
+)
+gr <- names(RSQA) %>% 
+  sub(pattern = "remap_promoters_core_", replacement = "") %>%
+  sub(pattern = "_[0-9]\\.[0-9]_", replacement = "_") %>%
+  factor()
+cols <- setNames(paintVector(levels(gr)), levels(gr))
+names(cols) <- levels(gr)
+r <- 1
+for (i in levels(gr)) {
+  if (i == "remap_core_raw") next()
+  lines(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i], type = 'b')
+  r = r + 1
+}
+abline(h = mean(RSQA[["remap_core_raw"]]), col = "red", lty = 2)
+legend("bottomright", legend = levels(gr), col = cols, cex = 0.8, lty = 1)
+
+# R^2 vs # signatures per collapsing method
+plot(
+  x = NULL,
+  y = NULL,
+  xlim = c(min(nvar), max(nvar)),
+  ylim = c(min(rsq_means), max(rsq_means)),
+  main = expression(paste(R^2, " vs # signatures, collapsing methods")),
+  xlab = "# signatures",
+  ylab = expression(R^2)
+)
+gr <- names(RSQA) %>% 
+  sub(pattern = "remap_promoters_core_", replacement = "") %>%
+  sub(pattern = ".*_", replacement = "") %>%
+  factor()
+cols <- setNames(paintVector(levels(gr)), levels(gr))
+names(cols) <- levels(gr)
+for (i in levels(gr)) {
+  if (i == "raw") next()
+  lines(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i], type = 'b')
+  r = r + 1
+}
+abline(h = mean(RSQA[["remap_core_raw"]]), col = "red", lty = 2)
+legend(
+  "bottomright",
+  legend = c("majority vote (0.3)", "majority vote (0.5)", "rowSum"),
+  col = cols[levels(gr)][levels(gr) != "raw"],
+  cex = 1,
+  lty = 1
+)
+
+# R^2 vs # signatures per distance
+plot(
+  x = NULL,
+  y = NULL,
+  xlim = c(min(nvar), max(nvar)),
+  ylim = c(min(rsq_means), max(rsq_means)),
+  main = expression(paste(R^2, " vs # signatures, distances")),
+  xlab = "# signatures",
+  ylab = expression(R^2)
+)
+gr <- names(RSQA) %>% 
+  sub(pattern = "remap_promoters_core_", replacement = "") %>%
+  sub(pattern = "_.*", replacement = "") %>%
+  factor()
+cols <- setNames(paintVector(levels(gr)), levels(gr))
+names(cols) <- levels(gr)
+for (i in levels(gr)) {
+  if (i == "raw") next()
+  points(x = nvar[gr == i], y = rsq_means[gr == i], col = cols[i])
+  r = r + 1
+}
+abline(h = mean(RSQA[["remap_core_raw"]]), col = "red", lty = 2)
+legend(
+  "bottomright",
+  legend = levels(gr),
+  col = cols[levels(gr)][levels(gr) != "raw"],
+  cex = 1,
+  lty = 1
+)
+```
+
+## Old stability selection
+A-549
 ```{r}
 res <- regression$A_549$regression_elaborate_pvalues$remap_core_raw[23:26]
 avg <- regression$A_549$regression_elaborate_avg$remap_core_raw
@@ -1059,6 +1360,3 @@ boxplot(agreement_avg,
         xlab = "# top signatues",
         ylab = "% overlap")
 ```
-
-
-# Top scoring signatures in TGFbeta - heatmaps
