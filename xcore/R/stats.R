@@ -24,18 +24,19 @@ fisherMethod <- function(p.value, lower.tail = FALSE, log.p = TRUE) {
   return(cmbp)
 }
 
-#' Run linear ridge regression
+#' Linear ridge regression
 #'
-#' Linear ridge regression with lambda selection via CV.
+#' Wrapper around \link{\code{glmnet::cv.glmnet}} to run linear ridge regression 
+#' with lambda selection using cross-validation.
 #'
-#' @inheritParams glmnet::glmnet
+#' @inheritParams glmnet::cv.glmnet
 #'
-#' @return An object of class "ridgeLinear".
+#' @return an object of class "cv.glmnet" is returned. See 
+#'   \link{\code{glmnet::cv.glmnet}} for more details.
 #'
 #' @importFrom glmnet cv.glmnet
-#' @importFrom ridge linearRidge
 #'
-#' @export
+#'
 runLinearRidge <-
   function(x,
            y,
