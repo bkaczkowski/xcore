@@ -555,3 +555,24 @@ getAvgCoeff <- function(models, lambda = "lambda.min", drop_intercept = TRUE) {
       z = (coefs_avg - mean(coefs_avg)) / coefs_sd)
   res
 }
+
+#' Transform design matrix to factor
+#' 
+#' @param design design matrix
+#' 
+#' @return factor
+#' 
+#' @examples 
+#' design <- matrix(data = c(1, 1, 0, 0, 0, 0, 1, 1),
+#'                  nrow = 4,
+#'                  ncol = 2,
+#'                  dimnames = list(c(paste("sample", 1:4)), c("gr1", "gr2")))
+#' design2factor(design)
+#' 
+design2factor <- function(design) {
+  # based on edgeR::designAsFactor, but jokes aside
+  groups <- factor(rowMeans(design * col(design) * ncol(design)))
+  levels(groups) <- colnames(design)
+  
+  return(groups)
+}

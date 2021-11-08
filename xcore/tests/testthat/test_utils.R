@@ -19,3 +19,14 @@ test_that("simplifyInteractionMatrix", {
       factors = list())
   )
 })
+
+test_that("design2factor", {
+  design <- matrix(data = c(1, 1, 0, 0, 0, 0, 1, 1),
+                   nrow = 4,
+                   ncol = 2,
+                   dimnames = list(c(paste("sample", 1:4)), c("gr1", "gr2")))
+  testthat::expect_equal(
+    design2factor(design), 
+    factor(x = setNames(c("gr1", "gr1", "gr2", "gr2"), rownames(design)))
+  )
+})
