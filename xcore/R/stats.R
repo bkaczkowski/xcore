@@ -8,6 +8,8 @@
 #' @param p.value a numeric vector of p-values to combine.
 #'
 #' @return a number giving combined p-value.
+#' 
+#' @importFrom stats pchisq
 #'
 fisherMethod <- function(p.value, lower.tail = FALSE, log.p = TRUE) {
   stopifnot("p.value must be numeric" = is.numeric(p.value))
