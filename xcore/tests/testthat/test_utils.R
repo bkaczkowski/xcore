@@ -30,3 +30,10 @@ test_that("design2factor", {
     factor(x = setNames(c("gr1", "gr1", "gr2", "gr2"), rownames(design)))
   )
 })
+
+test_that("isTRUEorFALSE", {
+  testthat::expect_equal(isTRUEorFALSE(TRUE), TRUE)
+  testthat::expect_equal(isTRUEorFALSE(FALSE), TRUE)
+  testthat::expect_equal(isTRUEorFALSE(NA), FALSE)
+  testthat::expect_equal(isTRUEorFALSE(LETTERS), FALSE)
+})

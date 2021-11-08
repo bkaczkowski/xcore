@@ -576,3 +576,13 @@ design2factor <- function(design) {
   
   return(groups)
 }
+
+#' Check if argument is a binary flag
+#' 
+#' @param x object to test
+#' 
+#' @return binary flag
+#' 
+isTRUEorFALSE <- function(x) {
+  (length(x) == 1) && is.logical(x) && (! is.na(x))
+}
