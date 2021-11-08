@@ -26,13 +26,13 @@ fisherMethod <- function(p.value, lower.tail = FALSE, log.p = TRUE) {
 
 #' Linear ridge regression
 #'
-#' Wrapper around \link{\code{glmnet::cv.glmnet}} to run linear ridge regression 
+#' Wrapper around \code{\link[glmnet]{cv.glmnet}} to run linear ridge regression 
 #' with lambda selection using cross-validation.
 #'
 #' @inheritParams glmnet::cv.glmnet
 #'
 #' @return an object of class "cv.glmnet" is returned. See 
-#'   \link{\code{glmnet::cv.glmnet}} for more details.
+#'   \code{\link[glmnet]{cv.glmnet}} for more details.
 #'
 #' @importFrom glmnet cv.glmnet
 #'
