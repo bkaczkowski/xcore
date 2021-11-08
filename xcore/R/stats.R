@@ -1,17 +1,25 @@
 #' Combine p-values using Fisher method
+#' 
+#' Fisher's method is a meta-analysis technique used to combine the results from
+#' independent statistical tests with the same hypothesis 
+#' (\href{https://en.wikipedia.org/wiki/Fisher%27s_method}{Wikipedia article}).
 #'
 #' @inheritParams stats::pchisq
 #' @param p.value a numeric vector of p-values to combine.
 #'
-#' @return a number giving comined p-value.
+#' @return a number giving combined p-value.
 #'
 fisherMethod <- function(p.value, lower.tail = FALSE, log.p = TRUE) {
-  stopifnot(is.numeric(p.value))
-  stopifnot(length(p.value) > 1L)
+  stopifnot("p.value must be numeric" = is.numeric(p.value))
+  stopifnot("p.value must be longer than 1" = length(p.value) > 1L)
+  stopifnot("lower.tail must be TRUE or FALSE" = isTRUEorFALSE(lower.tail))
+  stopifnot("log.p must be TRUE or FALSE" = isTRUEorFALSE(log.p))
 
   K <- 2 * length(p.value)
   X <- -2 * sum(log(p.value))
-  stats::pchisq(X, df = K, lower.tail = lower.tail, log.p = log.p)
+  cmbp <- stats::pchisq(X, df = K, lower.tail = lower.tail, log.p = log.p)
+  
+  return(cmbp)
 }
 
 #' Fisher's test signatures
