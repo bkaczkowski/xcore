@@ -55,9 +55,35 @@ runLinearRidge <-
   return(cv)
 }
 
-#' Calculate se and p-values for ridge regression betas
+#' Significance testing in linear ridge regression
+#' 
+#' Standard error estimation and significance testing for coefficients
+#' estimated in linear ridge regression. \code{ridgePvals} re-implement 
+#' original method by (Cule et al. BMC Bioinformatics 2011.) found in 
+#' \link[ridge]{ridge-package}. This function is intended to use with
+#' \code{\link{runLinearRidge}} output.
+#' 
+#' @param x input matrix, same as used in \code{\link{runLinearRidge}}.
+#' @param y response variable, same as used in \code{\link{runLinearRidge}}.
+#' @param beta matrix of coefficients, estimated using 
+#'   \code{\link{runLinearRidge}}.
+#' @param lambda lambda value for which \code{beta} was estimated.
+#' @param standardizex logical flag for x variable standardization, should be
+#'   set to same value as \code{standarize} flag in \code{\link{runLinearRidge}}.
+#' @param svdX optional singular-value decomposition of \code{x} matrix. One can
+#'   be obtained using \code{link[base]{svd}}. Passing this argument omits
+#'   internal call to \code{link[base]{svd}}, this is useful when calling 
+#'   \code{ridgePvals} repeatedly using same \code{x}.
 #'
-ridgePValues <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
+#' @return a data.frame with columns 
+#'   \describe{
+#'     \item{coef}{\code{beta}'s names}
+#'     \item{se}{\code{beta}'s standard errors}
+#'     \item{tstat}{\code{beta}'s test statistic}
+#'     \item{pval}{\code{beta}'s p-values}
+#'   }
+#' 
+ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
   n <- length(y)
   if (standardizex) x <- scale(x)
   if (is.null(svdX)) svdX <- svd(x)
@@ -184,7 +210,7 @@ linearRidgePipeline <- function(mae,
           lambda <- regression_models[[xnm]][[id]]$lambda.min
           beta <- coef(regression_models[[xnm]][[id]], s = lambda)
           beta <- beta[-1, ] # drop intercept
-          pval_test <- ridgePValues(
+          pval_test <- ridgePvals(
             x = X,
             y = y,
             beta = beta,
