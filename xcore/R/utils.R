@@ -572,6 +572,7 @@ getAvgCoeff <- function(models, lambda = "lambda.min", drop_intercept = TRUE) {
 design2factor <- function(design) {
   # based on edgeR::designAsFactor, but jokes aside
   groups <- factor(rowMeans(design * col(design) * ncol(design)))
+  groups <- groups[groups != 0] # omit empty groups
   levels(groups) <- colnames(design)
   
   return(groups)
