@@ -589,3 +589,38 @@ design2factor <- function(design) {
 isTRUEorFALSE <- function(x) {
   (length(x) == 1) && is.logical(x) && (! is.na(x))
 }
+
+#' Apply function over selected column in list of data frames
+#' 
+#' \code{applyOverDFList} operates on a list of data frames where all data frames
+#' has the same size and columns. Column of interest is extracted from each data
+#' frame and column binded in \code{groups}, next \code{fun} is applied over
+#' rows. Final result is a matrix with result for each group on a separate column.
+#' Function is parallelized over groups.
+#' 
+#' @param list_of_df list of \code{data.frames}.
+#' @param fun function to apply, should take a single vector as a argument.
+#' @param groups factor defining how elements of \code{list_of_df} should be 
+#'   grouped.
+#'   
+#' @return matrix with \code{nrow(list_of_df[[1]])} rows and 
+#'   \code{nlevels(groups)} columns.
+#' 
+applyOverDFList <- function(list_of_df, col_name, fun, groups) {
+  # TODO consider adding argument check
+  # stopifnot("groups must not have unused levels" = setdiff(levels(groups), groups) == character(0))
+  
+  col_fun_mat <- foreach::foreach(gr = levels(groups), .combine = cbind) %dopar% # parallel version is bit faster
+    {
+      i <- groups == gr
+      attr <- lapply(list_of_df[i], function(df) df[[col_name]])
+      attr <- do.call(cbind, attr)
+      matrix(
+        data = apply(X = attr, MARGIN = 1, FUN = fun),
+        ncol = 1L,
+        dimnames = list(rownames(attr), gr)
+      )
+    }
+  
+  return(col_fun_mat)
+}
