@@ -112,3 +112,25 @@ test_that("isTRUEorFALSE", {
   testthat::expect_equal(isTRUEorFALSE(NA), FALSE)
   testthat::expect_equal(isTRUEorFALSE(LETTERS), FALSE)
 })
+
+test_that("applyOverDFList", {
+  # works on one element list
+  list_of_df <- list(cars = cars)
+  col_name <- "speed"
+  fun <- mean 
+  groups <- factor("group1")
+  testthat::expect_equal(
+    applyOverDFList(list_of_df, col_name, fun, groups),
+    matrix(data = cars$speed, ncol = 1, dimnames = list(NULL, "group1"))
+  )
+  
+  # works on multiple element list
+  list_of_df <- list(a = cars, b = cars + 1, c = cars + 2)
+  col_name <- "speed"
+  fun <- mean 
+  groups <- factor(c("group1", "group1", "group2"))
+  testthat::expect_equal(
+    applyOverDFList(list_of_df, col_name, fun, groups),
+    matrix(data = c(cars$speed + 0.5, cars$speed + 2), ncol = 2, dimnames = list(NULL, c("group1", "group2")))
+  )
+})
