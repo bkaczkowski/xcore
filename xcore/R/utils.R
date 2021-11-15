@@ -52,10 +52,12 @@ intersectGR <- function(a, b, ...) {
 #'
 #' @export
 getInteractionMatrix <- function(a, b, ext = 500, count = FALSE) {
-  stopifnot(is(a, "GRanges"))
-  stopifnot(is(b, "GRanges"))
-  stopifnot(is.numeric(ext) & ext >= 0)
-  stopifnot(is.logical(count))
+  stopifnot("a must be an instance of class 'GRanges'" = is(a, "GRanges"))
+  stopifnot("a must have 'name' attribute in it's metadata" = "name" %in% colnames(GenomicRanges::elementMetadata(a)))
+  stopifnot("b must be an instance of class 'GRanges'" = is(b, "GRanges"))
+  stopifnot("b must have 'name' attribute in it's metadata" = "name" %in% colnames(GenomicRanges::elementMetadata(b)))
+  stopifnot("ext must be numeric larger or equal to 0" = is.numeric(ext) & ext >= 0)
+  stopifnot("count must be TRUE or FALSE" = isTRUEorFALSE(count))
 
   GenomicRanges::start(a) <- GenomicRanges::start(a) - ext
   GenomicRanges::end(a) <- GenomicRanges::end(a) + ext
