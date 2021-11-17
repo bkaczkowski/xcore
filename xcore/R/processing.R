@@ -57,15 +57,35 @@ prepareCountsForRegression <- function(counts,
       Y = cpm[, ymask, drop = FALSE]))
 }
 
-#' Add signatures matrices to MAE
+#' Add molecular signatures to MultiAssayExperiment
 #'
+#' \code{addSignatures} extends \code{mae} by adding to it new experiments.
+#' Rows consistency is ensured by taking an intersection of rows after new
+#' experiments are added.
 #'
+#' @param mae MultiAssayExperiment object.
+#' @param ... named experiments to be added to \code{mae}.
+#' @param intersect_rows logical flag indicating if only common rows across
+#'   experiments should be included. Only set to \code{FALSE} if you know what
+#'   you are doing.
+#'
+#' @return MultiAssayExperiment object with new experiments added.
+#'
+#' @examples
+#' TODO
+#'
+#' @importFrom IRanges SplitDataFrameList
+#' @importFrom MultiAssayExperiment experiments intersectRows listToMap mapToList sampleMap SplitDataFrameList
+#' @importFrom S4Vectors DataFrame
+#'
+#' @export
 addSignatures <- function(mae, ..., intersect_rows = TRUE) {
+  stopifnot("mae must be an instance of class 'MultiAssayExperiment'" = is(mae, "MultiAssayExperiment"))
+  stopifnot("intersect_rows must be TRUE or FALSE" = isTRUEorFALSE(intersect_rows))
   ex <- list(...)
   ex_names <- names(ex)
-  if (is.null(ex_names) || any(ex_names == "")) {
-    stop("All experiments must be named")
-  }
+  stopifnot("experiments must be named" = ! (is.null(ex_names) || any(ex_names == "")))
+  stopifnot("experiments names must be unique" = ! anyDuplicated(c(names(mae), ex_names)))
 
   mae_map <- MultiAssayExperiment::sampleMap(mae)
   ex_map <-
