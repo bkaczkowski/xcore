@@ -15,8 +15,10 @@ fisherMethod(p.value, lower.tail = FALSE, log.p = TRUE)
 \item{log.p}{logical; if TRUE, probabilities p are given as log(p).}
 }
 \value{
-a number giving comined p-value.
+a number giving combined p-value.
 }
 \description{
-Combine p-values using Fisher method
+Fisher's method is a meta-analysis technique used to combine the results from
+independent statistical tests with the same hypothesis
+(\href{https://en.wikipedia.org/wiki/Fisher\%27s_method}{Wikipedia article}).
 }

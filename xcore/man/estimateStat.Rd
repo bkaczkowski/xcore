@@ -4,7 +4,7 @@
 \alias{estimateStat}
 \title{Estimate a goodness of fit stat}
 \usage{
-estimateStat(x, y, u, s, method = "cv", nfold = 10, statistic = R2)
+estimateStat(x, y, u, s, method = "cv", nfold = 10, statistic = R2, alpha = 0)
 }
 \description{
 Estimate a goodness of fit stat
