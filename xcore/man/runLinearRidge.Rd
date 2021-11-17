@@ -2,51 +2,24 @@
 % Please edit documentation in R/stats.R
 \name{runLinearRidge}
 \alias{runLinearRidge}
-\title{Run linear ridge regression}
+\title{Linear ridge regression}
 \usage{
 runLinearRidge(x, y, offset, alpha = 0, standardize = TRUE, ...)
 }
 \arguments{
-\item{x}{input matrix, of dimension nobs x nvars; each row is an observation
-vector. Can be in sparse matrix format (inherit from class
-\code{"sparseMatrix"} as in package \code{Matrix})}
+\item{x}{\code{x} matrix as in \code{glmnet}.}
 
-\item{y}{response variable. Quantitative for \code{family="gaussian"}, or
-\code{family="poisson"} (non-negative counts). For \code{family="binomial"}
-should be either a factor with two levels, or a two-column matrix of counts
-or proportions (the second column is treated as the target class; for a
-factor, the last level in alphabetical order is the target class). For
-\code{family="multinomial"}, can be a \code{nc>=2} level factor, or a matrix
-with \code{nc} columns of counts or proportions. For either
-\code{"binomial"} or \code{"multinomial"}, if \code{y} is presented as a
-vector, it will be coerced into a factor. For \code{family="cox"}, preferably
-a \code{Surv} object from the survival package: see Details section for
-more information. For \code{family="mgaussian"}, \code{y} is a matrix
-of quantitative responses.}
+\item{y}{response \code{y} as in \code{glmnet}.}
 
-\item{offset}{A vector of length \code{nobs} that is included in the linear
-predictor (a \code{nobs x nc} matrix for the \code{"multinomial"} family).
-Useful for the \code{"poisson"} family (e.g. log of exposure time), or for
-refining a model by starting at a current fit. Default is \code{NULL}. If
-supplied, then values must also be supplied to the \code{predict} function.}
+\item{offset}{Offset vector (matrix) as in \code{glmnet}}
 
-\item{alpha}{The elasticnet mixing parameter, with \eqn{0\le\alpha\le 1}.
-The penalty is defined as
-\deqn{(1-\alpha)/2||\beta||_2^2+\alpha||\beta||_1.} \code{alpha=1} is the
-lasso penalty, and \code{alpha=0} the ridge penalty.}
-
-\item{standardize}{Logical flag for x variable standardization, prior to
-fitting the model sequence. The coefficients are always returned on the
-original scale. Default is \code{standardize=TRUE}.  If variables are in the
-same units already, you might not wish to standardize. See details below for
-y standardization with \code{family="gaussian"}.}
-
-\item{...}{Additional argument used in \code{relax.glmnet}. These include
-some of the original arguments to 'glmnet', and each must be named if used.}
+\item{...}{Other arguments that can be passed to \code{glmnet}}
 }
 \value{
-An object of class "ridgeLinear".
+an object of class "cv.glmnet" is returned. See
+\code{\link[glmnet]{cv.glmnet}} for more details.
 }
 \description{
-Linear ridge regression with lambda selection via CV.
+Wrapper around \code{\link[glmnet]{cv.glmnet}} to run linear ridge regression
+with lambda selection using cross-validation.
 }
