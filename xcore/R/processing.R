@@ -9,8 +9,9 @@
 #' expression values.
 #'
 #' @param counts matrix of read counts.
-#' @param groups factor giving the experimental group for each sample.
-#' @param base_lvl string indicating level in \code{groups} corresponding to
+#' @param design matrix giving the design matrix for the samples. Columns
+#'   corresponds to samples groups and rows to samples names.
+#' @param base_lvl string indicating group in \code{design} corresponding to
 #'   basal expression level. The reference samples to which expression change
 #'   will be compared.
 #' @param log2 logical flag indicating if counts should be log2(counts per
@@ -25,17 +26,30 @@
 #'     \item{Y}{matrix of expression values}
 #'   }
 #'
+#' @examples
+#' TODO
+#'
 #' @importFrom edgeR DGEList calcNormFactors cpm filterByExpr
 #' @importFrom MultiAssayExperiment ExperimentList MultiAssayExperiment
 #'
 #' @export
 prepareCountsForRegression <- function(counts,
+                                       design,
                                        base_lvl,
-                                       groups, # TODO change to design, should be stored in MAE for further use
                                        log2 = TRUE,
-                                       pseudo_count = 1,
+                                       pseudo_count = 1L,
                                        drop_base_lvl = TRUE) {
-  deglist <- edgeR::DGEList(counts = mat, group = groups)
+  stopifnot("counts must be an integer matrix" = is.matrix(counts) && (typeof(counts) == "integer"))
+  stopifnot("design must be a matrix" = is.matrix(design)) # && (typeof(design) == "integer"))
+  stopifnot("number of rows in design must equal to number of columns in counts" = nrow(design) == ncol(counts))
+  stopifnot("design rownames must be the same as counts colnames" = all(rownames(design) == colnames(counts)))
+  stopifnot("base_lvl must match to one of design colnames" = sum(colnames(design) == base_lvl) == 1L)
+  stopifnot("log2 must be TRUE or FALSE" = isTRUEorFALSE(log2))
+  stopifnot("pseudo_count must be an positive integer or zero" = is.integer(pseudo_count) && (length(pseudo_count) == 1L) && (pseudo_count >= 0L))
+  stopifnot("drop_base_lvl must be TRUE or FALSE" = isTRUEorFALSE(drop_base_lvl))
+
+  groups <- design2factor(design)
+  deglist <- edgeR::DGEList(counts = counts, group = groups)
   keep <- edgeR::filterByExpr(deglist)
   deglist <- deglist[keep, , keep.lib.sizes=FALSE] # if not keep some genes have 0 sd
   deglist <- edgeR::calcNormFactors(deglist)
