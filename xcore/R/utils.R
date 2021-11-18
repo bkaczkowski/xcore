@@ -26,7 +26,7 @@ intersectGR <- function(a, b, ...) {
   warning("deprecated! use IRanges::subsetByOverlaps instead")
   stopifnot(is(a, "GRanges"))
   stopifnot(is(b, "GRanges"))
-  
+
   IRanges::subsetByOverlaps(x = a, ranges = b, ...)
 }
 
@@ -204,6 +204,7 @@ makeClusterName2 <- function(meta,
   return(nm)
 }
 
+#' collapseInteractionMatrix
 #'
 #' @param pruning_purity if purity > pruning_purity then prune
 #'
@@ -383,58 +384,58 @@ getAvgCoeff <- function(models, lambda = "lambda.min", drop_intercept = TRUE) {
 }
 
 #' Transform design matrix to factor
-#' 
+#'
 #' @param design design matrix
-#' 
+#'
 #' @return factor
-#' 
-#' @examples 
+#'
+#' @examples
 #' design <- matrix(data = c(1, 1, 0, 0, 0, 0, 1, 1),
 #'                  nrow = 4,
 #'                  ncol = 2,
 #'                  dimnames = list(c(paste("sample", 1:4)), c("gr1", "gr2")))
 #' design2factor(design)
-#' 
+#'
 design2factor <- function(design) {
   # based on edgeR::designAsFactor, but jokes aside
   groups <- factor(rowMeans(design * col(design) * ncol(design)))
   groups <- groups[groups != 0] # omit empty groups
   groups <- droplevels(groups)
   levels(groups) <- colnames(design)
-  
+
   return(groups)
 }
 
 #' Check if argument is a binary flag
-#' 
+#'
 #' @param x object to test
-#' 
+#'
 #' @return binary flag
-#' 
+#'
 isTRUEorFALSE <- function(x) {
   (length(x) == 1) && is.logical(x) && (! is.na(x))
 }
 
 #' Apply function over selected column in list of data frames
-#' 
+#'
 #' \code{applyOverDFList} operates on a list of data frames where all data frames
 #' has the same size and columns. Column of interest is extracted from each data
 #' frame and column binded in \code{groups}, next \code{fun} is applied over
 #' rows. Final result is a matrix with result for each group on a separate column.
 #' Function is parallelized over groups.
-#' 
+#'
 #' @param list_of_df list of \code{data.frames}.
 #' @param fun function to apply, should take a single vector as a argument.
-#' @param groups factor defining how elements of \code{list_of_df} should be 
+#' @param groups factor defining how elements of \code{list_of_df} should be
 #'   grouped.
-#'   
-#' @return matrix with \code{nrow(list_of_df[[1]])} rows and 
+#'
+#' @return matrix with \code{nrow(list_of_df[[1]])} rows and
 #'   \code{nlevels(groups)} columns.
-#' 
+#'
 applyOverDFList <- function(list_of_df, col_name, fun, groups) {
   # TODO consider adding argument check
   # stopifnot("groups must not have unused levels" = setdiff(levels(groups), groups) == character(0))
-  
+
   col_fun_mat <- foreach::foreach(gr = levels(groups), .combine = cbind) %dopar% # parallel version is bit faster
     {
       i <- groups == gr
@@ -446,6 +447,6 @@ applyOverDFList <- function(list_of_df, col_name, fun, groups) {
         dimnames = list(rownames(attr), gr)
       )
     }
-  
+
   return(col_fun_mat)
 }
