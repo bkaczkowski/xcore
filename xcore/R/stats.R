@@ -357,7 +357,7 @@ modelGeneExpression <- function(mae,
 #'
 repAvgZscore <- function(pvalues, groups) {
   stopifnot("pvalues elements must be instances of class data.frame" = all(vapply(pvalues, function(x) is(x, "data.frame"), logical(1L))))
-  stopifnot("pavalues must have 'se' and 'coef' columns" = all(c("se", "coef") %in% colnames(pvalues)))
+  stopifnot("pavalues must have 'se' and 'coef' columns" = all(vapply(pvalues, function(p) all(c("se", "coef") %in% colnames(p)), logical(1L))))
   stopifnot("groups must be a factor" = is.factor(groups))
   stopifnot("groups length must equal pvalues length" = length(groups) == length(pvalues))
   stopifnot("groups must not have unused levels" = setdiff(levels(groups), groups) == character(0))
