@@ -89,7 +89,7 @@ prepareCountsForRegression <- function(counts,
 #' TODO
 #'
 #' @importFrom IRanges SplitDataFrameList
-#' @importFrom MultiAssayExperiment experiments intersectRows listToMap mapToList sampleMap SplitDataFrameList
+#' @importFrom MultiAssayExperiment experiments intersectRows listToMap mapToList sampleMap
 #' @importFrom S4Vectors DataFrame
 #'
 #' @export
