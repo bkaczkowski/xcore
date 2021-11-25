@@ -13,31 +13,90 @@ modelGeneExpression(
   standardize = TRUE,
   parallel = FALSE,
   pvalues = TRUE,
-  average_replicates = TRUE,
   precalcmodels = NULL,
   ...
 )
 }
 \arguments{
-\item{mae}{MultiAssayExperiment object.# TODO X has to be filtered at least for zeros  and ones !!!}
+\item{mae}{MultiAssayExperiment object such as produced by
+\code{\link{prepareCountsForRegression}}.# TODO X has to be filtered at least for zeros and ones !!!}
 
-\item{yname}{String response matrix name.}
+\item{yname}{string indicating experiment in \code{mae} to use as the
+expression input.}
 
-\item{uname}{String response offset name.}
+\item{uname}{string indicating experiment in \code{mae} to use as the basal
+expression level.}
 
-\item{xnames}{Character signatures names.}
+\item{xnames}{character indicating experiments in \code{mae} to use as
+molecular signatures.}
 
-\item{standardize}{Logical should signatures be scaled? scale(X).}
+\item{design}{matrix giving the design matrix for the samples. Columns
+corresponds to samples groups and rows to samples names. Only samples
+included in the design will be processed.}
 
-\item{parallel}{parallel argument to glmnet::cv.glmnet. Advised to be set to FALSE. Lower number of folds could be used for speed up.}
+\item{standardize}{logical flag indicating if the molecular signatures should
+be scaled. Advised to be set to \code{TRUE}.}
+
+\item{parallel}{parallel argument to internally used
+\code{\link[glmnet]{cv.glmnet}} function. Advised to be set to \code{FALSE}
+as it might interfere with parallelization used in \code{modelGeneExpression}.}
+
+\item{pvalues}{logical flag indicating if significance testing for the
+estimated molecular signatures activities should be performed.}
+
+\item{precalcmodels}{optional list of precomputed \code{'cv.glmnet'} objects
+for each molecular signature and sample. The elements of this list should
+be matching the \code{xnames} vector. Each of those elements should be a
+named list holding \code{'cv.glmnet'} objects for each sample. If provided
+those models will be used instead of running regression from scratch.}
 
 \item{...}{arguments passed to glmnet::cv.glmnet.}
 }
 \value{
-foo
+Nested list with following elements
+\describe{
+\item{regression_models}{Named list with elements corresponding to
+signatures specified in \code{xnames}. Each of these is a list holding
+\code{'cv.glmnet'} objects corresponding to each sample.}
+\item{pvalues}{Named list with elements corresponding to
+signatures specified in \code{xnames}. Each of these is a list holding
+\code{data.frame} of signature's p-values and test statistics
+estimated for each sample.}
+\item{replicate_avg}{Named list with elements corresponding to
+signatures specified in \code{xnames}. Each of these is a \code{matrix}
+holding replicate average Z-scores with columns corresponding to groups
+in the design. TODO this output need better description!}
+}
 }
 \description{
-foo bar
+\code{modelGeneExpression} uses parallelization if parallel backend is
+registered. For that reason we advise agains passing \code{parallel} argument
+to internally called \code{\link[glmnet]{cv.glmnet}} routine.
+}
+\details{
+For speeding up the calculations consider lowering number of folds used in
+internally run \code{\link[glmnet]{cv.glmnet}} by specifying \code{nfolds}
+argument. By default 10 fold cross validation is used.
+
+The relationship between the expression (Y) and molecular signatures (X) is
+described using linear model formulation. The pipeline attempts to model the
+change in expression between basal expression level (u) and each sample, with
+the goal of finding the unknown molecular signatures activities. Linear
+models are fit using popular ridge regression implementation
+\link[glmnet]{glmnet} (Friedman, Hastie, and Tibshirani 2010).
+
+If \code{pvalues} is set to \code{TRUE} the significance of the estimated
+molecular signatures activities is tested using methodology introduced by
+(Cule, Vineis, and De Iorio 2011) which original implementation can be found
+in \link[ridge]{ridge-package}.
+
+If replicates are available the signatures activities estimates and
+their standard error estimates can be combined. This is done by averaging
+signatures activities estimates and pooling standard errors following
+(Cohen 1977) formulation for pooled standard deviation.
+
+For detailed pipeline description we refer interested user to paper
+accompanying this package.
 }
 \examples{
 TODO

@@ -24,6 +24,22 @@ plotExperimentsHeatmap(
 \code{id} column, which is used to subset \code{mat}. Other character
 columns are used as heatmap annotations.}
 
+\item{cluster_rows}{boolean values determining if rows should be clustered or \code{hclust} object,}
+
+\item{cluster_cols}{boolean values determining if columns should be clustered or \code{hclust} object.}
+
+\item{angle_col}{angle of the column labels, right now one can choose only from few 
+predefined options (0, 45, 90, 270 and 315)}
+
+\item{treeheight_col}{the height of a tree for columns, if these are clustered. 
+Default value 50 points.}
+
+\item{fontsize}{base fontsize for the plot}
+
+\item{fontsize_row}{fontsize for rownames (Default: fontsize)}
+
+\item{fontsize_col}{fontsize for colnames (Default: fontsize)}
+
 \item{...}{arguments passed to \code{\link[pheatmap]{pheatmap}} function.}
 }
 \value{

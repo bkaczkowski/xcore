@@ -7,11 +7,17 @@
 repAvgZscore(pvalues, groups)
 }
 \arguments{
-\item{groups}{}
+\item{pvalues}{Data frame with \code{'se'} (standard error) and \code{'coef'}
+(coefficient) columns. Such as in \code{pvalues} output of
+\code{modelGeneExpression} .}
+
+\item{groups}{Factor giving group membership for samples in  \code{pvalues}.}
 }
 \value{
-foo
+Numeric matrix of averaged Z-scores. Columns correspond to groups and
+rows to predictors.
 }
 \description{
-FOO BAR
+Replicate averaged Z-scores for is calculated by dividing replicate average
+coefficient by replicate pooled standard error.
 }

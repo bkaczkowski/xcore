@@ -6,6 +6,14 @@
 \usage{
 poolSE(x)
 }
+\arguments{
+\item{x}{Numeric vector of standard errors to pool.}
+}
+\value{
+Number giving pooled standard error.
+}
 \description{
-Cohen, J. (1988) TODO check out https://www.statisticshowto.com/find-pooled-sample-standard-error/, https://www.statisticshowto.com/pooled-standard-deviation/
+Pooled standard erro is calculated following (Cohen 1977) formulation for
+pooled standard deviation.
+TODO check out https://www.statisticshowto.com/find-pooled-sample-standard-error/, https://www.statisticshowto.com/pooled-standard-deviation/
 }
