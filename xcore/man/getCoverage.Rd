@@ -10,7 +10,7 @@ getCoverage(mat, gr)
 \item{mat}{dgCMatrix interaction matrix such as produced by
 \code{\link{getInteractionMatrix}}.}
 
-\item{gr}{Character vector specifying features groups. Must have length equal
+\item{gr}{factor specifying features groups. Must have length equal
 to number of columns in \code{mat}.}
 }
 \value{
