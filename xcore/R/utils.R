@@ -70,7 +70,7 @@ tau <- function(x) { # TODO likely to be removed from the package
 #'
 #' @param mat dgCMatrix interaction matrix such as produced by
 #'   \code{\link{getInteractionMatrix}}.
-#' @param gr Character vector specifying features groups. Must have length equal
+#' @param gr factor specifying features groups. Must have length equal
 #'   to number of columns in \code{mat}.
 #'
 #' @return Numeric vector.
@@ -79,13 +79,12 @@ tau <- function(x) { # TODO likely to be removed from the package
 #'
 #' @export
 getCoverage <- function(mat, gr) {
-  stopifnot(is(mat, "dgCMatrix"))
-  stopifnot(is.character(gr))
-  stopifnot(length(gr) == ncol(mat))
+  stopifnot("mat must be an instance of class 'dgCMatrix'" = is(mat, "dgCMatrix"))
+  stopifnot("gr must be a factor" = is.factor(gr))
+  stopifnot("gr length must equal to number of columns in mat" = length(gr) == ncol(mat))
 
-  group <- as.factor(gr)
-  DelayedArray::colsum(x = mat, group = group) %>%
-    `>`(1) %>%
+  DelayedArray::colsum(x = mat, group = gr) %>%
+    `>=`(1) %>%
     rowSums()
 }
 
