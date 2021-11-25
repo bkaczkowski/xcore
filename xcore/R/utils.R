@@ -18,12 +18,8 @@ NULL
 #'
 #' @return GRanges object which is a subset of \code{a}.
 #'
-#' @importFrom GenomicRanges findOverlaps
-#' @importFrom S4Vectors subjectHits
-#'
-#' @export
 intersectGR <- function(a, b, ...) {
-  warning("deprecated! use IRanges::subsetByOverlaps instead")
+  warning("deprecated! use IRanges::subsetByOverlaps instead") # TODO drop from the package
   stopifnot(is(a, "GRanges"))
   stopifnot(is(b, "GRanges"))
 
@@ -40,7 +36,7 @@ intersectGR <- function(a, b, ...) {
 #'
 #' @return Tau tissue-specificity metric.
 #'
-tau <- function(x) {
+tau <- function(x) { # TODO likely to be removed from the package
   stopifnot(is.numeric(x) && length(x) > 1)
 
   if (all(!is.na(x)))
