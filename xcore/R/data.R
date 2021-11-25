@@ -84,7 +84,7 @@
 #' and \code{\link{promoters_f5}}. To find overlapping regions promoters were extended
 #' by 500bp in both directions.
 #'
-#' @format A \code{Matrix} with 209911 rows and 15133 columns. Row names corresponds to promoters
+#' @format A \code{Matrix} with 209911 rows and 13891 columns. Row names corresponds to promoters
 #'         names, column names are formatted as TranscriptionFactor_Origin_Cell_ExperimentID
 #'	   (eg. PARK7_Neural_SH-SY5Y_DRX000550, MLL-AF6_Blood_ML-2_DRX001460).
 #'
