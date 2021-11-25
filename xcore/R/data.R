@@ -112,7 +112,7 @@
 #' Metadata associated with \code{chip_atlas_promoters} and
 #' \code{chip_atlas_enhancers}.
 #'
-#' @format A \code{data.frame} with 13923 rows and 6 columns.
+#' @format A \code{data.frame} with 13891 rows and 6 columns.
 #' \describe{
 #'   \item{id}{Character giving internal experiment ID.}
 #'   \item{tf}{Character giving transcription factor name.}
@@ -120,7 +120,6 @@
 #'                 family, as per CIS BP database.}
 #'   \item{biotype}{Character giving experiment biological origin.}
 #'   \item{study}{Character giving study ID.}
-#'   \item{background}{Character specifying biological background as defined in ChIP-Atlas.}
 #' }
 #'
 "chip_atlas_meta"

@@ -5,7 +5,7 @@
 \alias{chip_atlas_meta}
 \title{ChIP-Atlas metadata}
 \format{
-A \code{data.frame} with 13923 rows and 6 columns.
+A \code{data.frame} with 13891 rows and 6 columns.
 \describe{
 \item{id}{Character giving internal experiment ID.}
 \item{tf}{Character giving transcription factor name.}
@@ -13,7 +13,6 @@ A \code{data.frame} with 13923 rows and 6 columns.
 family, as per CIS BP database.}
 \item{biotype}{Character giving experiment biological origin.}
 \item{study}{Character giving study ID.}
-\item{background}{Character specifying biological background as defined in ChIP-Atlas.}
 }
 }
 \usage{

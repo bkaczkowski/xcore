@@ -16,14 +16,13 @@ translate <- function(x, key, value) {
   newx <- value[match(x, key)]
 }
 
-chip_atlas_id <- c(colnames(chip_atlas_promoters), colnames(chip_atlas_enhancers)) %>%
-  unique()
+chip_atlas_id <- colnames(chip_atlas_promoters) %>% unique()
 
 chip_atlas_meta <- chip_atlas_id %>%
-  stringr::str_split(pattern = "_", n = 4) %>%
+  stringr::str_split(pattern = "\\.", n = 3) %>%
   do.call(what = rbind) %>%
   data.table::as.data.table()
-colnames(chip_atlas_meta) <- c("tf", "background", "biotype", "id")
+colnames(chip_atlas_meta) <- c("tf", "biotype", "id")
 
 # fix study ids
 chip_atlas_meta$study <-
@@ -31,7 +30,7 @@ chip_atlas_meta$study <-
 chip_atlas_meta$study <-
   ifelse(is.na(chip_atlas_meta$study),
          chip_atlas_meta$id,
-         chip_atlas_meta$stud)
+         chip_atlas_meta$study)
 
 # restore ids
 chip_atlas_meta$id <- chip_atlas_id
@@ -46,5 +45,5 @@ cis_bp <-
 data.table::setnames(cis_bp, "TF_Name", "tf")
 chip_atlas_meta <- cis_bp[chip_atlas_meta, on = c("tf" = "tf")]
 
-data.table::setcolorder(chip_atlas_meta, c("id", "tf", "tf_dbd", "biotype", "study", "background"))
+data.table::setcolorder(chip_atlas_meta, c("id", "tf", "tf_dbd", "biotype", "study"))
 usethis::use_data(chip_atlas_meta, overwrite = TRUE)
