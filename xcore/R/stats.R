@@ -208,7 +208,7 @@ modelGeneExpression <- function(mae,
   stopifnot("xnames must be distinct from yname and uname" = base::intersect(c(yname, uname), xnames) == 0)
   stopifnot("yname, uname and xnames must match mae names" = all(c(yname, uname, xnames) %in% names(mae)))
   stopifnot("design must be a matrix" = is.matrix(design))
-  stopifnot("design rownames must correspond to mae[[yname]] columns" = (! is.null(rownames(design))) && all(rownames(design) %in% colnames(mae[[yname]])))
+  stopifnot("design rownames must correspond to mae[[yname]] columns" = (! is.null(rownames(design))) && all(colnames(mae[[yname]]) %in% rownames(design)))
   stopifnot("each sample in design can be assigned only to one group" = all(rowSums(design) == 1 | rowSums(design) == 0))
   stopifnot("at least one sample in design must be assigned to a group" = sum(rowSums(design)) > 0)
   stopifnot("standardize must be TRUE or FALSE" = isTRUEorFALSE(standardize))
@@ -234,7 +234,7 @@ modelGeneExpression <- function(mae,
                 )))
   }
 
-  groups <- design2factor(design)
+  groups <- design2factor(design) # TODO check that group does not contain samples not included in Y, best move design rownames check here
 
   iter_to_pass <- lapply(precalcmodels, names)
 
@@ -278,8 +278,9 @@ modelGeneExpression <- function(mae,
   # add precalculated models
   for (xn in names(iter_to_pass)) {
     for (yn in iter_to_pass[[xn]])
-      print(iter_to_pass[[xn]][[yn]])
-    # regression_models[[xn]][[yn]] <- precalcmodels[[xn]][[yn]]
+      if (yn %in% names(groups)) {
+        regression_models[[xn]][[yn]] <- precalcmodels[[xn]][[yn]]
+      }
   }
   message("##------ modelGeneExpression: finished begining ridge  ", timestamp(prefix = "", quiet = TRUE))
 
