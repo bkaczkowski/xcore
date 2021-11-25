@@ -327,23 +327,24 @@ estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = R2, 
     out <- c()
     part <- sample(1:nfold, size = length(y), replace = TRUE)
 
-    for (p in 1:nfold) {
-      py <- y[part != p]
-      px <- x[part != p, ]
-      poffset <- u[part != p, ]
-      mod <- glmnet::glmnet(x = px, y = py, offset = poffset, lambda = s, alpha = alpha)
+    out <- foreach::foreach(p = seq_len(nfold), .combine = c) %do% # TODO parallelization should be optional maybe?
+      {
+        py <- y[part != p]
+        px <- x[part != p, ]
+        poffset <- u[part != p, ]
+        mod <- glmnet::glmnet(x = px, y = py, offset = poffset, lambda = s, alpha = alpha)
 
-      # evaluate on held-out fold
-      py <- y[part == p]
-      px <- x[part == p, ]
-      poffset <- u[part == p, ]
-      yhat <- predict(mod, newx = px, newoffset = poffset, s = s)
-      stat <- statistic(py, yhat, px, poffset)
-      out <- c(out, stat)
-    }
+        # evaluate on held-out fold
+        py <- y[part == p]
+        px <- x[part == p, ]
+        poffset <- u[part == p, ]
+        yhat <- predict(mod, newx = px, newoffset = poffset, s = s)
+        stat <- statistic(py, yhat, px, poffset)
+        out <- c(out, stat)
+      }
   }
 
-  out
+  return(out)
 }
 
 # https://stats.stackexchange.com/questions/186396/appropriate-way-to-calculate-cross-validated-r-square
