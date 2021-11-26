@@ -33,5 +33,5 @@ Suggests:
     usethis (>= 2.0.1)
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2
 Config/testthat/edition: 3
