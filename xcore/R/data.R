@@ -4,10 +4,10 @@
 #' from FANTOM5's 293SLAM rinderpest infection time course dataset. Here the
 #' data is only a subset limited to core promoters (\code{promoters_f5_core}).
 #'
-#' @format A \code{matrix} with 14191 rows and 12 columns holding expression
+#' @format A \code{matrix} with 14191 rows and 6 columns holding expression
 #'   counts from CAGE-seq experiment. Rows corresponds to FANTOM5 promoters and
-#'   columns to time points at which expression was measured 0, 6, 12 and 24
-#'   hours post infection.
+#'   columns to time points at which expression was measured 0 and 24 hours post
+#'   infection.
 #'
 "rinderpest_mini"
 
@@ -24,4 +24,4 @@
 #'   FANTOM5 annotation. Rows corresponds to FANTOM5 promoters and columns to 
 #'   signatures.
 #'
-"rinderpest_mini"
+"remap_mini"

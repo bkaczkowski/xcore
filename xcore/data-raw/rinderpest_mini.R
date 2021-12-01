@@ -32,4 +32,7 @@ rinderpest <-
 # subset core promoters only
 rinderpest_mini <- rinderpest[promoters_f5_core$name, ]
 
+# subsest 0, 24 samples only
+rinderpest_mini <- rinderpest_mini[, grep("00|24", colnames(rinderpest_mini))]
+
 usethis::use_data(rinderpest_mini, overwrite = TRUE)
