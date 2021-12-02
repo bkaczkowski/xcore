@@ -151,7 +151,8 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'   expression level.
 #' @param xnames character indicating experiments in \code{mae} to use as
 #'   molecular signatures.
-#' @param design matrix giving the design matrix for the samples. Columns
+#' @param design matrix giving the design matrix for the samples. Default
+#'   (\code{NULL}) is to use design found in \code{mae} metadata. Columns
 #'   corresponds to samples groups and rows to samples names. Only samples
 #'   included in the design will be processed.
 #' @param standardize logical flag indicating if the molecular signatures should
@@ -205,6 +206,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'   design = design))
 #'
 #' @importFrom foreach foreach %do% %dopar% %:%
+#' @importFrom MultiAssayExperiment metadata
 #' @importFrom iterators iter
 #'
 #' @export
@@ -212,7 +214,7 @@ modelGeneExpression <- function(mae,
                                 yname,
                                 uname,
                                 xnames,
-                                design,
+                                design = NULL,
                                 standardize = TRUE,
                                 parallel = FALSE,
                                 pvalues = TRUE,
@@ -228,6 +230,7 @@ modelGeneExpression <- function(mae,
   zero_var_sig <- lapply(xnames, function(x) ! any(apply(mae[[x]], 2, var) == 0))
   names(zero_var_sig) <- paste0(xnames, " can not contain zero variance signatures")
   for (i in seq_along(zero_var_sig)) do.call(stopifnot, zero_var_sig[i])
+  if (is.null(design)) { design <- MultiAssayExperiment::metadata(mae)[["design"]] }
   stopifnot("design must be a matrix" = is.matrix(design))
   stopifnot("design rownames must correspond to mae[[yname]] columns" = (! is.null(rownames(design))) && all(colnames(mae[[yname]]) %in% rownames(design)))
   stopifnot("each sample in design can be assigned only to one group" = all(rowSums(design) == 1 | rowSums(design) == 0))
