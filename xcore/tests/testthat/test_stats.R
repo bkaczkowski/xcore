@@ -255,7 +255,5 @@ test_that("modelGeneExpression", {
     yname = yname,
     uname = uname,
     xnames = xnames)))
-  load(system.file("inst", "extdata", "modelGeneExpression_test_data.rda", package = "xcore"))
-  testthat::expect_equal(res$pvalues, modelGeneExpression_test_pvalues)
-  testthat::expect_equal(res$replicate_avg, modelGeneExpression_test_replicate_avg)
+  testthat::expect_equal(digest::digest(res), "483bd14d63b66f9873f4ac6954ae85c3")
 })
