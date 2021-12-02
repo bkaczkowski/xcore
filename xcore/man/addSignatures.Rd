@@ -24,6 +24,17 @@ Rows consistency is ensured by taking an intersection of rows after new
 experiments are added.
 }
 \examples{
-TODO
+base_lvl <- "00hr"
+design <- matrix(
+  data = c(1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1),
+  ncol = 2,
+  nrow = 6,
+  byrow = TRUE,
+  dimnames = list(colnames(rinderpest_mini), c("00hr", "24hr")))
+mae <- prepareCountsForRegression(
+  counts = rinderpest_mini,
+  design = design,
+  base_lvl = base_lvl)
+mae <- addSignatures(mae, remap = remap_mini)
 
 }

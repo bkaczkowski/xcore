@@ -9,7 +9,7 @@ modelGeneExpression(
   yname,
   uname,
   xnames,
-  design,
+  design = NULL,
   standardize = TRUE,
   parallel = FALSE,
   pvalues = TRUE,
@@ -30,7 +30,8 @@ expression level.}
 \item{xnames}{character indicating experiments in \code{mae} to use as
 molecular signatures.}
 
-\item{design}{matrix giving the design matrix for the samples. Columns
+\item{design}{matrix giving the design matrix for the samples. Default
+(\code{NULL}) is to use design found in \code{mae} metadata. Columns
 corresponds to samples groups and rows to samples names. Only samples
 included in the design will be processed.}
 
@@ -99,6 +100,24 @@ For detailed pipeline description we refer interested user to paper
 accompanying this package.
 }
 \examples{
-TODO
+base_lvl <- "00hr"
+design <- matrix(
+  data = c(1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1),
+  ncol = 2,
+  nrow = 6,
+  byrow = TRUE,
+  dimnames = list(colnames(rinderpest_mini), c("00hr", "24hr")))
+mae <- prepareCountsForRegression(
+  counts = rinderpest_mini,
+  design = design,
+  base_lvl = base_lvl)
+mae <- addSignatures(mae, remap = remap_mini)
+mae <- filterSignatures(mae)
+res <- modelGeneExpression(
+  mae = mae,
+  yname = yname,
+  uname = uname,
+  xnames = xnames,
+  design = design))
 
 }
