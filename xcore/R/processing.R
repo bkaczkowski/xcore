@@ -100,7 +100,18 @@ prepareCountsForRegression <- function(counts,
 #' @return MultiAssayExperiment object with new experiments added.
 #'
 #' @examples
-#' TODO
+#' base_lvl <- "00hr"
+#' design <- matrix(
+#'   data = c(1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1),
+#'   ncol = 2,
+#'   nrow = 6,
+#'   byrow = TRUE,
+#'   dimnames = list(colnames(rinderpest_mini), c("00hr", "24hr")))
+#' mae <- prepareCountsForRegression(
+#'   counts = rinderpest_mini,
+#'   design = design,
+#'   base_lvl = base_lvl)
+#' mae <- addSignatures(mae, remap = remap_mini)
 #'
 #' @importFrom IRanges SplitDataFrameList
 #' @importFrom MultiAssayExperiment experiments intersectRows listToMap mapToList sampleMap
