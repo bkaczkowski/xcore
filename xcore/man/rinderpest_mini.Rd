@@ -5,10 +5,10 @@
 \alias{rinderpest_mini}
 \title{xcore example expression data}
 \format{
-A \code{matrix} with 14191 rows and 12 columns holding expression
+A \code{matrix} with 14191 rows and 6 columns holding expression
 counts from CAGE-seq experiment. Rows corresponds to FANTOM5 promoters and
-columns to time points at which expression was measured 0, 6, 12 and 24
-hours post infection.
+columns to time points at which expression was measured 0 and 24 hours post
+infection.
 }
 \usage{
 rinderpest_mini

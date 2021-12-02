@@ -37,6 +37,8 @@ MultiAssayExperiment object with two experiments:
 \item{U}{matrix giving expression values averaged over basal level samples}
 \item{Y}{matrix of expression values}
 }
+design with \code{base_lvl} dropped is stored in metadata and directly
+available for \code{modelGeneExpression}.
 }
 \description{
 Expression counts are processed using \link[edgeR]{edgeR} following
@@ -48,6 +50,16 @@ level expression is calculated by averaging \code{base_lvl} samples
 expression values.
 }
 \examples{
-TODO
+base_lvl <- "00hr"
+design <- matrix(
+  data = c(1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1),
+  ncol = 2,
+  nrow = 6,
+  byrow = TRUE,
+  dimnames = list(colnames(rinderpest_mini), c("00hr", "24hr")))
+mae <- prepareCountsForRegression(
+  counts = rinderpest_mini,
+  design = design,
+  base_lvl = base_lvl)
 
 }
