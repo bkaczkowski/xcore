@@ -211,8 +211,8 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'
 #' @export
 modelGeneExpression <- function(mae,
-                                yname,
-                                uname,
+                                yname = "Y",
+                                uname = "U",
                                 xnames,
                                 design = NULL,
                                 standardize = TRUE,
