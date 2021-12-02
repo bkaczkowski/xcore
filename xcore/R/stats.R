@@ -258,7 +258,8 @@ modelGeneExpression <- function(mae,
                 )))
   }
 
-  groups <- design2factor(design) # TODO check that group does not contain samples not included in Y, best move design rownames check here
+  groups <- design2factor(design)
+  stopifnot("design try to use samples not included in mae[[yname]]" = all(names(groups) %in% colnames(mae[[yname]])))
 
   iter_to_pass <- lapply(precalcmodels, names)
 
