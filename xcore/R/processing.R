@@ -217,3 +217,66 @@ getInteractionMatrix <- function(a, b, ext = 500, count = FALSE) {
 
   return(overlap_mat)
 }
+
+#' Filter signatures by coverage
+#'
+#' Filter signatures overlapping low or high number of promoters. Useful to get
+#' rid of signatures that have very low variance.
+#'
+#' @param mae MultiAssayExperiment object.
+#' @param min length one numeric between 0 and 1 defining minimum promoter
+#'   coverage for the signature to pass filtering.
+#' @param max length one numeric between 0 and 1 defining maximum promoter
+#'   coverage for the signature to pass filtering.
+#' @param ref_experiment string giving name of experiment to use for inferring
+#'   total number of promoters.
+#' @param omit_experiments character giving names of experiments to exclude from
+#'   filtering.
+#'
+#' @return MultiAssayExperiment object with selected experiments filtered.
+#'
+#' @importFrom Matrix colSums
+#'
+#' @examples
+#' base_lvl <- "00hr"
+#' design <- matrix(
+#'   data = c(1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1),
+#'   ncol = 2,
+#'   nrow = 6,
+#'   byrow = TRUE,
+#'   dimnames = list(colnames(rinderpest_mini), c("00hr", "24hr")))
+#' mae <- prepareCountsForRegression(
+#'   counts = rinderpest_mini,
+#'   design = design,
+#'   base_lvl = base_lvl)
+#' mae <- addSignatures(mae, remap = remap_mini)
+#' mae <- filterSignatures(mae)
+#'
+#' @export
+filterSignatures <- function(mae,
+                             min = 0.05,
+                             max = 0.95,
+                             ref_experiment = "Y",
+                             omit_experiments = c("Y", "U")) {
+  stopifnot("mae must be an instance of class 'MultiAssayExperiment'" = is(mae, "MultiAssayExperiment"))
+  stopifnot("min must be a length one numeric between 0 and 1" = is.numeric(min) && length(min) == 1 && min >= 0 && min <= 1)
+  stopifnot("max must be a length one numeric between 0 and 1" = is.numeric(max) && length(max) == 1 && max >= 0 && max <= 1)
+  stopifnot("ref_experiment must be a length one character" = is.character(ref_experiment) && length(ref_experiment) == 1)
+  stopifnot("ref_experiment must match one of mae names" = ref_experiment %in% names(mae))
+  stopifnot("omit_experiments must be a character" = is.character(omit_experiments))
+  stopifnot("omit_experiments must match mae names" = all(omit_experiments %in% names(mae)))
+
+  mae_nrow <- nrow(mae[[ref_experiment]])
+  signatures <- setdiff(names(mae), omit_experiments)
+  for (sig in signatures) {
+    if (! is(remap_mini, "sparseMatrix")) {
+      warning(sprintf("Only 'sparseMatrix' experiments filtering is supported. Omitting %s", sig))
+      next()
+    }
+    mask <- Matrix::colSums(mae[[sig]] != 0)
+    mask <- mask >= (min * mae_nrow) & mask <= (max * mae_nrow)
+    suppressMessages(mae[[sig]] <- mae[[sig]][, mask])
+  }
+
+  return(mae)
+}
