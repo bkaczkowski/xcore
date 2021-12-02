@@ -25,6 +25,8 @@
 #'     \item{U}{matrix giving expression values averaged over basal level samples}
 #'     \item{Y}{matrix of expression values}
 #'   }
+#'   design with \code{base_lvl} dropped is stored in metadata and directly
+#'   available for \code{modelGeneExpression}.
 #'
 #' @examples
 #' base_lvl <- "00hr"
@@ -75,10 +77,12 @@ prepareCountsForRegression <- function(counts,
     dimnames = list(rownames(cpm), "u"))
 
   ymask <- if (drop_base_lvl) { groups != base_lvl } else { rep(TRUE, length(groups)) }
+  design[, base_lvl] <- 0 # design without base_lvl
   MultiAssayExperiment::MultiAssayExperiment(
     experiments = MultiAssayExperiment::ExperimentList(
       U = U,
-      Y = cpm[, ymask, drop = FALSE]))
+      Y = cpm[, ymask, drop = FALSE]),
+    metadata = list(design = design))
 }
 
 #' Add molecular signatures to MultiAssayExperiment
