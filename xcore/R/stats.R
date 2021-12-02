@@ -186,7 +186,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #' @examples
 #' TODO
 #'
-#' @importFrom foreach foreach
+#' @importFrom foreach foreach %do% %dopar% %:%
 #' @importFrom iterators iter
 #'
 #' @export
