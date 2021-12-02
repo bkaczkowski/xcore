@@ -248,6 +248,16 @@ test_that("modelGeneExpression", {
     ),
     "precalcmodels is not compatible with mae"
   )
+  testthat::expect_error(
+    modelGeneExpression(
+      mae = mae,
+      yname = yname,
+      uname = uname,
+      xnames = xnames,
+      design = design
+    ),
+    "design try to use samples not included in mae\\[\\[yname\\]\\]"
+  )
 
   set.seed(1234512)
   res <- suppressWarnings(suppressMessages(modelGeneExpression(
