@@ -144,7 +144,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #' accompanying this package.
 #'
 #' @param mae MultiAssayExperiment object such as produced by
-#'   \code{\link{prepareCountsForRegression}}.# TODO X has to be filtered at least for zeros and ones !!!
+#'   \code{\link{prepareCountsForRegression}}.
 #' @param yname string indicating experiment in \code{mae} to use as the
 #'   expression input.
 #' @param uname string indicating experiment in \code{mae} to use as the basal
@@ -181,7 +181,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'     \item{replicate_avg}{Named list with elements corresponding to
 #'       signatures specified in \code{xnames}. Each of these is a \code{matrix}
 #'       holding replicate average Z-scores with columns corresponding to groups
-#'       in the design. TODO this output need better description!}
+#'       in the design.}
 #'   }
 #'
 #' @examples
@@ -295,7 +295,7 @@ modelGeneExpression <- function(mae,
       } else {
         args[["x"]] <- x
         args[["y"]] <- y
-        res <- do.call(runLinearRidge, args) # TODO sometimes I am getting NULL here, not sure why though maybe I am running out of memory? should protect somehow against it; but then it is not like the most numerous context are getting those nulls...; eg. "ARPE-19_EMT_induced_with_TGF-beta_and_TNF-alpha" takes very long to complete even for small number of samples; it would appear that some particular samples take longer to run than others?
+        res <- do.call(runLinearRidge, args)
       }
 
       res
@@ -329,7 +329,7 @@ modelGeneExpression <- function(mae,
       xnm = xnames,
       .inorder = TRUE,
       .final = function(x) setNames(x, xnames)
-      # .packages = "xcore" TODO set after development
+      # .packages = "xcore"
     ) %:%
       foreach::foreach(
         y = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
@@ -341,7 +341,7 @@ modelGeneExpression <- function(mae,
         y <- y - mae[[uname]]
         lambda <- regression_models[[xnm]][[id]]$lambda.min
         beta <- coef(regression_models[[xnm]][[id]], s = lambda)
-        beta <- beta[-1, ] # drop intercept TODO set after development
+        beta <- beta[-1, ] # drop intercept
         ridgePvals(
           x = x,
           y = y,
@@ -352,7 +352,6 @@ modelGeneExpression <- function(mae,
         )
       }
 
-    # TODO test if replicates are available
     replicate_avg <- lapply(pvalues, repAvgZscore, groups = groups)
     message("##------ modelGeneExpression: finished significance testing  ", timestamp(prefix = "", quiet = TRUE))
   } else {

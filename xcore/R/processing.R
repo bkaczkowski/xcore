@@ -70,7 +70,7 @@ prepareCountsForRegression <- function(counts,
   if (log2) {
     cpm <- log2(cpm + pseudo_count)
   }
-  # TODO mean log2 is disputable
+
   U <- matrix(
     data = rowMeans(cpm[, groups == base_lvl, drop = FALSE]),
     ncol = 1L,
@@ -137,7 +137,6 @@ addSignatures <- function(mae, ..., intersect_rows = TRUE) {
 
   newExperimentList <- c(MultiAssayExperiment::experiments(mae), ex)
 
-  # TODO preserve mae colData
   newColData <- S4Vectors::DataFrame(row.names = newSampleMap[["primary"]])
 
   new_mae <- BiocGenerics:::replaceSlots(object = mae,
