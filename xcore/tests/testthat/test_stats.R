@@ -31,10 +31,10 @@ test_that("modelGeneExpression", {
     ncol = 2,
     nrow = 6,
     byrow = TRUE,
-    dimnames = list(colnames(rinderpest_mini), c("00hr", "24hr"))
+    dimnames = list(c("00hr_rep1", "00hr_rep2", "00hr_rep3", "24hr_rep1", "24hr_rep2", "24hr_rep3"), c("00hr", "24hr"))
   )
   mae <- prepareCountsForRegression(
-    counts = rinderpest_mini,
+    counts = rinderpest_mini[, c("00hr_rep1", "00hr_rep2", "00hr_rep3", "24hr_rep1", "24hr_rep2", "24hr_rep3")],
     design = design,
     base_lvl = base_lvl)
   mae <- addSignatures(mae, remap = remap_mini)
