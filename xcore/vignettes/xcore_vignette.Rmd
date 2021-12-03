@@ -21,10 +21,10 @@ This document introduces the xcore package and showcase its basic usage.
 # Gene expression modeling in context of rinderpest infection
 
 Here we will use subset of 293SLAM rinderpest infection dataset from
-\link[FANTOM5]{https://fantom.gsc.riken.jp/5/sstar/Rinderpest_infection_series}.
+[FANTOM5](https://fantom.gsc.riken.jp/5/sstar/Rinderpest_infection_series).
 This subset contains expression counts for 0, 12 and 24 hours post infection
 samples and only for a subset of FANTOM5 promoters. We can find this example
-data shipped with \code{xcore} package.
+data shipped with `xcore` package.
 
 ```{r}
 head(rinderpest_mini)
@@ -65,7 +65,7 @@ design <- matrix(
 print(design)
 ```
 
-Next, we need to preprocess the counts using \code{prepareCountsForRegression}
+Next, we need to preprocess the counts using `prepareCountsForRegression`
 function. Here, CAGE expression tags for each sample are filtered for lowly
 expressed promoters, normalized for the library size and transformed into counts
 per million (CPM). Finally, CPM are log2 transformed with addition of pseudo
@@ -79,10 +79,10 @@ mae <- prepareCountsForRegression(counts = rinderpest_mini,
                                   base_lvl = "00hr")
 ```
 
-\code{xcore} models the expression as a function of molecular signatures. Such
+`xcore` models the expression as a function of molecular signatures. Such
 signatures can be constructed eg. from the known transcription factor binding
 sites (see [Constructing molecular signatures] section). Here, we will take
-advantage of pre-computed molecular signatures found in \code{xcoredata} package.
+advantage of pre-computed molecular signatures found in `xcoredata` package.
 Particularly, molecular signatures constructed from ReMap2020 against FANTOM5
 annotation.
 
@@ -91,14 +91,14 @@ data(remap_promoters, package = "xcoredata")
 ```
 
 Molecular signature is a simple binary matrix indicating if transcription factor
-binding site was found or not in particular promoter vicinity.
+binding site was found or not in promoter vicinity.
 
 ```{r}
 print(remap_promoters[1:3, 1:3])
 ```
 
-To add signatures to our \code{MultiAssayExperiment} object we can use
-\code{addSignatures} function. As you add your signatures remember to give them
+To add signatures to our `MultiAssayExperiment` object we can use
+`addSignatures` function. As you add your signatures remember to give them
 unique names.
 
 ```{r}
@@ -116,14 +116,14 @@ summary(colSums(mae[["remap"]]))
 While, we do not provide detailed guidelines to signatures filtering, filtering
 out at least signatures overlapping no or all promoters is mandatory.
 Here, we filter signatures that overlap less than 5% or more than 95% of
-promoters using \code{filterSignatures} function.
+promoters using `filterSignatures` function.
 
 ```{r}
 mae <- filterSignatures(mae, min = 0.05, max = 0.95)
 ```
 
-Finally, we can run our expression modeling using \code{modelGeneExpression}
-function. \code{modelGeneExpression} can take advantage of parallelization to
+Finally, we can run our expression modeling using `modelGeneExpression`
+function. `modelGeneExpression` can take advantage of parallelization to
 speedup its calculations, to use it we need to register parallel backend.
 
 Our modeling will inherently contain some level of randomness due to
@@ -132,8 +132,8 @@ replicated.
 
 This step is time consuming as we need to train a separate model for each of our
 samples. To speed up the calculations we will lower number of folds used in
-cross-validation procedure from 10 to 5 using \code{nfolds} argument, which is
-internally passed to \code{cv.glmnet} function. Using 6 cores on
+cross-validation procedure from 10 to 5 using `nfolds` argument, which is
+internally passed to `cv.glmnet` function. Using 6 cores on
 Intel(R) Xeon(R) CPU E5-2680 v3 calculations took around 4 minutes to compute
 and used up to 25 GB RAM. If needed memory requirement could be brought down by
 using lower number of cores.
@@ -152,17 +152,17 @@ res <- modelGeneExpression(
 ```
 
 
-Output returned by \code{modelGeneExpression} is a list with following elements:
+Output returned by `modelGeneExpression` is a list with following elements:
 
-+ \code{regression_models} - a list holding \code{cv.glmnet} objects for each
++ `regression_models` - a list holding `cv.glmnet` objects for each
   sample.
-+ \code{pvalues} - list of \code{data.frame}s for each sample, each holding
++ `pvalues` - list of `data.frame`s for each sample, each holding
   signatures estimates, their estimated standard errors and p-values.
-+ \code{replicate_avg} - a matrix holding replicate average Z-scores with
++ `replicate_avg` - a matrix holding replicate average Z-scores with
   columns corresponding to groups in the design. This is likely the main output
   for most of the users.
 
-Let's have a look at \code{replicate_avg} matrix.
+Let's have a look at `replicate_avg` matrix.
 
 ```{r}
 out <- res$replicate_avg$remap
@@ -178,7 +178,7 @@ Among others, our analysis indicates RELA and IRF9 as the top transcription
 factor associated with observed changes in expression. These transcription
 factors are known to play a role during measles infection, which is closely
 related to rinderpest
-(\link[KEGG Measles pathway]{https://www.genome.jp/kegg-bin/show_pathway?hsa05162}).
+([KEGG Measles pathway](https://www.genome.jp/kegg-bin/show_pathway?hsa05162)).
 
 Moreover, Z-score sign indicate that promoters targeted by RELA tend to be
 downregulated, while those targeted by IRF9 tend to be upregulated.
@@ -189,13 +189,13 @@ downregulated, while those targeted by IRF9 tend to be upregulated.
 Constructing molecular signatures is as simple as intersecting promoters
 annotation with TFBS. For example here we downloaded Motevo predictions of
 binding sites from SwissRegulon website. The file is GFF format and we can
-read it using \code{rtracklayer::import}. After we read it into R we will get
-a \code{GRanges} object. For our purposes it is required that TF/motif name is
-held under \code{name} column.
+read it using `rtracklayer::import`. After we read it into R we will get
+a `GRanges` object. For our purposes it is required that TF/motif name is
+held under `name` column.
 
 Next we construct our molecular signatures matrix using FANTOM5 annotation found
-in \code{xcoredata} package. This is done using \code{getInteractionMatrix}
-function, where we can specify the \code{ext} parameter that will control how
+in `xcoredata` package. This is done using `getInteractionMatrix`
+function, where we can specify the `ext` parameter that will control how
 much promoters are extended in both directions before intersecting with binding
 data.
 
