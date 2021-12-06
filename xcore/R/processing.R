@@ -293,7 +293,7 @@ filterSignatures <- function(mae,
   mae_nrow <- nrow(mae[[ref_experiment]])
   signatures <- setdiff(names(mae), omit_experiments)
   for (sig in signatures) {
-    if (! is(remap_mini, "sparseMatrix")) {
+    if (! is(mae, "sparseMatrix")) {
       warning(sprintf("Only 'sparseMatrix' experiments filtering is supported. Omitting %s", sig))
       next()
     }
