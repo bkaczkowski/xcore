@@ -36,7 +36,9 @@ Imports:
     MultiAssayExperiment (>= 1.18.0),
     pheatmap (>= 1.0.12),
     proxy (>= 0.4.26),
-    S4Vectors (>= 0.30.0)
+    stats,
+    S4Vectors (>= 0.30.0),
+    utils
 Suggests:
     devtools (>= 2.4.2),
     digest (>= 0.6.28),

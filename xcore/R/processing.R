@@ -183,9 +183,6 @@ addSignatures <- function(mae, ..., intersect_rows = TRUE) {
 #'   \code{a} and columns to \code{b}. Each cell holds a number indicating
 #'   how many times \code{a} and \code{b} overlapped.
 #'
-#' @importFrom GenomicRanges start end findOverlaps
-#' @importFrom Matrix sparseMatrix
-#'
 #' @examples
 #' a <- GenomicRanges::GRanges(
 #'   seqnames = c("chr20", "chr4"),
@@ -203,6 +200,9 @@ addSignatures <- function(mae, ..., intersect_rows = TRUE) {
 #'   strand = c("-", "-"),
 #'   name = c("HAND2", "GATA5"))
 #' getInteractionMatrix(a, b)
+#'
+#' @importFrom GenomicRanges start end findOverlaps
+#' @importFrom Matrix sparseMatrix
 #'
 #' @export
 getInteractionMatrix <- function(a, b, ext = 500, count = FALSE) {
