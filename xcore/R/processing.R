@@ -252,6 +252,7 @@ getInteractionMatrix <- function(a, b, ext = 500, count = FALSE) {
 #' @return MultiAssayExperiment object with selected experiments filtered.
 #'
 #' @importFrom Matrix colSums
+#' @importFrom methods is
 #'
 #' @examples
 #' base_lvl <- "00hr"
