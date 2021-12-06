@@ -114,6 +114,7 @@ prepareCountsForRegression <- function(counts,
 #' mae <- addSignatures(mae, remap = remap_mini)
 #'
 #' @importFrom IRanges SplitDataFrameList
+#' @importFrom methods is
 #' @importFrom MultiAssayExperiment experiments intersectRows listToMap mapToList sampleMap
 #' @importFrom S4Vectors DataFrame
 #'
