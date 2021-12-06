@@ -388,11 +388,13 @@ getAvgCoeff <- function(models, lambda = "lambda.min", drop_intercept = TRUE) {
 #' @return factor
 #'
 #' @examples
+#' \dontrun{
 #' design <- matrix(data = c(1, 1, 0, 0, 0, 0, 1, 1),
 #'                  nrow = 4,
 #'                  ncol = 2,
 #'                  dimnames = list(c(paste("sample", 1:4)), c("gr1", "gr2")))
 #' design2factor(design)
+#' }
 #'
 design2factor <- function(design) {
   # based on edgeR::designAsFactor, but jokes aside
