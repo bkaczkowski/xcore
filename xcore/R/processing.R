@@ -113,7 +113,6 @@ prepareCountsForRegression <- function(counts,
 #'   base_lvl = base_lvl)
 #' mae <- addSignatures(mae, remap = remap_mini)
 #'
-#' @importFrom BiocGenerics replaceSlots
 #' @importFrom IRanges SplitDataFrameList
 #' @importFrom MultiAssayExperiment experiments intersectRows listToMap mapToList sampleMap
 #' @importFrom S4Vectors DataFrame
