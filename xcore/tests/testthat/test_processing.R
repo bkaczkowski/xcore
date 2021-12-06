@@ -19,7 +19,7 @@ test_that("prepareCountsForRegression", {
     prepareCountsForRegression(counts = rinderpest_mini, design = design),
     "number of rows in design must equal to number of columns in counts"
   )
-  rinderpest_mini <- rinderpest_mini[, c(1, 6)]
+  rinderpest_mini <- rinderpest_mini[, rownames(design)]
   fake_design <- design
   rownames(fake_design) <- paste0(rownames(fake_design), "FOO")
   testthat::expect_error(
@@ -77,10 +77,10 @@ test_that("addSignatures", {
     ncol = 2,
     nrow = 6,
     byrow = TRUE,
-    dimnames = list(colnames(rinderpest_mini), c("00hr", "24hr"))
+    dimnames = list(c("00hr_rep1", "00hr_rep2", "00hr_rep3", "24hr_rep1", "24hr_rep2", "24hr_rep3"), c("00hr", "24hr"))
   )
   mae <- prepareCountsForRegression(
-    counts = rinderpest_mini,
+    counts = rinderpest_mini[, c("00hr_rep1", "00hr_rep2", "00hr_rep3", "24hr_rep1", "24hr_rep2", "24hr_rep3")],
     design = design,
     base_lvl = base_lvl)
 
@@ -193,10 +193,10 @@ test_that("filterSignatures", {
     ncol = 2,
     nrow = 6,
     byrow = TRUE,
-    dimnames = list(colnames(rinderpest_mini), c("00hr", "24hr"))
+    dimnames = list(c("00hr_rep1", "00hr_rep2", "00hr_rep3", "24hr_rep1", "24hr_rep2", "24hr_rep3"), c("00hr", "24hr"))
   )
   mae <- prepareCountsForRegression(
-    counts = rinderpest_mini,
+    counts = rinderpest_mini[, c("00hr_rep1", "00hr_rep2", "00hr_rep3", "24hr_rep1", "24hr_rep2", "24hr_rep3")],
     design = design,
     base_lvl = base_lvl)
   mae <- addSignatures(mae, remap = remap_mini)
