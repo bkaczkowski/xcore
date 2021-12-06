@@ -199,7 +199,7 @@ function, where we can specify the `ext` parameter that will control how
 much promoters are extended in both directions before intersecting with binding
 data.
 
-```{r}
+```{r eval=FALSE}
 # obtain binding sites
 motevo_hg38_f5 <- rtracklayer::import(
   con = "https://swissregulon.unibas.ch/data/hg38_f5/hg38_sites_v1.gff.gz"
