@@ -217,8 +217,11 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #' }
 #'
 #' @importFrom foreach foreach %do% %dopar% %:%
+#' @importFrom methods is
 #' @importFrom MultiAssayExperiment metadata
 #' @importFrom iterators iter
+#' @importFrom stats coef setNames var
+#' @importFrom utils timestamp
 #'
 #' @export
 modelGeneExpression <- function(mae,
