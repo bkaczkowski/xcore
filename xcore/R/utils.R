@@ -423,7 +423,9 @@ isTRUEorFALSE <- function(x) {
 #' rows. Final result is a matrix with result for each group on a separate column.
 #' Function is parallelized over groups.
 #'
-#' @param list_of_df list of \code{data.frames}.
+#' @param list_of_df list of \code{data.frame}s.
+#' @param col_name string specifying column in \code{data.frame}s to apply
+#'   \code{fun} on.
 #' @param fun function to apply, should take a single vector as a argument.
 #' @param groups factor defining how elements of \code{list_of_df} should be
 #'   grouped.
