@@ -30,6 +30,7 @@ fisherMethod <- function(p.value, lower.tail = FALSE, log.p = TRUE) {
 #' with lambda selection using cross-validation.
 #'
 #' @inheritParams glmnet::cv.glmnet
+#' @inheritParams glmnet::glmnet
 #'
 #' @return an object of class "cv.glmnet" is returned. See
 #'   \code{\link[glmnet]{cv.glmnet}} for more details.
