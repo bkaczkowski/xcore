@@ -11,3 +11,4 @@ inst/analysis/*/*/*.rda
 inst/analysis/.*csv
 inst/analysis/*/*.csv
 inst/analysis/*/*/*.csv
+docs

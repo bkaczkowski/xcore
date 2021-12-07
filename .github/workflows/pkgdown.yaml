@@ -40,6 +40,7 @@ jobs:
           BiocManager::install(c("BiocGenerics", "DelayedArray", "edgeR", "GenomicRanges", "IRanges", "S4Vectors", "MultiAssayExperiment"))
           remotes::install_deps(dependencies = TRUE)
           install.packages("pkgdown")
+          devtools::install_github("mcjmigdal/xcoredata")
         shell: Rscript {0}
 
       - name: Install package
