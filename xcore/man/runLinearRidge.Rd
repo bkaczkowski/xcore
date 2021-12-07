@@ -13,6 +13,17 @@ runLinearRidge(x, y, offset, alpha = 0, standardize = TRUE, ...)
 
 \item{offset}{Offset vector (matrix) as in \code{glmnet}}
 
+\item{alpha}{The elasticnet mixing parameter, with \eqn{0\le\alpha\le 1}.
+The penalty is defined as
+\deqn{(1-\alpha)/2||\beta||_2^2+\alpha||\beta||_1.} \code{alpha=1} is the
+lasso penalty, and \code{alpha=0} the ridge penalty.}
+
+\item{standardize}{Logical flag for x variable standardization, prior to
+fitting the model sequence. The coefficients are always returned on the
+original scale. Default is \code{standardize=TRUE}.  If variables are in the
+same units already, you might not wish to standardize. See details below for
+y standardization with \code{family="gaussian"}.}
+
 \item{...}{Other arguments that can be passed to \code{glmnet}}
 }
 \value{

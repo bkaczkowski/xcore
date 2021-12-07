@@ -7,7 +7,10 @@
 applyOverDFList(list_of_df, col_name, fun, groups)
 }
 \arguments{
-\item{list_of_df}{list of \code{data.frames}.}
+\item{list_of_df}{list of \code{data.frame}s.}
+
+\item{col_name}{string specifying column in \code{data.frame}s to apply
+\code{fun} on.}
 
 \item{fun}{function to apply, should take a single vector as a argument.}
 
