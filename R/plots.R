@@ -128,3 +128,171 @@ plotSubtree <- function(hc, meta, j) {
   par(cex=0.8, mar=c(15, 4, 1, 1))
   plot(subtree)
 }
+
+#' Customized color pallette
+#' 
+#'  
+rdBuPalette <- function(n) {
+  colorspace::diverge_hsv(n = n, power = 0.75, h = c(245, 0), s = 0.9)
+}
+
+#' Scale bar to use with heatmaps
+#' 
+#' 
+plotHeatmapScaleBar <-
+  function(breaks,
+           col = rdBuPalette(length(breaks) - 1),
+           side = 2,
+           nticks = 3,
+           mar = c(2.1, 3.1, 4.1, 1.1),
+           cex = 0.75,
+           cex.main = 0.9,
+           ...) {
+    omar <- par()$mar
+    on.exit(par(mar = omar))
+    par(mar = mar, cex = cex, cex.main = cex.main)
+    
+    image(
+      matrix(data = breaks, nrow = 1),
+      breaks = breaks,
+      col = col,
+      axes = FALSE,
+      ...
+    )
+    axis(
+      side = 2,
+      at = seq(
+        from = 0,
+        to = 1,
+        length.out = nticks
+      ),
+      labels = seq(
+        from = min(breaks),
+        to = max(breaks),
+        length.out = nticks
+      )
+    )
+    
+    invisible()
+  }
+
+#' Heatmap
+#' 
+#' 
+plotHeatmap <-
+  function(x,
+           breaks,
+           col = rdBuPalette(length(breaks) - 1),
+           rownames = TRUE,
+           colnames = TRUE,
+           clust_rows = TRUE,
+           na.color = "grey",
+           mar = c(6.1, 0.1, 4.1, 22.1),
+           cex = 1,
+           cex.main = 0.9,
+           cex.axis = 0.8,
+           ...) {
+    omar <- par()$mar
+    on.exit(par(mar = omar))
+    graphics::par(mar = mar, cex = cex, cex.main = cex.main, cex.axis = cex.axis)
+
+    # order rows
+    if (clust_rows) {
+      # tmp substitute NA with 0
+      i_na <- is.na(x)
+      x[i_na] <- 0
+      
+      if (nrow(x) > 1) {
+        hc <- hclust(dist(x))
+        ord <- order.dendrogram(as.dendrogram(hc))
+        x <- x[rev(ord), , drop = FALSE] # ordering in image is reversed
+      }
+      
+      # restore NA
+      x[i_na[rev(ord)]] <- NA
+    }
+    
+    # cap data to fit breaks
+    x <- ifelse(test = x < min(breaks, na.rm = TRUE), 
+                yes = min(breaks, na.rm = TRUE), 
+                no = x)
+    x <- ifelse(test = x > max(breaks, na.rm = TRUE), 
+                yes = max(breaks, na.rm = TRUE), 
+                no = x)
+    
+    graphics::image(
+      x = t(x),
+      breaks = breaks,
+      col = col,
+      axes = FALSE,
+      ...
+    )
+    
+    # plot NAs if needed -- taken from gplots::heatmap.2
+    if (any(is.na(x))) {
+      namat <- ifelse(is.na(x), 1, NA)
+      image(
+        x = t(namat),
+        col = na.color,
+        axes = FALSE,
+        xlab = "",
+        ylab = "",
+        add = TRUE
+      )
+    }
+    
+    if (colnames) {
+      graphics::axis(
+        side = 1,
+        at = seq(
+          from = 0,
+          to = 1,
+          length.out = ncol(x)
+        ),
+        labels = colnames(x),
+        las = 2,
+        line = -0.5, 
+        tick = 0,
+        family = "mono"
+      )
+    }
+    
+    if (rownames) {
+      graphics::axis(
+        side = 4,
+        at = seq(
+          from = 0,
+          to = 1,
+          length.out = nrow(x)
+        ),
+        labels = rownames(x),
+        las = 2,
+        line = -0.5, 
+        tick = 0,
+        family = "mono"
+      )
+    }
+    
+    invisible()
+  }
+
+#' plot title
+#' 
+#' 
+plotTitle <- function(labels, mar = c(0.1, 1.1, 0.1, 1.1)) {
+  omar <- par()$mar
+  on.exit(par(mar = omar))
+  par(mar = mar, oma = c(0, 0, 0, 0))
+  
+  plot.new()
+  graphics::text(
+    x = 0.5,
+    y = 0.5,
+    adj = c(0.5, 0.5),
+    labels = labels,
+    cex = 1.75,
+    font = 2
+  )
+  
+  invisible()
+}

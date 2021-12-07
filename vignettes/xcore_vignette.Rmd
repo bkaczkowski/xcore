@@ -11,7 +11,7 @@ vignette: >
 
 
 ```{r include=FALSE}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, mc.cores = 6)
 
 devtools::load_all()
 ```
@@ -139,7 +139,7 @@ and used up to 25 GB RAM. If needed memory requirement could be brought down by
 using lower number of cores.
 
 ```{r}
-# register parallel backend
+# register parallel backend, more than 2 cores are recommended
 doMC::registerDoMC(cores = 6L)
 
 # set seed

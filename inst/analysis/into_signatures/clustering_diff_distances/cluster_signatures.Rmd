@@ -117,11 +117,10 @@ makeClusteredX <- function(cl, X, alpha) {
 ```
 
 ## based on core promoters
-# "0.05 Dice"
 ```{r}
-cut_height <- seq(0.05, 0.21, by = 0.04) # seq(0.1, 2, by = 0.4)
+cut_height <- seq(0.5, 2, by = 0.4) # seq(0.05, 0.21, by = 0.04) # 
 alphas <- c(NA, 0.3, 0.5)
-method <- c("Jaccard", "Dice", "Russel", "Tanimoto") # TODO finish pearson calc "pearson", missing rowsum
+method <- c("pearson", "Jaccard", "Dice", "Russel", "Tanimoto")
 parm_grid <- expand.grid(cheight = cut_height, method = method)
 
 for (db_name in c("remap", "chip_atlas")) {
@@ -153,7 +152,7 @@ for (db_name in c("remap", "chip_atlas")) {
     cl <- static[colnames(db)]
     meta <- data.table::data.table(id = names(cl), cluster = cl)
     data.table::fwrite(meta,
-                       file = paste0("meta_", db_name, "_", method, "_", cheight))
+                       file = paste0("meta_", db_name, "_", method, "_", cheight, ".csv"))
     
     # core
     # for (alpha in alphas) {
@@ -227,7 +226,7 @@ for (db_name in c("remap", "chip_atlas")) {
     cl <- static[colnames(db)]
     meta <- data.table::data.table(id = names(cl), cluster = cl)
     data.table::fwrite(meta,
-                       file = paste0("meta_", db_name, "_protein_coding_", method, "_", cheight))
+                       file = paste0("meta_", db_name, "_protein_coding_", method, "_", cheight, ".csv"))
     
     # core
     # for (alpha in alphas) {

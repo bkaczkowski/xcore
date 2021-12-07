@@ -60,6 +60,9 @@ if [ ! -f hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz ]; then
   zcat hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz | grep -v -e "^##" -e "^01STAT" -e "^02STAT" | gzip > t && mv t hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz
 fi
 
+# CAGE peaks (promoters) counts tables
+downloadDataset https://fantom.gsc.riken.jp/5/datafiles/reprocessed/hg38_v8/extra/CAGE_peaks_expression/hg38_fair+new_CAGE_peaks_phase1and2_counts_ann.osc.txt.gz
+
 # enhancers expression tables
 # The format is weird so I reprocessed it a bit
 downloadDataset https://fantom.gsc.riken.jp/5/datafiles/reprocessed/hg38_v8/extra/enhancer/F5.hg38.enhancers.expression.tpm.matrix.gz
@@ -102,5 +105,8 @@ downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly
 downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.only_lncRNA.gtf.gz
 downloadDataset https://fantom.gsc.riken.jp/5/suppl/Hon_et_al_2016/data/assembly/lv4_stringent/FANTOM_CAT.lv4_stringent.only_mRNA.gtf.gz
 
-# jaspar hg38 tfbs
+# jaspar hg38 tfbs -- after download I have it intersected with F5 to lower the size down
 downloadDataset http://expdata.cmmt.ubc.ca/JASPAR/downloads/UCSC_tracks/2020/JASPAR2020_hg38.bb
+
+# swissregulon tfbs
+downloadDataset https://swissregulon.unibas.ch/data/hg38_f5/hg38_sites_v1.gff.gz

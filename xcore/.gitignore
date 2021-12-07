@@ -1,8 +1,0 @@
-!inst/extdata/download.sh
-inst/extdata/*
-inst/analysis/*.rda
-inst/analysis/*/*.rda
-inst/analysis/*/*/*.rda
-inst/analysis/.*csv
-inst/analysis/*/*.csv
-inst/analysis/*/*/*.csv
