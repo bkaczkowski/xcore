@@ -16,10 +16,12 @@ factor
 Transform design matrix to factor
 }
 \examples{
+\dontrun{
 design <- matrix(data = c(1, 1, 0, 0, 0, 0, 1, 1),
                  nrow = 4,
                  ncol = 2,
                  dimnames = list(c(paste("sample", 1:4)), c("gr1", "gr2")))
 design2factor(design)
+}
 
 }

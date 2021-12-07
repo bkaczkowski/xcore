@@ -6,8 +6,8 @@
 \usage{
 modelGeneExpression(
   mae,
-  yname,
-  uname,
+  yname = "Y",
+  uname = "U",
   xnames,
   design = NULL,
   standardize = TRUE,
@@ -19,7 +19,7 @@ modelGeneExpression(
 }
 \arguments{
 \item{mae}{MultiAssayExperiment object such as produced by
-\code{\link{prepareCountsForRegression}}.# TODO X has to be filtered at least for zeros and ones !!!}
+\code{\link{prepareCountsForRegression}}.}
 
 \item{yname}{string indicating experiment in \code{mae} to use as the
 expression input.}
@@ -66,7 +66,7 @@ estimated for each sample.}
 \item{replicate_avg}{Named list with elements corresponding to
 signatures specified in \code{xnames}. Each of these is a \code{matrix}
 holding replicate average Z-scores with columns corresponding to groups
-in the design. TODO this output need better description!}
+in the design.}
 }
 }
 \description{
@@ -100,13 +100,22 @@ For detailed pipeline description we refer interested user to paper
 accompanying this package.
 }
 \examples{
+\dontrun{
 base_lvl <- "00hr"
 design <- matrix(
-  data = c(1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1),
-  ncol = 2,
-  nrow = 6,
+  data = c(1, 0, 0,
+           1, 0, 0,
+           1, 0, 0,
+           0, 1, 0,
+           0, 1, 0,
+           0, 1, 0,
+           0, 0, 1,
+           0, 0, 1,
+           0, 0, 1),
+  ncol = 3,
+  nrow = 9,
   byrow = TRUE,
-  dimnames = list(colnames(rinderpest_mini), c("00hr", "24hr")))
+  dimnames = list(colnames(rinderpest_mini), c("00hr", "12hr", "24hr")))
 mae <- prepareCountsForRegression(
   counts = rinderpest_mini,
   design = design,
@@ -119,5 +128,6 @@ res <- modelGeneExpression(
   uname = uname,
   xnames = xnames,
   design = design))
+}
 
 }

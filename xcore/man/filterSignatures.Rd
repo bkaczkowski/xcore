@@ -37,11 +37,19 @@ rid of signatures that have very low variance.
 \examples{
 base_lvl <- "00hr"
 design <- matrix(
-  data = c(1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1),
-  ncol = 2,
-  nrow = 6,
+  data = c(1, 0, 0,
+           1, 0, 0,
+           1, 0, 0,
+           0, 1, 0,
+           0, 1, 0,
+           0, 1, 0,
+           0, 0, 1,
+           0, 0, 1,
+           0, 0, 1),
+  ncol = 3,
+  nrow = 9,
   byrow = TRUE,
-  dimnames = list(colnames(rinderpest_mini), c("00hr", "24hr")))
+  dimnames = list(colnames(rinderpest_mini), c("00hr", "12hr", "24hr")))
 mae <- prepareCountsForRegression(
   counts = rinderpest_mini,
   design = design,
