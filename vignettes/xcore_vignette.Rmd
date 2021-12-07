@@ -139,8 +139,8 @@ and used up to 25 GB RAM. If needed memory requirement could be brought down by
 using lower number of cores.
 
 ```{r}
-# register parallel backend, more than 2 cores are recommended
-doMC::registerDoMC(cores = 6L)
+# register parallel backend, for R package it might be not possible to use more than 2 cores in its vignette
+doMC::registerDoMC(cores = 2L)
 
 # set seed
 set.seed(314159265)
