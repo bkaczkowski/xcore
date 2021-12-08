@@ -131,7 +131,7 @@ prepareCountsForRegression <- function(counts,
 #'
 #' @importFrom IRanges SplitDataFrameList
 #' @importFrom methods is
-#' @importFrom MultiAssayExperiment experiments intersectRows listToMap mapToList sampleMap
+#' @importFrom MultiAssayExperiment experiments intersectRows listToMap mapToList metadata sampleMap
 #' @importFrom S4Vectors DataFrame
 #'
 #' @export
@@ -156,10 +156,12 @@ addSignatures <- function(mae, ..., intersect_rows = TRUE) {
 
   newColData <- S4Vectors::DataFrame(row.names = newSampleMap[["primary"]])
 
-  new_mae <- BiocGenerics:::replaceSlots(object = mae,
-                                         ExperimentList = newExperimentList,
-                                         sampleMap = newSampleMap,
-                                         colData = newColData)
+  new_mae <- MultiAssayExperiment::MultiAssayExperiment(
+    experiments = newExperimentList,
+    colData = newColData,
+    sampleMap = newSampleMap,
+    metadata = MultiAssayExperiment::metadata(mae)
+  )
 
   if (intersect_rows) new_mae <- MultiAssayExperiment::intersectRows(new_mae)
 
