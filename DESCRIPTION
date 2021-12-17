@@ -11,7 +11,7 @@ Authors@R:
            family = "Kaczkowski",
            role = c("aut"),
            email = "mcjmigdal@gmail.com",
-           comment = c(ORCID = "0000-0002-8021-7263"))
+           comment = c(ORCID = "0000-0001-6554-5608"))
      )
 Description: What the package does (one paragraph).
 License: GPL-2
