@@ -21,7 +21,7 @@ summaryString <- function(...) {
 #' Histogram with summary
 #'
 #' \code{plotHistogram} create a histogram with summary on the upper margin.
-#' Refer to \code{\link[graphics]{hist}} documentation for more informations.
+#' Refer to \code{\link[graphics]{hist}} documentation for more information.
 #'
 #' @inheritParams graphics::hist
 #'
