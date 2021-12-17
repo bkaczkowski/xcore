@@ -402,7 +402,8 @@ isTRUEorFALSE <- function(x) {
 #'
 applyOverDFList <- function(list_of_df, col_name, fun, groups) {
   # TODO consider adding argument check
-  # stopifnot("groups must not have unused levels" = setdiff(levels(groups), groups) == character(0))
+  stopifnot("all list_of_df names must be included in groups" = setequal(names(list_of_df), names(groups)))
+  stopifnot("groups must not have unused levels" = setdiff(levels(groups), groups) == character(0))
 
   col_fun_mat <- foreach::foreach(gr = levels(groups), .combine = cbind) %dopar% # parallel version is bit faster
     {
