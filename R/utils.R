@@ -28,41 +28,6 @@ intersectGR <- function(a, b, ...) {
   IRanges::subsetByOverlaps(x = a, ranges = b, ...)
 }
 
-#' Calculate Tau
-#'
-#' \code{tau} calculate Tau tissue-specificity metric.
-#' \deqn{\tau = \frac{\sum_{i=1}^{n} (1-\hat{x_i})}{n-1}; \hat{x_i} = \frac{x_i}{max(x)}}
-#' \link[https://academic.oup.com/bib/article/18/2/205/2562739]{Reference}.
-#'
-#' @param x Numeric vector giving expression of one gene in different tissues.
-#'
-#' @return Tau tissue-specificity metric.
-#'
-tau <- function(x) { # TODO likely to be removed from the package
-  stopifnot(is.numeric(x) && length(x) > 1)
-
-  if (all(!is.na(x)))
-  {
-    if (min(x, na.rm = TRUE) >= 0)
-    {
-      if (max(x) != 0)
-      {
-        x <- (1 - (x / max(x)))
-        res <- sum(x, na.rm = TRUE)
-        res <- res / (length(x) - 1)
-      } else {
-        res <- 0
-      }
-    } else {
-      stop("Expression values have to be positive!")
-    }
-  } else {
-    stop("No data for this gene avalable.")
-  }
-
-  return(res)
-}
-
 #' Calculate regions coverage
 #'
 #' \code{getCoverage} calculates coverage of regions (rows in interaction
