@@ -179,10 +179,14 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'       signatures specified in \code{xnames}. Each of these is a list holding
 #'       \code{data.frame} of signature's p-values and test statistics
 #'       estimated for each sample.}
-#'     \item{replicate_avg}{Named list with elements corresponding to
+#'     \item{zscore_avg}{Named list with elements corresponding to
 #'       signatures specified in \code{xnames}. Each of these is a \code{matrix}
 #'       holding replicate average Z-scores with columns corresponding to groups
 #'       in the design.}
+#'     \item{coef_avg}{Named list with elements corresponding to
+#'       signatures specified in \code{xnames}. Each of these is a \code{matrix}
+#'       holding replicate averaged signatures activities with columns
+#'       corresponding to groups in the design.}}
 #'   }
 #'
 #' @examples
@@ -282,16 +286,9 @@ modelGeneExpression <- function(mae,
   args[["standardize"]] <- standardize
   args[["parallel"]] <- parallel
 
-  # extract X from MAE structure -- easier to work with
-  X <- foreach::foreach(
-    xnm = xnames,
-    .inorder = TRUE,
-    .final = function(x) setNames(x, xnames)
-  ) %do% mae[[xnm]]
-
   message("##------ modelGeneExpression: started ridge regression ", timestamp(prefix = "", quiet = TRUE))
   regression_models <- foreach::foreach(
-    x = iterators::iter(X),
+    x = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
     xn = xnames,
     .inorder = TRUE,
     .final = function(x) setNames(x, xnames),
@@ -309,10 +306,12 @@ modelGeneExpression <- function(mae,
       } else {
         args[["x"]] <- x
         args[["y"]] <- y
+        rm(x, y); gc()
         res <- do.call(runLinearRidge, args)
       }
 
-      res
+      return(res)
+      rm(args, res); gc()
     }
   # add precalculated models
   for (xn in names(iter_to_pass)) {
@@ -326,20 +325,18 @@ modelGeneExpression <- function(mae,
   if (pvalues) {
     message("##------ modelGeneExpression: started significance testing  ", timestamp(prefix = "", quiet = TRUE))
     if (standardize) { # scale here to avoid scaling multiple times in ridgePvals
-      X <- foreach::foreach(
-        x = iterators::iter(X),
-        .inorder = TRUE,
-        .final = function(x) setNames(x, xnames)
-      ) %dopar% scale(x)
+      for (xn in xnames) {
+        mae[[xn]] <- scale(mae[[xn]])
+      }
     }
     svdX <- foreach::foreach(
-      x = iterators::iter(X),
+      x = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
       .inorder = TRUE,
       .final = function(x) setNames(x, xnames)
     ) %dopar% svd(x)
 
     pvalues <- foreach::foreach(
-      x = iterators::iter(X),
+      x = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
       xnm = xnames,
       .inorder = TRUE,
       .final = function(x) setNames(x, xnames)
@@ -366,17 +363,43 @@ modelGeneExpression <- function(mae,
         )
       }
 
-    replicate_avg <- lapply(pvalues, repAvgZscore, groups = groups)
+    zscore_avg <- lapply(pvalues, repAvgZscore, groups = groups)
+    coef_avg <- lapply(
+      X = pvalues,
+      FUN = function(pv) {
+        applyOverDFList(list_of_df = pv,
+                        col_name = "coef",
+                        fun = mean,
+                        groups = groups)
+      })
+    results <- lapply(
+      X = names(coef_avg),
+      FUN = function(nm) {
+        coef <- coef_avg[[nm]]
+        x <- split(coef, col(coef, as.factor = TRUE))
+        x <- c(list(name = rownames(coef)), x)
+        x[["z_score"]] <- apply(zscore_avg[[nm]], 1, stoufferZMethod)
+        class(x) <- "data.frame"
+        attr(x, "row.names") <- seq_len(nrow(coef))
+        ord <- order(abs(x[["z_score"]]), decreasing = TRUE)
+        x <- x[ord, ]
+        x
+      })
+    names(results) <- names(coef_avg)
     message("##------ modelGeneExpression: finished significance testing  ", timestamp(prefix = "", quiet = TRUE))
   } else {
     pvalues <- NULL
-    replicate_avg = NULL
+    zscore_avg <- NULL
+    coef_avg <- NULL
+    results <- NULL
   }
 
   return(list(
     regression_models = regression_models,
     pvalues = pvalues,
-    replicate_avg = replicate_avg
+    zscore_avg = zscore_avg,
+    coef_avg = coef_avg,
+    results = results
   ))
 }
 
@@ -419,4 +442,25 @@ repAvgZscore <- function(pvalues, groups) {
 #'
 poolSE <- function(x) {
   sqrt(sum(x * x) / length(x))
+}
+
+#' Combine Z-scores using Stouffer's method
+#'
+#' Stouffer's Z-score method is a meta-analysis technique used to combine the
+#' results from independent statistical tests with the same hypothesis. It is
+#' closely related to Fisher's method, but operates on Z-scores instead of
+#' p-values
+#' (\href{https://en.wikipedia.org/wiki/Fisher%27s_method}{Wikipedia article}).
+#'
+#' @param z a numeric vector of Z-score to combine.
+#'
+#' @return a number giving combined Z-score.
+#'
+#' @importFrom stats pchisq
+#'
+stoufferZMethod <- function(z) {
+  z <- z[! is.na(z)]
+  z_cmb <- sum(z) / sqrt(length(z))
+
+  return(z_cmb)
 }
