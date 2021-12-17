@@ -87,14 +87,14 @@ Particularly, molecular signatures constructed from ReMap2020 against FANTOM5
 annotation.
 
 ```{r}
-data(remap_promoters, package = "xcoredata")
+data("remap_promoters_f5", package = "xcoredata")
 ```
 
 Molecular signature is a simple binary matrix indicating if transcription factor
 binding site was found or not in promoter vicinity.
 
 ```{r}
-print(remap_promoters[1:3, 1:3])
+print(remap_promoters_f5[1:3, 1:3])
 ```
 
 To add signatures to our `MultiAssayExperiment` object we can use
@@ -102,7 +102,7 @@ To add signatures to our `MultiAssayExperiment` object we can use
 unique names.
 
 ```{r}
-mae <- addSignatures(mae, remap = remap_promoters)
+mae <- addSignatures(mae, remap = remap_promoters_f5)
 ```
 
 When we examine newly added signatures, we can see that some of them does not
@@ -133,14 +133,14 @@ replicated.
 This step is time consuming as we need to train a separate model for each of our
 samples. To speed up the calculations we will lower number of folds used in
 cross-validation procedure from 10 to 5 using `nfolds` argument, which is
-internally passed to `cv.glmnet` function. Using 6 cores on
-Intel(R) Xeon(R) CPU E5-2680 v3 calculations took around 4 minutes to compute
-and used up to 25 GB RAM. If needed memory requirement could be brought down by
+internally passed to `cv.glmnet` function. Using 2 cores on
+Intel(R) Xeon(R) CPU E5-2680 v3 calculations took around 10 minutes to compute
+and used up to 8 GB RAM. If needed memory requirement could be brought down by
 using lower number of cores.
 
 ```{r}
-# register parallel backend, for R package it might be not possible to use more than 2 cores in its vignette
-doMC::registerDoMC(cores = 2L)
+# register parallel backend
+doMC::registerDoMC(cores = 6L)
 
 # set seed
 set.seed(314159265)
@@ -158,19 +158,33 @@ Output returned by `modelGeneExpression` is a list with following elements:
   sample.
 + `pvalues` - list of `data.frame`s for each sample, each holding
   signatures estimates, their estimated standard errors and p-values.
-+ `replicate_avg` - a matrix holding replicate average Z-scores with
-  columns corresponding to groups in the design. This is likely the main output
-  for most of the users.
++ `zscore_avg` - a `matrix` holding replicate average molecular signatures
+  Z-scores with columns corresponding to groups in the design.
++ `coef_avg` - a `matrix` holding replicate average molecular signatures
+  activities with columns corresponding to groups in the design.
++ `results` - a `data.frame` holding replicate average molecular signatures and
+  overall molecular signatures Z-score calculated over all groups in the design.
 
-Let's have a look at `replicate_avg` matrix.
+`results` is likely of most interest. As you can see below this `data.frame`
+holds replicate averaged molecular signatures activities, as well as overall
+Z-score which should be used to rank signatures.
 
 ```{r}
-out <- res$replicate_avg$remap
-ord <- order(abs(out[, "24hr"]), decreasing = TRUE)
+head(res$results$remap)
+```
+
+Now we can plot a heatmap of molecular signatures activities for the top
+identified molecular signatures.
+
+```{r}
+top_signatures <- head(res$results$remap, 10)
 pheatmap::pheatmap(
-  mat = head(out[ord, ]),
+  mat = top_signatures[, c("12hr", "24hr")],
+  labels_row = top_signatures$name,
   cluster_cols = FALSE,
-  main = "SLAM293 signatures Z-score"
+  color = colorRampPalette(c("blue", "white", "red"))(15),
+  breaks = seq(from = -0.1, to = 0.1, length.out = 16),
+  main = "SLAM293 molecular signatures activities"
 )
 ```
 
@@ -180,7 +194,7 @@ factors are known to play a role during measles infection, which is closely
 related to rinderpest
 ([KEGG Measles pathway](https://www.genome.jp/kegg-bin/show_pathway?hsa05162)).
 
-Moreover, Z-score sign indicate that promoters targeted by RELA tend to be
+Moreover, activities sign indicate that promoters targeted by RELA tend to be
 downregulated, while those targeted by IRF9 tend to be upregulated.
 
 
