@@ -44,6 +44,7 @@ test_that("applyOverDFList", {
   col_name <- "speed"
   fun <- mean 
   groups <- factor("group1")
+  names(groups) <- "cars"
   testthat::expect_equal(
     applyOverDFList(list_of_df, col_name, fun, groups),
     matrix(data = cars$speed, ncol = 1, dimnames = list(NULL, "group1"))
@@ -54,6 +55,7 @@ test_that("applyOverDFList", {
   col_name <- "speed"
   fun <- mean 
   groups <- factor(c("group1", "group1", "group2"))
+  names(groups) <- c("a", "b", "c")
   testthat::expect_equal(
     applyOverDFList(list_of_df, col_name, fun, groups),
     matrix(data = c(cars$speed + 0.5, cars$speed + 2), ncol = 2, dimnames = list(NULL, c("group1", "group2")))
