@@ -122,6 +122,15 @@ promoters using `filterSignatures` function.
 mae <- filterSignatures(mae, min = 0.05, max = 0.95)
 ```
 
+At this stage we can investigate `mae` to see how many signatures are
+available after intersecting with counts and filtering. number of
+columns in signatures corresponds to number of molecular signatures
+which will be used to build a model.
+
+```{r}
+print(mae)
+```
+
 Finally, we can run our expression modeling using `modelGeneExpression`
 function. `modelGeneExpression` can take advantage of parallelization to
 speedup its calculations, to use it we need to register parallel backend.
