@@ -425,6 +425,6 @@ subsetWithMissing <- function(mat, rows) {
   i <- match(x = rows, table = rownames(mat), nomatch = 0)
   i[i == 0] <- NA
   smat <- mat[i, ]
-  rownames(smat) <- sub(pattern = "(.*)\\.(.*)\\.(.*)", replacement = "\\2 \\3 \\1", x = rows)
+  rownames(smat) <- rows
   smat
 }
