@@ -2,10 +2,34 @@
 % Please edit documentation in R/utils.R
 \name{estimateStat}
 \alias{estimateStat}
-\title{Estimate a goodness of fit stat}
+\title{Estimate linear models goodness of fit statistic}
 \usage{
 estimateStat(x, y, u, s, method = "cv", nfold = 10, statistic = R2, alpha = 0)
 }
+\arguments{
+\item{x}{\code{x} matrix as in \code{glmnet}.}
+
+\item{y}{response \code{y} as in \code{glmnet}.}
+
+\item{u}{offset vector as in \link{\code{glmnet}}. \code{"U"} experiment in
+mae.}
+
+\item{s}{user supplied lambda.}
+
+\item{method}{currently only cross-validation is implemented.}
+
+\item{nfold}{number of fold to use in cross-validation.}
+
+\item{statistic}{function computing goodness of fit statistic. Should accept
+\code{y}, \code{x}, \code{offset} arguments and return
+a numeric vector of the same length. See \code{rsq}, \code{mse} for examples.}
+
+\item{alpha}{The elasticnet mixing parameter, with \eqn{0\le\alpha\le 1}.
+The penalty is defined as
+\deqn{(1-\alpha)/2||\beta||_2^2+\alpha||\beta||_1.} \code{alpha=1} is the
+lasso penalty, and \code{alpha=0} the ridge penalty.}
+}
 \description{
-Estimate a goodness of fit stat
+Estimate goodness of fit statistic of penalized linear regression models.
+Works with different goodness of fit statistic functions.
 }
