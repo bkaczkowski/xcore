@@ -117,7 +117,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #' Gene expression modeling pipeline
 #'
 #' \code{modelGeneExpression} uses parallelization if parallel backend is
-#' registered. For that reason we advise agains passing \code{parallel} argument
+#' registered. For that reason we advise against passing \code{parallel} argument
 #' to internally called \code{\link[glmnet]{cv.glmnet}} routine.
 #'
 #' For speeding up the calculations consider lowering number of folds used in
@@ -138,8 +138,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'
 #' If replicates are available the signatures activities estimates and
 #' their standard error estimates can be combined. This is done by averaging
-#' signatures activities estimates and pooling standard errors following
-#' (Cohen 1977) formulation for pooled standard deviation.
+#' signatures activities estimates and pooling their significance estimates.
 #'
 #' For detailed pipeline description we refer interested user to paper
 #' accompanying this package.
@@ -186,7 +185,10 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'     \item{coef_avg}{Named list with elements corresponding to
 #'       signatures specified in \code{xnames}. Each of these is a \code{matrix}
 #'       holding replicate averaged signatures activities with columns
-#'       corresponding to groups in the design.}}
+#'       corresponding to groups in the design.}
+#'     \item{results}{Named list of a \code{data.frame}s holding replicate
+#'       average molecular signatures, overall molecular signatures Z-score and
+#'       p-values calculated over groups using Stouffer's and Fisher's methods.}}
 #'   }
 #'
 #' @examples
@@ -216,8 +218,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'   mae = mae,
 #'   yname = yname,
 #'   uname = uname,
-#'   xnames = xnames,
-#'   design = design))
+#'   xnames = xnames))
 #' }
 #'
 #' @importFrom foreach foreach %do% %dopar% %:%
@@ -379,6 +380,11 @@ modelGeneExpression <- function(mae,
         x <- split(coef, col(coef, as.factor = TRUE))
         x <- c(list(name = rownames(coef)), x)
         x[["z_score"]] <- apply(zscore_avg[[nm]], 1, stoufferZMethod)
+        pvallen <- length(pvalues[[nm]][[1]][["pval"]])
+        pvalmat <- vapply(X = pvalues[[nm]],
+                          FUN = function(x) x[["pval"]],
+                          FUN.VALUE = numeric(pvallen))
+        x[["pvalue"]] <- apply(pvalmat, 1, fisherMethod, log.p = FALSE)
         class(x) <- "data.frame"
         attr(x, "row.names") <- seq_len(nrow(coef))
         ord <- order(abs(x[["z_score"]]), decreasing = TRUE)
