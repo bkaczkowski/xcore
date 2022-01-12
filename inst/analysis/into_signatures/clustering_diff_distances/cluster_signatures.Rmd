@@ -17,10 +17,10 @@ promoters_ann <- get0(params$promoters_ann)
 ```
 
 # Core promoters
-   
+
 ```{r core_promoters}
 # only protein coding genes as per GENCODE annotation
-promoters_ann_core <- 
+promoters_ann_core <-
     promoters_ann[promoters_ann$gene_type_gencode == "protein_coding", ]
 
 # ENCODE ROADMAP confirmation
@@ -61,26 +61,26 @@ hclustDist <- function(mat, method, cheight, cl_basename) {
   } else {
     proxy::dist(x = mat, method = method, by_rows = FALSE)
   }
-  
+
   hc <- hclust(d_mat, method = "ward.D2")
   cl <- cutree(hc, h = cheight)
-  
+
   return(cl)
 }
-  
+
 nameClusters <- function(cl, cl_basename) {
   vec_names <- names(cl)
   cl <- paste0(cl_basename, "_cl", cl, "_", max(cl))
   reps <- table(cl)
   cl <- paste0(cl, "_R", reps[cl])
   names(cl) <- vec_names
-  
+
   return(cl)
 }
 
 makeClusteredX <- function(cl, X, alpha) {
   stopifnot(all(names(cl) == colnames(X)))
-  
+
   intmat <- if (is.na(alpha)) {
     intvecs <- lapply(
       X = unique(cl),
@@ -111,14 +111,14 @@ makeClusteredX <- function(cl, X, alpha) {
       )
     )
   }
-  
+
   return(intmat)
 }
 ```
 
 ## based on core promoters
 ```{r}
-cut_height <- seq(0.5, 2, by = 0.4) # seq(0.05, 0.21, by = 0.04) # 
+cut_height <- seq(0.5, 2, by = 0.4) # seq(0.05, 0.21, by = 0.04) #
 alphas <- c(NA, 0.3, 0.5)
 method <- c("pearson", "Jaccard", "Dice", "Russel", "Tanimoto")
 parm_grid <- expand.grid(cheight = cut_height, method = method)
@@ -135,7 +135,7 @@ for (db_name in c("remap", "chip_atlas")) {
     method <- parm_grid[i, "method"]
     cheight <- parm_grid[i, "cheight"]
     print(paste0(cheight, " ", method))
-    
+
     # per TF clustering
     for (tf_name in tfs) {
       print(tf_name)
@@ -146,109 +146,21 @@ for (db_name in c("remap", "chip_atlas")) {
         cl_static <- hclustDist(db[, sigid], method, cheight, tf_name)
         cl_static <- nameClusters(cl_static, tf_name)
       }
-      
+
       static <- c(static, cl_static)
     }
     cl <- static[colnames(db)]
     meta <- data.table::data.table(id = names(cl), cluster = cl)
     data.table::fwrite(meta,
                        file = paste0("meta_", db_name, "_", method, "_", cheight, ".csv"))
-    
-    # core
-    # for (alpha in alphas) {
-    #   intmat <- get(paste0(db_name, "_promoters_core"))
-    #   intmat <- intmat[, colnames(db)]
-    #   a <- ifelse(is.na(alpha), "rowsum", alpha)
-    #   out_name <- paste0(db_name, "_promoters_core_", method, "_", cheight, "_", a)
-    #   intmat <- makeClusteredX(cl, intmat, alpha)
-    #   assign(
-    #     x = out_name,
-    #     value = intmat
-    #   )
-    #   save(list = out_name,
-    #       file = paste0(out_name, ".rda"))
-    # }
-    
+
+
     # all
     for (alpha in alphas) {
       intmat <- get(paste0(db_name, "_promoters"))
       intmat <- intmat[, colnames(db)]
       a <- ifelse(is.na(alpha), "rowsum", alpha)
       out_name <- paste0(db_name, "_promoters_", method, "_", cheight, "_", a)
-      intmat <- makeClusteredX(cl, intmat, alpha)
-      assign(
-        x = out_name,
-        value = intmat
-      )
-      save(list = out_name,
-          file = paste0(out_name, ".rda"))
-    }
-  }
-}
-```
-
-## based on promoter coding genes
-
-promoters_ann[promoters_ann$gene_type_gencode == "protein_coding", ]
-
-```{r}
-cut_height <- seq(0.05, 0.21, by = 0.04) # seq(0.1, 2, by = 0.4)
-alphas <- c(NA, 0.3, 0.5)
-method <- c("pearson", "Gower", "Jaccard", "Dice", "Russel", "Tanimoto")
-parm_grid <- expand.grid(cheight = cut_height, method = method)
-dpis <- promoters_ann[promoters_ann$gene_type_gencode == "protein_coding", ]$name
-
-for (db_name in c("remap", "chip_atlas")) {
-  db <- get(paste0(db_name, "_promoters_core"))
-  db <- db[dpis, ]
-  j <- (Matrix::colSums(db) >= 10) & (Matrix::colSums(db) != nrow(db))
-  db <- db[, j]
-  db_meta <- get(paste0(db_name, "_meta"))
-  db_meta <- db_meta[id %in% colnames(db), ]
-  tfs <- db_meta[, unique(tf)]
-  for (i in seq_len(nrow(parm_grid))) {
-    static <- c()
-    method <- parm_grid[i, "method"]
-    cheight <- parm_grid[i, "cheight"]
-    
-    # per TF clustering
-    for (tf_name in tfs) {
-      sigid <- db_meta[tf == tf_name, id]
-      if (length(sigid) == 1) {
-        cl_static <- stats::setNames(paste0(tf_name, "_cl1_1_R1"), sigid)
-      } else {
-        cl_static <- hclustDist(db[, sigid], method, cheight, tf_name)
-        cl_static <- nameClusters(cl_static, tf_name)
-      }
-      
-      static <- c(static, cl_static)
-    }
-    cl <- static[colnames(db)]
-    meta <- data.table::data.table(id = names(cl), cluster = cl)
-    data.table::fwrite(meta,
-                       file = paste0("meta_", db_name, "_protein_coding_", method, "_", cheight, ".csv"))
-    
-    # core
-    # for (alpha in alphas) {
-    #   intmat <- get(paste0(db_name, "_promoters_core"))
-    #   intmat <- intmat[, colnames(db)]
-    #   a <- ifelse(is.na(alpha), "rowsum", alpha)
-    #   out_name <- paste0(db_name, "_protein_coding_promoters_core_", method, "_", cheight, "_", a)
-    #   intmat <- makeClusteredX(cl, intmat, alpha)
-    #   assign(
-    #     x = out_name,
-    #     value = intmat
-    #   )
-    #   save(list = out_name,
-    #       file = paste0(out_name, ".rda"))
-    # }
-    
-    # all
-    for (alpha in alphas) {
-      intmat <- get(paste0(db_name, "_promoters"))
-      intmat <- intmat[, colnames(db)]
-      a <- ifelse(is.na(alpha), "rowsum", alpha)
-      out_name <- paste0(db_name, "_protein_coding_promoters_", method, "_", cheight, "_", a)
       intmat <- makeClusteredX(cl, intmat, alpha)
       assign(
         x = out_name,

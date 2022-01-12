@@ -2,9 +2,6 @@
 title: "Deeper look into the 'signatures'"
 author: "Maciej Migdał"
 output: pdf_document
-params:
-  promoters_ann: promoters_f5
-  annotation_name: FANTOM5
 ---
 
 ```{r include=FALSE}
@@ -13,77 +10,166 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 devtools::load_all()
 library(data.table)
 
-promoters_ann <- get0(params$promoters_ann)
-
-stopifnot(
-  all(c(
-    "SYMBOL",
-    "gene_type_gencode",
-    "score",
-    "name",
-    "tau",
-    "protein_atlas_tissue_specificity",
-    "encode_blacklist",
-    "ensembl_sm"
-  ) %in% colnames(GenomicRanges::mcols(promoters_ann)))
+data(
+  "promoters_f5",
+  "promoters_f5_core",
+  "remap_promoters_f5",
+  "chip_atlas_promoters_f5",
+  "remap_meta",
+  "chip_atlas_meta",
+  package = "xcoredata"
 )
+```
+
+# Load additional annotations
+Here we extend FANTOM5 promoter annotation by calculating tissue specificity tau
+based on FANTOM5 expression data, adding tissue and cell type specificity
+as defined in Protein Atlas, adding ENCODE blacklisted regions annotation,
+adding ENSEMBL soft masked regions annotation.
+
+```{r}
+# Calculate Tau
+#
+# \code{tau} calculate Tau tissue-specificity metric.
+# \deqn{\tau = \frac{\sum_{i=1}^{n} (1-\hat{x_i})}{n-1}; \hat{x_i} = \frac{x_i}{max(x)}}
+# \link[https://academic.oup.com/bib/article/18/2/205/2562739]{Reference}.
+#
+# @param x Numeric vector giving expression of one gene in different tissues.
+#
+# @return Tau tissue-specificity metric.
+#
+tau <- function(x) {
+  stopifnot(is.numeric(x) && length(x) > 1)
+
+  if (all(!is.na(x)))
+  {
+    if (min(x, na.rm = TRUE) >= 0)
+    {
+      if (max(x) != 0)
+      {
+        x <- (1 - (x / max(x)))
+        res <- sum(x, na.rm = TRUE)
+        res <- res / (length(x) - 1)
+      } else {
+        res <- 0
+      }
+    } else {
+      stop("Expression values have to be positive!")
+    }
+  } else {
+    stop("No data for this gene avalable.")
+  }
+
+  return(res)
+}
+
+# tissue specificity tau
+# Matrix of promoters normalized expression across datasets in FANTOM5,
+# column names are not imported!
+promoters_f5_expression <-
+  data.table::fread(
+    file = system.file("inst",
+                       "extdata",
+                       "hg38_fair+new_CAGE_peaks_phase1and2_tpm.osc.txt.gz",
+                       package = "xcore"),
+    header = TRUE)
+promoters_f5_expression <-
+  data.table::melt(data = promoters_f5_expression,
+                   id.vars = "00Annotation")
+promoters_f5_tau <-
+  promoters_f5_expression[,
+                          .(t = tau(log(value + 1))),
+                          by = "00Annotation"
+  ]
+
+promoters_f5$tau <- GenomicRanges::mcols(promoters_f5) %>%
+  as.data.frame() %>%
+  dplyr::left_join(y = promoters_f5_tau[, c("00Annotation", "t")],
+                   by = c("name" = "00Annotation")) %>%
+  dplyr::pull(t)
+
+rm(promoters_f5_expression, promoters_f5_tau); gc()
+
+# tissue specificity protein atlass
+protein_atlas <-
+  data.table::fread(
+    file = system.file("inst", "extdata", "proteinatlas.tsv.gz", package = "xcore"),
+    header = TRUE
+  )[! duplicated(Gene), ]
+data.table::setnames(protein_atlas,
+                     c("RNA tissue specificity",
+                     "RNA single cell type specificity"),
+                     c("protein_atlas_tissue_specificity",
+                       "protein_atlas_cell_specificity"))
+
+GenomicRanges::mcols(promoters_f5) <- GenomicRanges::mcols(promoters_f5) %>%
+  as.data.frame() %>%
+  dplyr::left_join(y = protein_atlas[, c("Gene",
+                                         "protein_atlas_tissue_specificity",
+                                         "protein_atlas_cell_specificity")],
+                   by = c("SYMBOL" = "Gene"))
+
+rm(protein_atlas); gc()
+
+# ENCODE blacklisted regions
+blacklist <- rtracklayer::import(system.file("inst",
+                                             "extdata",
+                                             "hg38-blacklist.v2.bed.gz",
+                                             package = "xcore")) %>%
+  IRanges::subsetByOverlaps(x = promoters_f5,
+                            type = "any") %>%
+  GenomicRanges::mcols() %>%
+  `[[`("name")
+promoters_f5$encode_blacklist <- promoters_f5$name %in% blacklist
+
+rm(blacklist); gc()
+
+# ENSEMBL soft masked regions
+ensembl_sm <- rtracklayer::import(system.file("inst",
+                                              "extdata",
+                                              "hg38_ensembl_sm.bed.gz",
+                                              package = "xcore")) %>%
+  IRanges::subsetByOverlaps(x = promoters_f5,
+                            type = "any") %>%
+  GenomicRanges::mcols() %>%
+  `[[`("name")
+promoters_f5$ensembl_sm <- promoters_f5$name %in% ensembl_sm
+
+rm(ensembl_sm); gc()
 ```
 
 # Technical biases and noise vs biological signal.
 
 Based on the Bogumil's observation that some promoters always give a signal
-regardless on the transcription factor we look at. As well as, some TF gives 
-signal regardless of the promoter we look at. We set out with an exploratory 
+regardless on the transcription factor we look at. As well as, some TF gives
+signal regardless of the promoter we look at. We set out with an exploratory
 data analysis on the ReMap2020 and ChIP-Atlas data sets.
 
-## Looking at promoter TF interaction matrix row wise (promoter wise)
-
-ReMap2020 and ChIP-Atlas were intersected with FANTOM5 promoters into 
-interaction matrices with ChIP-seq experiment as a columns and promoters as a
-row names. Overall our data included `r nrow(remap_promoters)` promoters and
-`r ncol(remap_promoters)`, `r ncol(chip_atlas_promoters)` ChIP-seq experiments
-for ReMap2020, ChIP-Atlas respectively.
-
-To look deeper into those data sets, first we have limited our analysis to 
+To look deeper into those data sets, first we have limited our analysis to
 core promoters defined as promoters associated with a protein coding gene (as
 per GENCODE 38) and supported by ENCODE ROADMAP data. Finally, we select one
 promoter per associated gene that have maximum FANTOM5 score.
-   
+
 ```{r core_promoters}
-# only protein coding genes as per GENCODE annotation
-promoters_ann_core <- 
-    promoters_ann[promoters_ann$gene_type_gencode == "protein_coding", ]
-
-# ENCODE ROADMAP confirmation
-roadmap_promoters <- rtracklayer::import.bed(
-    con = system.file(
-        "inst",
-        "extdata",
-        "Epigenome5DRoadmapDHS_promoter_hg38_liftOver.bed",
-        package = "xcore"
-    )
-)
-GenomeInfoDb::seqlevels(roadmap_promoters, pruning.mode = "coarse") <-
-    GenomeInfoDb::seqlevels(promoters_ann_core)
-promoters_ann_core <- intersectGR(promoters_ann_core, roadmap_promoters)
-
-# Select best promoter per gene
-best_promoters <- GenomicRanges::mcols(promoters_ann_core) %>%
-    as.data.frame() %>%
-    dplyr::group_by(SYMBOL) %>%
-    dplyr::slice(which.max(score)) %>%
-    dplyr::pull(name)
-promoters_ann_core <-
-    promoters_ann_core[promoters_ann_core$name %in% best_promoters, ]
+# add annotations to core promoters
+promoters_ann_core <- promoters_f5[promoters_f5$name %in% promoters_f5_core$name, ]
 
 # restrict interaction matrices to core promoters only
-remap_promoters_core <- remap_promoters[promoters_ann_core$name, ]
-chip_atlas_promoters_core <- chip_atlas_promoters[promoters_ann_core$name, ]
+remap_promoters_f5_core <- remap_promoters_f5[promoters_ann_core$name, ]
+chip_atlas_promoters_f5_core <- chip_atlas_promoters_f5[promoters_ann_core$name, ]
 ```
 
-This give us an interaction matrix with `r nrow(remap_promoters_core)` promoters
-(rows) and `r ncol(remap_promoters_core)`, `r ncol(chip_atlas_promoters_core)` 
+This give us an interaction matrix with `r nrow(remap_promoters_f5_core)` promoters
+(rows) and `r ncol(remap_promoters_f5_core)`, `r ncol(chip_atlas_promoters_f5_core)`
 ChIP-seq experiments (columns) for ReMap2020, ChIP-Atlas respectively.
+
+## Looking at promoter TF interaction matrix row wise (promoter wise)
+
+ReMap2020 and ChIP-Atlas were intersected with FANTOM5 promoters into
+interaction matrices with ChIP-seq experiment as a columns and promoters as a
+row names. Overall our data included `r nrow(remap_promoters_f5)` promoters and
+`r ncol(remap_promoters_f5)`, `r ncol(chip_atlas_promoters_f5)` ChIP-seq experiments
+for ReMap2020, ChIP-Atlas respectively.
 
 ### Promoter coverage
 
@@ -92,9 +178,9 @@ of ChIP-seq experiment the promoter intersect with.
 
 ```{r promoters_coverage}
 # remap
-promoters_ann_core$remap_coverage <- remap_promoters_core %>% Matrix::rowSums()
+promoters_ann_core$remap_coverage <- remap_promoters_f5_core %>% Matrix::rowSums()
 # chip_atlas
-promoters_ann_core$chip_atlas_coverage <- chip_atlas_promoters_core %>% Matrix::rowSums()
+promoters_ann_core$chip_atlas_coverage <- chip_atlas_promoters_f5_core %>% Matrix::rowSums()
 ```
 
 ```{r promoters_coverage_hist}
@@ -102,11 +188,11 @@ par(mfrow = c(1, 2), cex = 0.7, pty = "s")
 
 # Promoter coverage histogram
 plotHistogram(x = promoters_ann_core$remap_coverage,
-             main = "ReMap2020 promoter coverage", 
+             main = "ReMap2020 promoter coverage",
              ylim = c(0, 1000),
              xlim = c(0, 5000))
-plotHistogram(x = promoters_ann_core$chip_atlas_coverage, 
-             main = "ChIP-Atlas promoter coverage", 
+plotHistogram(x = promoters_ann_core$chip_atlas_coverage,
+             main = "ChIP-Atlas promoter coverage",
              ylim = c(0, 1000),
              xlim = c(0, 5000))
 ```
@@ -119,22 +205,23 @@ for ReMap2020, ChIP-Atlas respectively.
 
 ### Protein Atlas gene specificity classification
 
-We investigate promoters coverage by looking at their target genes 
-classification in terms of tissue/cell type specificity as defined by Protein 
+We investigate promoters coverage by looking at their target genes
+classification in terms of tissue/cell type specificity as defined by Protein
 Atlas.
 
-> The RNA specificity category is based on mRNA expression levels in a 
-combination of data from HPA, GTEX and FANTOM5. The categories include: tissue enriched, group enriched, tissue enhanced, low tissue specificity and not 
+> The RNA specificity category is based on mRNA expression levels in a
+combination of data from HPA, GTEX and FANTOM5. The categories include:
+tissue enriched, group enriched, tissue enhanced, low tissue specificity and not
 detected.
 
 >
-+ Enriched - NX level in a particular tissue/region/cell type at least four 
++ Enriched - NX level in a particular tissue/region/cell type at least four
 times any other tissue/cell type.
-+ Group enriched - NX levels of a group (2-5 tissues or 2-10 cell types) at 
++ Group enriched - NX levels of a group (2-5 tissues or 2-10 cell types) at
 least four times any other tissue/cell type.
-+ Enhanced - NX levels of a group (1-5 tissues or 1-10 cell types) at least four 
++ Enhanced - NX levels of a group (1-5 tissues or 1-10 cell types) at least four
 times the mean of other tissue/cell types.
-+ Low specificity - NX >= 1 in at least one tissue/cell type but not elevated in 
++ Low specificity - NX >= 1 in at least one tissue/cell type but not elevated in
 any tissue/cell type.
 + Not detected - NX < 1 in all tissue/cell types.
 
@@ -146,7 +233,7 @@ par(mfrow = c(1, 2), cex = 0.7, pty = "s")
 ymax <-
   max(promoters_ann_core$remap_coverage,
       promoters_ann_core$chip_atlas_coverage)
-graphics::boxplot(remap_coverage ~ protein_atlas_cell_specificity, 
+graphics::boxplot(remap_coverage ~ protein_atlas_cell_specificity,
                   data = promoters_ann_core,
                   ylim = c(0, ymax),
                   main = "ReMap2020",
@@ -154,7 +241,7 @@ graphics::boxplot(remap_coverage ~ protein_atlas_cell_specificity,
                   xlab = "",
                   las=2,
                   cex.names = 0.4)
-graphics::boxplot(chip_atlas_coverage ~ protein_atlas_cell_specificity, 
+graphics::boxplot(chip_atlas_coverage ~ protein_atlas_cell_specificity,
                   data = promoters_ann_core,
                   ylim = c(0, ymax),
                   main = "ChIP-Atlas",
@@ -174,11 +261,11 @@ mtext(
 
 ### Promoter tissue specificity
 
-To generalize the idea of promoter tissue/cell type specificity to promoters 
-outside Protein Atlas annotation we define specificity score based on the 
+To generalize the idea of promoter tissue/cell type specificity to promoters
+outside Protein Atlas annotation we define specificity score based on the
 FANTOM5 CAGE data.
 
-The  can be defined in multiple ways. Here we calculate expression based 
+The  can be defined in multiple ways. Here we calculate expression based
 specificity score using $\tau$ metric defined as
 
 $\tau = \frac{\sum_{i=1}^{n} (1-\hat{x_i})}{n-1}; \hat{x_i} = \frac{x_i}{max(x)}$
@@ -188,7 +275,7 @@ Tau varies from 0 to 1, where 0 means broadly expressed, and 1 is specific.
 [reference](https://academic.oup.com/bib/article/18/2/205/2562739#119555186).
 
 ```{r promoter_f5_specificity_boxplot}
-graphics::boxplot(tau ~ protein_atlas_tissue_specificity, 
+graphics::boxplot(tau ~ protein_atlas_tissue_specificity,
                   data = promoters_ann_core,
                   main = "Tau vs Protein Atlass classififcation",
                   ylab = expression(tau),
@@ -246,13 +333,13 @@ mtext(
 
 ### ENCODE blacklist
 
-We investigate promoters coverage by overlapping the promoters with ENCODE's 
+We investigate promoters coverage by overlapping the promoters with ENCODE's
 list of blacklisted regions.
 
->  ENCODE blacklist is a comprehensive set of regions in the human and other 
-genomes that have anomalous, unstructured, or high signal in next-generation 
-sequencing experiments independent of cell line or experiment. The removal of 
-the ENCODE blacklist is an essential quality measure when analyzing functional 
+>  ENCODE blacklist is a comprehensive set of regions in the human and other
+genomes that have anomalous, unstructured, or high signal in next-generation
+sequencing experiments independent of cell line or experiment. The removal of
+the ENCODE blacklist is an essential quality measure when analyzing functional
 genomics data.
 [ENCODE blacklist](https://github.com/Boyle-Lab/Blacklist)
 
@@ -370,76 +457,76 @@ mtext(
 ```{r}
 # ReMap2020
 table((remap_meta$tf %in% chip_atlas_meta$tf)) %>%
-  `/`(length(remap_meta$tf)) %>% 
-  data.frame() %>% 
-  dplyr::rename(TF = Var1) %>% 
+  `/`(length(remap_meta$tf)) %>%
+  data.frame() %>%
+  dplyr::rename(TF = Var1) %>%
   dplyr::mutate(TF = c("not included in ChIP-Atlas", "included in ChIP-Atlas")) %>%
   knitr::kable(caption = "ReMap2020 TF")
 
 table(unique(remap_meta$tf) %in% unique(chip_atlas_meta$tf)) %>%
-  `/`(length(unique(remap_meta$tf))) %>% 
-  data.frame() %>% 
-  dplyr::rename(TF = Var1) %>% 
+  `/`(length(unique(remap_meta$tf))) %>%
+  data.frame() %>%
+  dplyr::rename(TF = Var1) %>%
   dplyr::mutate(TF = c("not included in ChIP-Atlas", "included in ChIP-Atlas")) %>%
   knitr::kable(caption = "ReMap2020 unique TF")
 
 remap_meta$tf[! remap_meta$tf %in% chip_atlas_meta$tf] %>%
   table() %>%
   as.numeric() %>%
-  plotHistogram(breaks = "Sturges", 
+  plotHistogram(breaks = "Sturges",
                main = "ReMap2020 TF not included in ChIP-Atlas")
 
 # ChIP-Atlas
 table((chip_atlas_meta$tf %in% remap_meta$tf)) %>%
-  `/`(length(chip_atlas_meta$tf)) %>% 
-  data.frame() %>% 
-  dplyr::rename(TF = Var1) %>% 
+  `/`(length(chip_atlas_meta$tf)) %>%
+  data.frame() %>%
+  dplyr::rename(TF = Var1) %>%
   dplyr::mutate(TF = c("not included in ReMap2020", "included in ReMap2020")) %>%
   knitr::kable(caption = "ChIP-Atlas TF")
 
 table(unique(chip_atlas_meta$tf) %in% unique(remap_meta$tf)) %>%
-  `/`(length(unique(chip_atlas_meta$tf))) %>% 
-  data.frame() %>% 
-  dplyr::rename(TF = Var1) %>% 
+  `/`(length(unique(chip_atlas_meta$tf))) %>%
+  data.frame() %>%
+  dplyr::rename(TF = Var1) %>%
   dplyr::mutate(TF = c("not included in ChIP-Atlas", "included in ChIP-Atlas")) %>%
   knitr::kable(caption = "ChIP-Atlas unique TF")
 
 chip_atlas_meta$tf[! chip_atlas_meta$tf %in% remap_meta$tf] %>%
   table() %>%
   as.numeric() %>%
-  plotHistogram(breaks = "Sturges", 
+  plotHistogram(breaks = "Sturges",
                main = "ChIP-Atlas TF not included in ChIP-Atlas")
 ```
 
 ```{r}
-remap_meta[, coverage := Matrix::colSums(remap_promoters_core[, id])]
-chip_atlas_meta[, coverage := Matrix::colSums(chip_atlas_promoters_core[, id])]
+remap_meta[, coverage := Matrix::colSums(remap_promoters_f5_core[, id])]
+chip_atlas_meta[, coverage := Matrix::colSums(chip_atlas_promoters_f5_core[, id])]
 ```
 
-For the basic analysis we have focused only on subset of ReMap2020 and 
-ChIP-Atlas. Choosing only experiments that overlap more than 1% of 
-core promoters. Additionally for ReMap2020 we took only experiments without 
+For the basic analysis we have focused only on subset of ReMap2020 and
+ChIP-Atlas. Choosing only experiments that overlap more than 1% of
+core promoters. Additionally for ReMap2020 we took only experiments without
 condition or treatment label.
 
-Further we focused only on TF with >= 10 experiments and for ReMap2020 biotypes 
+Further we focused only on TF with >= 10 experiments and for ReMap2020 biotypes
 with >= 29 experiments, excluding the "breast" and "liver" biotypes, and for
-ChIP-Atlas biotypes with >= 50 experiments, excluding the "Breast.cancer.cells", 
+ChIP-Atlas biotypes with >= 50 experiments, excluding the "Breast.cancer.cells",
 "Breast.cancer", "Prostate", "Lymphoblastoid.cell.line", "Macrophages".
 
 ```{r}
 # ReMap2020
-remap_meta_core <- remap_meta[(coverage >= (nrow(remap_promoters_core) * 0.01)) &
+remap_meta_core <- remap_meta[(coverage >= (nrow(remap_promoters_f5_core) * 0.01)) &
                                 (condition == "")]
 
-sel_tf <- remap_meta_core$tf %>% 
-  table() %>% 
-  `[`(. >= 10) %>% 
+sel_tf <- remap_meta_core$tf %>%
+  table() %>%
+  `[`(. >= 10) %>%
   names()
 remap_meta_core <- remap_meta_core[tf %in% sel_tf]
 
-sel_biotypes <- remap_meta_core$biotype %>% 
-  table() %>% 
-  `[`(. >= 29) %>% 
+sel_biotypes <- remap_meta_core$biotype %>%
+  table() %>%
+  `[`(. >= 29) %>%
   names() %>%
   `[`(! . %in% c("breast", "liver"))
 remap_meta_core <- remap_meta_core[biotype %in% sel_biotypes]
@@ -452,18 +539,18 @@ remap_meta_core[, cov_type := cut(
 )]
 
 # ChIP-Atlas
-chip_atlas_meta_core <- 
-  chip_atlas_meta[coverage >= (nrow(remap_promoters_core) * 0.01)]
+chip_atlas_meta_core <-
+  chip_atlas_meta[coverage >= (nrow(remap_promoters_f5_core) * 0.01)]
 
-sel_tf <- chip_atlas_meta_core$tf %>% 
-  table() %>% 
-  `[`(. >= 10) %>% 
+sel_tf <- chip_atlas_meta_core$tf %>%
+  table() %>%
+  `[`(. >= 10) %>%
   names()
 chip_atlas_meta_core <- chip_atlas_meta_core[tf %in% sel_tf]
 
-sel_biotypes <- chip_atlas_meta_core$biotype %>% 
-  table() %>% 
-  `[`(. >= 50) %>% 
+sel_biotypes <- chip_atlas_meta_core$biotype %>%
+  table() %>%
+  `[`(. >= 50) %>%
   names() %>%
   `[`(! . %in% c("Breast.cancer.cells", "Breast.cancer", "Prostate", "Lymphoblastoid.cell.line", "Macrophages"))
 chip_atlas_meta_core <- chip_atlas_meta_core[biotype %in% sel_biotypes]
@@ -478,9 +565,9 @@ chip_atlas_meta_core[, cov_type := cut(
 
 ```{r}
 par(mfrow = c(1, 2), cex = 0.7, pty = "s")
-plotHistogram(remap_meta_core$coverage, 
+plotHistogram(remap_meta_core$coverage,
               main = "ReMap2020")
-plotHistogram(chip_atlas_meta_core$coverage, 
+plotHistogram(chip_atlas_meta_core$coverage,
               main = "ChIP-Atlas")
 mtext(
   "Selected experiment's coverage",
@@ -522,8 +609,8 @@ knitr::kable(chip_atlas_tfs_tab[, 1:11], caption = "ChIP-Atlas TF/biotype matrix
 
 ## Choosing distance measure
 In order to select a distance measure that would best describe associations
-between experiments, we have looked into several distance measures: Phi 
-(which we approximate with Pearson's), Gower, Jaccard, Dice, Yule, Russel, 
+between experiments, we have looked into several distance measures: Phi
+(which we approximate with Pearson's), Gower, Jaccard, Dice, Yule, Russel,
 Tanimoto. In order to select one we wanted to maximize the difference between
 mean distance between the same TF and different TF.
 
@@ -532,11 +619,11 @@ The selection was done using core ReMap2020.
 Outliers were not marked on plots.
 
 ```{r select_distance_measure}
-mat <- remap_promoters_core[, remap_meta_core[, id]] %>% as.matrix()
+mat <- remap_promoters_f5_core[, remap_meta_core[, id]] %>% as.matrix()
 
 getDists <- function(mat, patterns, invert=FALSE) {
   sapply(
-    X = patterns, 
+    X = patterns,
     function(x) {
       m_row <- grep(x, rownames(mat), value = TRUE)
       m_col <- grep(x, colnames(mat), value = TRUE, invert = invert)
@@ -549,9 +636,9 @@ compDists <- function(D, Dnames, patterns) {
   Ds <- lapply(
     X = seq_along(D),
     FUN = function(i) {
-      same_tf <- data.frame(metric = Dnames[i], 
+      same_tf <- data.frame(metric = Dnames[i],
                             val = unlist(getDists(D[[i]], patterns)),
-                            type = "same")                
+                            type = "same")
       diff_tf <- data.frame(metric = Dnames[i],
                             val = unlist(getDists(D[[i]], patterns, invert=TRUE)),
                             type = "diff.")
@@ -564,47 +651,34 @@ compDists <- function(D, Dnames, patterns) {
 d_pearson <- sqrt(1 - cor(mat, method = "pearson"))
 # d_binary <- dist(t(mat), method = "binary") %>% as.matrix() equivalent to jaccard
 d_gower <- cluster::daisy(t(mat), metric = "gower", warnType = FALSE) %>% as.matrix()
-d_jaccard <- proxy::dist(x = mat, 
-                         method = "Jaccard", 
-                         by_rows = FALSE, 
+d_jaccard <- proxy::dist(x = mat,
+                         method = "Jaccard",
+                         by_rows = FALSE,
                          convert_similarities = TRUE) %>% proxy::as.matrix(diag = 0)
 
-d_dice <- proxy::dist(x = mat, 
-                         method = "Dice", 
-                         by_rows = FALSE, 
+d_dice <- proxy::dist(x = mat,
+                         method = "Dice",
+                         by_rows = FALSE,
                          convert_similarities = TRUE) %>% proxy::as.matrix(diag = 0)
 
-# here it gives distance but it actuall varies from -1 to + 1 so I could plot it on heatmap
-yule <- proxy::dist(x = mat, 
-                    method = "Yule", 
-                    by_rows = FALSE, 
-                    convert_similarities = FALSE) %>% proxy::as.matrix(diag = 1)
-d_yule <- sqrt(1 - yule)
-
-yule2 <- proxy::dist(x = mat, 
-                     method = "Yule2", 
-                     by_rows = FALSE, 
-                     convert_similarities = FALSE) %>% proxy::as.matrix(diag = 1)
-d_yule2 <- sqrt(1- yule2)
-
-d_russel <- proxy::dist(x = mat, 
-                         method = "Russel", 
-                         by_rows = FALSE, 
+d_russel <- proxy::dist(x = mat,
+                         method = "Russel",
+                         by_rows = FALSE,
                          convert_similarities = TRUE) %>% proxy::as.matrix(diag = 0)
 
-d_tanimoto <- proxy::dist(x = mat, 
-                         method = "Tanimoto", 
-                         by_rows = FALSE, 
+d_tanimoto <- proxy::dist(x = mat,
+                         method = "Tanimoto",
+                         by_rows = FALSE,
                          convert_similarities = TRUE) %>% proxy::as.matrix(diag = 0)
 
 d_comparison <- compDists(
-  list(d_pearson, d_gower, d_jaccard, d_dice, d_yule, d_yule2, d_russel, d_tanimoto), 
-  c("Phi", "Gower", "Jaccard", "Dice", "Yule", "Yule2", "Russel", "Tanimoto"), 
+  list(d_pearson, d_gower, d_jaccard, d_dice, d_yule, d_yule2, d_russel, d_tanimoto),
+  c("Phi", "Gower", "Jaccard", "Dice", "Yule", "Yule2", "Russel", "Tanimoto"),
   remap_meta_core[, unique(tf)])
 par(mar = c(10, 4, 4, 1))
-boxplot(val ~ type + metric, 
+boxplot(val ~ type + metric,
         data = d_comparison,
-        sep = " ", 
+        sep = " ",
         las=2,
         ylim = c(0, sqrt(2)),
         outline = FALSE,
@@ -617,119 +691,60 @@ d_comparison %>%
   dplyr::summarise(mean = mean(val)) %>%
   dplyr::group_by(metric) %>%
   dplyr::summarise(dAve = abs(mean[1] - mean[2])) %>%
-  knitr::kable(col.names = c("Distance metric", "$\\Delta Average$"), 
+  knitr::kable(col.names = c("Distance metric", "$\\Delta Average$"),
                caption = "Difference between mean distance between same and different TF groups",
                escape = FALSE)
 ```
 
-Explore Yule's coefficient of colligation
+## Experiments heatmaps
 
 ```{r}
-par(mfrow = c(1, 3), cex = 0.7, pty = "s")
+breaks <- seq(from = -1, to = 1, by = 0.1)
+color <-
+  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
+    n = 7,
+    name = "RdBu"))
+  )(length(breaks))
 
-# tf
-same_tf_cor <- getDists(d_yule, remap_meta_core[, unique(tf)]) %>% 
-  unlist()
-diff_tf_cor <- getDists(d_yule, remap_meta_core[, unique(tf)], invert = TRUE) %>% 
-  unlist()
-boxplot(
-  same_tf_cor, 
-  diff_tf_cor, 
-  names = c(sprintf("same (%i)", length(same_tf_cor)),
-            sprintf("different (%i)", length(diff_tf_cor))),
-  ylim = c(0, 1),
-  outline = FALSE,
-  main = "Grouped by TF",
-  ylab = "Yule's distance")
+getPearsonMat <- function(sel_tf) {
+  m <- remap_meta_core[tf == sel_tf, id]
+  mat <- remap_promoters_f5_core[, remap_meta_core[, id]] %>% as.matrix()
+  mat <- mat[, m]
+  cor(mat, method = "pearson")
+}
 
-# biotype
-same_bio_cor <- getDists(d_yule, remap_meta_core[, unique(biotype)]) %>%
-  unlist()
-diff_bio_cor <- getDists(d_yule, remap_meta_core[, unique(biotype)], invert = TRUE) %>%
-  unlist()
-boxplot(
-  same_bio_cor, diff_bio_cor, 
-  names = c(sprintf("same (%i)", length(same_bio_cor)),
-            sprintf("different (%i)", length(diff_bio_cor))),
-  ylim = c(0, 1),
-  outline = FALSE,
-  main = "Grouped by biotype",
-  ylab = "Yule's distance")
-
-# study
-# TODO make it work on metadata
-rownames(d_yule) <- paste0(rownames(d_yule), "=", remap_meta_core[, study])
-colnames(d_yule) <- paste0(colnames(d_yule), "=", remap_meta_core[, study]) 
-same_study_cor <- getDists(d_yule, remap_meta_core[, unique(study)]) %>%
-  unlist()
-diff_sutdy_cor <- getDists(d_yule, remap_meta_core[, unique(study)], invert = TRUE) %>%
-  unlist()
-rownames(d_yule) <- sub("=.*", "", rownames(d_yule))
-colnames(d_yule) <- sub("=.*", "", colnames(d_yule))
-
-boxplot(
-  same_study_cor, diff_sutdy_cor, 
-  names = c(sprintf("same (%i)", length(same_study_cor)),
-            sprintf("different (%i)", length(diff_sutdy_cor))),
-  ylim = c(0, 1),
-  outline = FALSE,
-  main = "Grouped by study",
-  ylab = "Yule's distance")
-
-mtext(
-  "Yule's distance between experiments",
-  side = 3,
-  outer = TRUE,
-  line = -2,
-  font = 2,
-  cex = 1.2)
+pearsonDist <- function(mat) {
+  sqrt(1 - cor(mat, method = "pearson")) %>% as.dist()
+}
 ```
 
 ### MYC
 
 ```{r}
-breaks <- seq(from = -1, to = 1, by = 0.1)
-color <-
-  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
-    n = 7, 
-    name = "RdYlBu"))
-  )(length(breaks))
-  
-m <- remap_meta_core[tf == "MYC", id]
-mat <- d_yule[m, m]
+mat <- getPearsonMat("MYC")
+d <- pearsonDist(mat)
 plotExperimentsHeatmap(
-  mat = 1 - (2 * mat),
+  mat = mat,
   meta = remap_meta_core[tf == "MYC", -c("tf", "condition", "tf_dbd")],
-  clustering_distance_rows = as.dist(mat),
-  clustering_distance_cols = as.dist(mat),
+  clustering_distance_rows = d,
+  clustering_distance_cols = d,
   clustering_method = "ward.D2",
   breaks = breaks,
   color = color,
   labels_row = remap_meta_core[tf == "MYC", biotype],
   labels_col = remap_meta_core[tf == "MYC", biotype],
-  main = "MYC experiments Yule's Y coefficient")
+  main = "ReMap2020: MYC experiments Pearson's r")
 ```
 #### FOXA1 pearson
 
 ```{r}
-m <- remap_meta_core[tf == "FOXA1", id]
-mat <- remap_promoters_core[, remap_meta_core[, id]] %>% as.matrix()
-mat <- mat[, m]
-pearson <- cor(mat, method = "pearson")
-d_pearson <- sqrt(1 - cor(mat, method = "pearson")) %>% as.dist()
-
-breaks <- seq(from = -1, to = 1, by = 0.1)
-color <-
-  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
-    n = 7, 
-    name = "RdBu"))
-  )(length(breaks))
-  
+mat <- getPearsonMat("FOXA1")
+d <- pearsonDist(mat)
 plotExperimentsHeatmap(
-  mat = pearson,
+  mat = mat,
   meta = remap_meta_core[tf == "FOXA1", -c("tf", "condition", "tf_dbd", "cov_type")],
-  clustering_distance_rows = d_pearson,
-  clustering_distance_cols = d_pearson,
+  clustering_distance_rows = d,
+  clustering_distance_cols = d,
   clustering_method = "ward.D2",
   breaks = breaks,
   color = color,
@@ -741,154 +756,70 @@ plotExperimentsHeatmap(
 ### MAX
 
 ```{r}
-breaks <- seq(from = -1, to = 1, by = 0.1)
-color <-
-  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
-    n = 7, 
-    name = "RdYlBu"))
-  )(length(breaks))
-
-m <- remap_meta_core[tf == "MAX", id]
-mat <- d_yule[m, m]
+mat <- getPearsonMat("MAX")
+d <- pearsonDist(mat)
 plotExperimentsHeatmap(
-  mat =  1 - (2 * mat),
+  mat = mat,
   meta = remap_meta_core[tf == "MAX", -c("tf", "condition", "tf_dbd")],
-  clustering_distance_rows = as.dist(mat),
-  clustering_distance_cols = as.dist(mat),
+  clustering_distance_rows = d,
+  clustering_distance_cols = d,
   clustering_method = "ward.D2",
   breaks = breaks,
   color = color,
   labels_row = remap_meta_core[tf == "MAX", biotype],
   labels_col = remap_meta_core[tf == "MAX", biotype],
-  main = "MAX experiments Yule's Y coefficient")
+  main = "ReMap2020: MAX experiments Pearson's r")
 ```
 
 ### HDAC2
 
 ```{r}
-breaks <- seq(from = -1, to = 1, by = 0.1)
-color <-
-  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
-    n = 7, 
-    name = "RdYlBu"))
-  )(length(breaks))
-
-m <- remap_meta_core[tf == "HDAC2", id]
-mat <- d_yule[m, m]
+mat <- getPearsonMat("HDAC2")
+d <- pearsonDist(mat)
 plotExperimentsHeatmap(
-  mat = 1 - (2 * mat),
+  mat = mat,
   meta = remap_meta_core[tf == "HDAC2", -c("tf", "condition", "tf_dbd")],
-  clustering_distance_rows = as.dist(mat),
-  clustering_distance_cols = as.dist(mat),
+  clustering_distance_rows = d,
+  clustering_distance_cols = d,
   clustering_method = "ward.D2",
   breaks = breaks,
   color = color,
   labels_row = remap_meta_core[tf == "HDAC2", biotype],
   labels_col = remap_meta_core[tf == "HDAC2", biotype],
-  main = "HDAC2 experiments Yule's Y coefficient")
-```
-
-### FOXA1
-
-```{r}
-breaks <- seq(from = -1, to = 1, by = 0.1)
-color <-
-  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
-    n = 7, 
-    name = "RdYlBu"))
-  )(length(breaks))
-
-m <- remap_meta_core[tf == "FOXA1", id]
-mat <- d_yule[m, m]
-plotExperimentsHeatmap(
-  mat = 1 - (2 * mat),
-  meta = remap_meta_core[tf == "FOXA1", -c("tf", "condition", "tf_dbd")],
-  clustering_distance_rows = as.dist(mat),
-  clustering_distance_cols = as.dist(mat),
-  clustering_method = "ward.D2",
-  breaks = breaks,
-  color = color,
-  labels_row = remap_meta_core[tf == "FOXA1", biotype],
-  labels_col = remap_meta_core[tf == "FOXA1", biotype],
-  main = "FOXA1 experiments Yule's Y association")
+  main = "ReMap2020: HDAC2 experiments Pearson's r")
 ```
 
 ### REST
 
 ```{r}
-breaks <- seq(from = -1, to = 1, by = 0.1)
-color <-
-  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
-    n = 7, 
-    name = "RdYlBu"))
-  )(length(breaks))
-
-m <- remap_meta_core[tf == "REST", id]
-mat <- d_yule[m, m]
+mat <- getPearsonMat("REST")
+d <- pearsonDist(mat)
 plotExperimentsHeatmap(
-  mat = 1 - (2 * mat),
+  mat = mat,
   meta = remap_meta_core[tf == "REST", -c("tf", "condition", "tf_dbd")],
-  clustering_distance_rows = as.dist(mat),
-  clustering_distance_cols = as.dist(mat),
+  clustering_distance_rows = d,
+  clustering_distance_cols = d,
   clustering_method = "ward.D2",
   breaks = breaks,
   color = color,
   labels_row = remap_meta_core[tf == "REST", biotype],
   labels_col = remap_meta_core[tf == "REST", biotype],
-  main = "REST experiments Yule's Y association")
-```
-
-### Core experiments heatmap
-
-```{r include=FALSE, eval=FALSE}
-breaks <- seq(from = -1, to = 1, by = 0.1)
-color <-
-  grDevices::colorRampPalette(rev(RColorBrewer::brewer.pal(
-    n = 7, 
-    name = "RdYlBu"))
-  )(length(breaks))
-
-plotExperimentsHeatmap(
-  mat = 1 - (2 * d_yule),
-  meta = remap_meta_core[, -c("study", "condition")],
-  clustering_distance_rows = as.dist(d_yule),
-  clustering_distance_cols = as.dist(d_yule),
-  clustering_method = "ward.D2",
-  breaks = breaks,
-  color = color,
-  labels_row = remap_meta_core[, paste(tf, biotype)],
-  labels_col = remap_meta_core[, paste(tf, biotype)],
-  main = "Core experiments Yule's Y association")
-```
-
-## Yule's distance bulk calculation
-
-```{r eval=FALSE}
-# exclude experiments with coverage below 1% of core promoters
-
-j <- Matrix::colSums(remap_promoters_core) >= (length(promoters_ann_core) * 0.01)
-d_yule_remap <- proxy::dist(x = as.matrix(remap_promoters_core[, j]), 
-                         method = "Yule", 
-                         by_rows = FALSE, 
-                         convert_similarities = TRUE)
-save(d_yule_remap, file = "d_yule_remap.rda")
-
-j <- Matrix::colSums(chip_atlas_promoters_core) >= (length(promoters_ann_core) * 0.01)
-d_yule_chip_atlas <- proxy::dist(x = as.matrix(chip_atlas_promoters_core[, j]), 
-                         method = "Yule", 
-                         by_rows = FALSE, 
-                         convert_similarities = TRUE)
-save(d_yule_chip_atlas, file = "d_yule_chip_atlas.rda")
-```
-
-# TODO redo the clustering on all promoters?
-
-```{r}
-load(system.file("inst", "analysis", "into_signatures", "d_yule_remap.rda", package = "xcore"))
-load(system.file("inst", "analysis", "into_signatures", "d_yule_chip_atlas.rda", package = "xcore"))
+  main = "ReMap2020: REST experiments Pearson's r")
 ```
 
 ## Clustering experiments
+
+```{r}
+i_0 <- apply(remap_promoters_f5_core, 2, function(x) var(x) == 0)
+remap_dist <- remap_promoters_f5_core[, ! i_0] %>%
+  as.matrix() %>%
+  cor(method = "pearson")
+
+i_0 <- apply(chip_atlas_promoters_f5_core, 2, function(x) var(x) == 0)
+chip_atlas_dist <- chip_atlas_promoters_f5_core[, ! i_0] %>%
+  as.matrix() %>%
+  cor(method = "pearson")
+```
 
 ### Hierarchical Clustering
 
@@ -905,8 +836,8 @@ measureClust <- function(c1, hc, N) {
   do.call(rbind, nclust_measure)
 }
 
-plotMeasureClust <- function(n_cl, 
-                             cl_measure, 
+plotMeasureClust <- function(n_cl,
+                             cl_measure,
                              measure,
                              ylim,
                              pos = "topright",
@@ -939,15 +870,16 @@ plotMeasureClust <- function(n_cl,
 
 ```{r}
 nclust <- seq(from = 1, to = 400, by = 5)
-linkage_methods <- c("complete", "single", "ward.D", "ward.D2", "average", 
+linkage_methods <- c("complete", "single", "ward.D", "ward.D2", "average",
                      "mcquitty", "median", "centroid")
 
 # ReMap2020
-id_core <- remap_meta_core[, id]
-d_core <- as.dist(as.matrix(d_yule_remap)[id_core, id_core])
-true_cl <- remap_meta_core[, tf]
+id_core <- rownames(remap_dist)
+d_core <- as.dist(sqrt(1 - remap_dist))
+data.table::setkey(remap_meta_core, tf)
+true_cl <- remap_meta_core[id_core, tf]
 clust_measures <- lapply(
-  X = linkage_methods, 
+  X = linkage_methods,
   FUN = function(m) {
     hc <- hclust(d_core, method = m)
     measureClust(true_cl, hc, nclust)
@@ -982,11 +914,12 @@ mtext(
 )
 
 # ChIP-Atlas
-id_core <- chip_atlas_meta_core[, id]
-d_core <- as.dist(as.matrix(d_yule_chip_atlas)[id_core, id_core])
-true_cl <- chip_atlas_meta_core[, tf]
+id_core <- rownames(chip_atlas_dist)
+d_core <- as.dist(sqrt(1 - chip_atlas_dist))
+data.table::setkey(chip_atlas_meta_core, tf)
+true_cl <- chip_atlas_meta_core[id_core, tf]
 clust_measures <- lapply(
-  X = linkage_methods, 
+  X = linkage_methods,
   FUN = function(m) {
     hc <- hclust(d_core, method = m)
     measureClust(true_cl, hc, nclust)
@@ -1029,7 +962,7 @@ labels <- c("tf", "biotype", "study")
 id_core <- remap_meta_core[, id]
 d_core <- as.dist(as.matrix(d_yule_remap)[id_core, id_core])
 labs_measure <- lapply(
-  X = labels, 
+  X = labels,
   FUN = function(l) {
     hc <- hclust(d_core, method = "ward.D2")
     measureClust(remap_meta_core[[l]], hc, nclust)
@@ -1066,7 +999,7 @@ mtext(
 id_core <- chip_atlas_meta_core[, id]
 d_core <- as.dist(as.matrix(d_yule_chip_atlas)[id_core, id_core])
 labs_measure <- lapply(
-  X = labels, 
+  X = labels,
   FUN = function(l) {
     hc <- hclust(d_core, method = "ward.D2")
     measureClust(chip_atlas_meta_core[[l]], hc, nclust)
@@ -1110,12 +1043,12 @@ id_core <- remap_meta_core[, id]
 d_core <- as.dist(as.matrix(d_yule_remap)[id_core, id_core])
 
 cl_pam <- lapply(
-  X = nclust, 
+  X = nclust,
   FUN = function(i) {
     cluster::pam(d_core, k = i, cluster.only = TRUE)
   })
 cl_measure <- lapply(
-  X = labels, 
+  X = labels,
   FUN = function(l) {
     cbind(
       ARI = sapply(cl_pam, aricode::ARI, c1 = remap_meta_core[[l]]),
@@ -1151,635 +1084,294 @@ mtext(
 )
 ```
 
-## Experiment collapsing
-
-```{r eval=TRUE}
-# ReMap2020
-ids_remap <- labels(d_yule_remap)
-meta_remap <- remap_meta[id %in% ids_remap, ]
-hc_remap <- hclust(d_yule_remap, method = "ward.D2")
- 
-# dynamic cut parameters selection
-#### minCluster size = 3
-res <- selectParams4dynamicTreeCut(
-  dendro = hc_remap, 
-  distM = as.matrix(d_yule_remap), 
-  ref_cl = meta_remap[["tf"]])
-res[res[, (AMI * ARI) == max(AMI * ARI)]]
-#    deepSplit cutHeight       ARI      AMI   N
-# 1:         1       2.5 0.4389195 0.730026 374
-
-cl_remap <- dynamicTreeCut::cutreeDynamic(
-  dendro = hc_remap,
-  cutHeight = 2.5,
-  minClusterSize = 3,
-  method = "hybrid",
-  distM = as.matrix(d_yule_remap),
-  deepSplit = 1,
-  pamStage = TRUE)
-
-remap_promoters_core_collapsed_3 <- 
-  collapseInteractionMatrix(mat = remap_promoters_core[, ids_remap], 
-                            meta = meta_remap, 
-                            cl = cl_remap, 
-                            alpha = 0.5, # 0.5 corresponds to majority vote
-                            purity_feature = "tf", 
-                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(remap_promoters_core_collapsed_3, file = "remap_promoters_core_collapsed_3.rda")
-
-remap_promoters_collapsed_3 <- 
-  collapseInteractionMatrix(mat = remap_promoters[, ids_remap], 
-                            meta = meta_remap, 
-                            cl = cl_remap, 
-                            alpha = 0.5, # 0.5 corresponds to majority vote
-                            purity_feature = "tf", 
-                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(remap_promoters_collapsed_3, file = "remap_promoters_collapsed_3.rda")
-
-meta_remap[, cluster := cl_remap]
-data.table::fwrite(meta_remap, file = "remap_metadata_clusters_3.csv")
-####
-
-#### minCluster size = 1
-res <- selectParams4dynamicTreeCut(
-  dendro = hc_remap, 
-  distM = as.matrix(d_yule_remap), 
-  ref_cl = meta_remap[["tf"]],
-  minClusterSize = 1)
-res[res[, (AMI * ARI) == max(AMI * ARI)]]
-#    deepSplit cutHeight       ARI       AMI   N
-# 1:         1       2.5 0.4428525 0.7467066 463
-
-cl_remap <- dynamicTreeCut::cutreeDynamic(
-  dendro = hc_remap,
-  cutHeight = 2.5,
-  minClusterSize = 1,
-  method = "hybrid",
-  distM = as.matrix(d_yule_remap),
-  deepSplit = 1,
-  pamStage = TRUE)
-
-remap_promoters_core_collapsed_1 <- 
-  collapseInteractionMatrix(mat = remap_promoters_core[, ids_remap], 
-                            meta = meta_remap, 
-                            cl = cl_remap, 
-                            alpha = 0.5, # 0.5 corresponds to majority vote
-                            purity_feature = "tf", 
-                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(remap_promoters_core_collapsed_1, file = "remap_promoters_core_collapsed_1.rda")
-
-remap_promoters_collapsed_1 <- 
-  collapseInteractionMatrix(mat = remap_promoters[, ids_remap], 
-                            meta = meta_remap, 
-                            cl = cl_remap, 
-                            alpha = 0.5, # 0.5 corresponds to majority vote
-                            purity_feature = "tf", 
-                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(remap_promoters_collapsed_1, file = "remap_promoters_collapsed_1.rda")
-
-meta_remap[, cluster := cl_remap]
-data.table::fwrite(meta_remap, file = "remap_metadata_clusters_1.csv")
-####
-
-#### minCluster 0.5
-cl_remap <- dynamicTreeCut::cutreeDynamic(
-  dendro = hc_remap,
-  cutHeight = 0.5,
-  minClusterSize = 1,
-  method = "hybrid",
-  distM = as.matrix(d_yule_remap),
-  deepSplit = 1,
-  pamStage = TRUE)
-
-remap_promoters_core_collapsed_0.5_a0.5 <- 
-  collapseInteractionMatrix(mat = remap_promoters_core[, ids_remap], 
-                            meta = meta_remap, 
-                            cl = cl_remap, 
-                            alpha = 0.5, # 0.5 corresponds to majority vote
-                            purity_feature = "tf", 
-                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(remap_promoters_core_collapsed_0.5_a0.5, file = "remap_promoters_core_collapsed_0.5_a0.5.rda")
-
-remap_promoters_core_collapsed_0.5_a0.5 <- 
-  collapseInteractionMatrix(mat = remap_promoters[, ids_remap], 
-                            meta = meta_remap, 
-                            cl = cl_remap, 
-                            alpha = 0.5, # 0.5 corresponds to majority vote
-                            purity_feature = "tf", 
-                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(remap_promoters_core_collapsed_0.5_a0.5, file = "remap_promoters_core_collapsed_0.5_a0.5.rda")
-
-meta_remap[, cluster := cl_remap]
-data.table::fwrite(meta_remap, file = "remap_metadata_clusters_0.5_a0.5.csv")
-####
-
-# ChIP-Atlas
-ids_chip_atlas <- labels(d_yule_chip_atlas)
-meta_chip_atlas <- chip_atlas_meta[id %in% ids_chip_atlas, ]
-hc_chip_atlas <- hclust(d_yule_chip_atlas, method = "ward.D2")
- 
-# dynamic cut parameters selection
-#### minCluster size = 3
-res <- selectParams4dynamicTreeCut(
-  dendro = hc_chip_atlas, 
-  distM = as.matrix(d_yule_chip_atlas), 
-  ref_cl = meta_chip_atlas[["tf"]])
-res[res[, (AMI * ARI) == max(AMI * ARI)]]
-#    deepSplit cutHeight       ARI       AMI   N
-# 1:         2       5.7 0.5661968 0.7048017 377
-
-cl_chip_atlas <- dynamicTreeCut::cutreeDynamic(
-  dendro = hc_chip_atlas,
-  cutHeight = 5.7,
-  minClusterSize = 3,
-  method = "hybrid",
-  distM = as.matrix(d_yule_chip_atlas),
-  deepSplit = 2,
-  pamStage = TRUE)
-
-chip_atlas_promoters_core_collapsed_3 <- 
-  collapseInteractionMatrix(mat = chip_atlas_promoters_core[, ids_chip_atlas], 
-                            meta = meta_chip_atlas, 
-                            cl = cl_chip_atlas, 
-                            alpha = 0.5, # 0.5 corresponds to majority vote
-                            purity_feature = "tf", 
-                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(chip_atlas_promoters_core_collapsed_3, file = "chip_atlas_promoters_core_collapsed_3.rda")
-
-chip_atlas_promoters_collapsed_3 <- 
-  collapseInteractionMatrix(mat = chip_atlas_promoters[, ids_chip_atlas], 
-                            meta = meta_chip_atlas, 
-                            cl = cl_chip_atlas, 
-                            alpha = 0.5, # 0.5 corresponds to majority vote
-                            purity_feature = "tf", 
-                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(chip_atlas_promoters_collapsed_3, file = "chip_atlas_promoters_collapsed_3.rda")
-
-meta_chip_atlas[, cluster := cl_chip_atlas]
-data.table::fwrite(meta_chip_atlas, file = "chip_atlas_metadata_clusters_3.csv")
-####
-
-#### minCluster size = 1
-res <- selectParams4dynamicTreeCut(
-  dendro = hc_chip_atlas, 
-  distM = as.matrix(d_yule_chip_atlas), 
-  ref_cl = meta_chip_atlas[["tf"]],
-  minClusterSize = 1)
-res[res[, (AMI * ARI) == max(AMI * ARI)]]
-#    deepSplit cutHeight       ARI     AMI   N
-# 1:         2       5.7 0.5663883 0.70518 397
-
-cl_chip_atlas <- dynamicTreeCut::cutreeDynamic(
-  dendro = hc_chip_atlas,
-  cutHeight = 5.7,
-  minClusterSize = 1,
-  method = "hybrid",
-  distM = as.matrix(d_yule_chip_atlas),
-  deepSplit = 2,
-  pamStage = TRUE)
-
-chip_atlas_promoters_core_collapsed_1 <- 
-  collapseInteractionMatrix(mat = chip_atlas_promoters_core[, ids_chip_atlas], 
-                            meta = meta_chip_atlas, 
-                            cl = cl_chip_atlas, 
-                            alpha = 0.5, # 0.5 corresponds to majority vote
-                            purity_feature = "tf", 
-                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(chip_atlas_promoters_core_collapsed_1, file = "chip_atlas_promoters_core_collapsed_1.rda")
-
-chip_atlas_promoters_collapsed_1 <- 
-  collapseInteractionMatrix(mat = chip_atlas_promoters[, ids_chip_atlas], 
-                            meta = meta_chip_atlas, 
-                            cl = cl_chip_atlas, 
-                            alpha = 0.5, # 0.5 corresponds to majority vote
-                            purity_feature = "tf", 
-                            min_pruning_purity = 0.5) # clusters with purity > 0.5 are pruned
-save(chip_atlas_promoters_collapsed_1, file = "chip_atlas_promoters_collapsed_1.rda")
-
-meta_chip_atlas[, cluster := cl_chip_atlas]
-data.table::fwrite(meta_chip_atlas, file = "chip_atlas_metadata_clusters_1.csv")
-####
-```
-
-# Per TF clustering
+# Per TF clustering core promoters, static cut, majority voting
+DB filtering, at least 10 promoters not all promoters with signal
 
 ```{r}
-cut_height = seq(0.05, 1.5, by = 0.4)
-alpha <- 0.5 # majority vote
-static <- list(remap = list(), chip_atlas = list())
+hclustDist <- function(mat, method, cheight, cl_basename) {
+  mat <- as.matrix(mat)
+  d_mat <- if (method == "pearson") {
+    sqrt(1 - cor(mat, method = "pearson")) %>% as.dist()
+  } else {
+    proxy::dist(x = mat, method = method, by_rows = FALSE)
+  }
+
+  hc <- hclust(d_mat, method = "ward.D2")
+  cl <- cutree(hc, h = cheight)
+
+  return(cl)
+}
+
+nameClusters <- function(cl, cl_basename) {
+  vec_names <- names(cl)
+  cl <- paste0(cl_basename, "_cl", cl, "_", max(cl))
+  reps <- table(cl)
+  cl <- paste0(cl, "_R", reps[cl])
+  names(cl) <- vec_names
+
+  return(cl)
+}
+
+makeClusteredX <- function(cl, X, alpha) {
+  stopifnot(all(names(cl) == colnames(X)))
+
+  intmat <- if (is.na(alpha)) {
+    intvecs <- lapply(
+      X = unique(cl),
+      FUN = function(clu)
+        Matrix::rowSums(X[, cl == clu, drop = FALSE], sparseResult = TRUE)
+    )
+    i <- do.call(c, lapply(intvecs, slot, "i"))
+    j_lens <- vapply(intvecs, function(v) length(slot(v, "i")), numeric(1L))
+    j <- do.call(c, lapply(seq_along(j_lens), function(l) rep(1L, times = j_lens[l]) * l))
+    x <- do.call(c, lapply(intvecs, slot, "x"))
+    Matrix::sparseMatrix(
+      i = i,
+      j = j,
+      x = x,
+      dimnames = list(rownames(X), levels(cl))
+    )
+  } else {
+    do.call(
+      what = cbind,
+      args = lapply(
+        X = unique(cl),
+        FUN = function(clu)
+          simplifyInteractionMatrix(
+            mat = X[, names(cl)[cl == clu], drop = FALSE],
+            alpha = alpha,
+            colname = clu
+          )
+      )
+    )
+  }
+
+  return(intmat)
+}
+```
+
+## based on core promoters
+```{r eval=FALSE}
+cut_height <- seq(0.5, 2, by = 0.4) # seq(0.05, 0.21, by = 0.04) #
+alphas <- c(NA, 0.3, 0.5)
+method <- c("pearson", "Jaccard", "Dice", "Russel", "Tanimoto")
+parm_grid <- expand.grid(cheight = cut_height, method = method)
+
 for (db_name in c("remap", "chip_atlas")) {
   db <- get(paste0(db_name, "_promoters_core"))
-  j <- Matrix::colSums(db) >= (length(promoters_ann_core) * 0.01)
+  j <- (Matrix::colSums(db) >= 10) & (Matrix::colSums(db) != nrow(db))
   db <- db[, j]
   db_meta <- get(paste0(db_name, "_meta"))
   db_meta <- db_meta[id %in% colnames(db), ]
   tfs <- db_meta[, unique(tf)]
-  for (cheight in cut_height) {
+  for (i in seq_len(nrow(parm_grid))) {
+    static <- c()
+    method <- parm_grid[i, "method"]
+    cheight <- parm_grid[i, "cheight"]
+    print(paste0(cheight, " ", method))
+
+    # per TF clustering
     for (tf_name in tfs) {
+      print(tf_name)
       sigid <- db_meta[tf == tf_name, id]
       if (length(sigid) == 1) {
-        cl_static <- stats::setNames(
-          paste0(tf_name, "_cl1_1_R1"),
-          sigid
-        )
+        cl_static <- stats::setNames(paste0(tf_name, "_cl1_1_R1"), sigid)
       } else {
-        d_yule_sig <- proxy::dist(
-          x = as.matrix(db[, sigid]),
-          method = "Yule",
-          by_rows = FALSE,
-          convert_similarities = TRUE)
-        hc_sig <- hclust(d_yule_sig, method = "ward.D2")
-        cl_static <- cutree(hc_sig, h = cheight)
-        vec_names <- names(cl_static)
-        cl_static <-
-          paste0(tf_name, "_cl", cl_static, "_", max(cl_static))
-        reps <- table(cl_static)
-        cl_static <-
-          paste0(cl_static, "_R", reps[cl_static])
-        names(cl_static) <- vec_names
+        cl_static <- hclustDist(db[, sigid], method, cheight, tf_name)
+        cl_static <- nameClusters(cl_static, tf_name)
       }
-      static[[db_name]][[as.character(cheight)]] <-
-        c(static[[db_name]][[as.character(cheight)]], cl_static)
-    }
-    cl <- static[[db_name]][[as.character(cheight)]][colnames(db)]
-    cl <- factor(cl)
-    inmat <- get(paste0(db_name, "_promoters_core"))
-    intmat <- do.call(what = cbind, args = lapply(
-      X = levels(cl), function(clu) 
-        simplifyInteractionMatrix(mat = inmat[, names(cl)[cl == clu], drop = FALSE],
-                                  alpha = alpha,
-                                  colname = clu)))
-    assign(
-      x = paste0(db_name, "_per_tf_core_collapsed_", cheight),
-      value = intmat
-    )
-    save(list = paste0(db_name, "_per_tf_core_collapsed_", cheight),
-         file = paste0(db_name, "_per_tf_core_collapsed_", cheight, ".rda"))
-  }
-}
-```
 
-## rowSums
-
-```{r}
-cut_height = seq(0.05, 1.5, by = 0.4)
-static <- list(remap = list(), chip_atlas = list())
-for (db_name in c("remap", "chip_atlas")) {
-  db <- get(paste0(db_name, "_promoters_core"))
-  j <- Matrix::colSums(db) >= (length(promoters_ann_core) * 0.01)
-  db <- db[, j]
-  db_meta <- get(paste0(db_name, "_meta"))
-  db_meta <- db_meta[id %in% colnames(db), ]
-  tfs <- db_meta[, unique(tf)]
-  for (cheight in cut_height) {
-    for (tf_name in tfs) {
-      sigid <- db_meta[tf == tf_name, id]
-      if (length(sigid) == 1) {
-        cl_static <- stats::setNames(
-          paste0(tf_name, "_cl1_1_R1"),
-          sigid
-        )
-      } else {
-        d_yule_sig <- proxy::dist(
-          x = as.matrix(db[, sigid]),
-          method = "Yule",
-          by_rows = FALSE,
-          convert_similarities = TRUE)
-        hc_sig <- hclust(d_yule_sig, method = "ward.D2")
-        cl_static <- cutree(hc_sig, h = cheight)
-        vec_names <- names(cl_static)
-        cl_static <-
-          paste0(tf_name, "_cl", cl_static, "_", max(cl_static))
-        reps <- table(cl_static)
-        cl_static <-
-          paste0(cl_static, "_R", reps[cl_static])
-        names(cl_static) <- vec_names
-      }
-      static[[db_name]][[as.character(cheight)]] <-
-        c(static[[db_name]][[as.character(cheight)]], cl_static)
+      static <- c(static, cl_static)
     }
-    cl <- static[[db_name]][[as.character(cheight)]][colnames(db)]
-    cl <- factor(cl)
-    
-    # core
-    inmat <- get(paste0(db_name, "_promoters_core"))
-    intvecs <- lapply(X = levels(cl), function(clu)
-      Matrix::rowSums(inmat[, cl == clu, drop = FALSE], sparseResult = TRUE))
-    i <- do.call(c, lapply(intvecs, slot, "i"))
-    j_lens <- vapply(intvecs, function(v) length(slot(v, "i")), numeric(1L))
-    j <- do.call(c, lapply(seq_along(j_lens), function(l) rep(1L, times = j_lens[l]) * l))
-    x <- do.call(c, lapply(intvecs, slot, "x"))
-    intmat <- Matrix::sparseMatrix(i = i, j = j, x = x,
-                                   dimnames = list(rownames(inmat), levels(cl)))
-    assign(
-      x = paste0(db_name, "_per_tf_core_collapsed_rowsums", cheight),
-      value = intmat
-    )
-    save(list = paste0(db_name, "_per_tf_core_collapsed_rowsums", cheight),
-         file = paste0(db_name, "_per_tf_core_collapsed_rowsums", cheight, ".rda"))
-    
+    cl <- static[colnames(db)]
+    meta <- data.table::data.table(id = names(cl), cluster = cl)
+    data.table::fwrite(meta,
+                       file = paste0("meta_", db_name, "_", method, "_", cheight, ".csv"))
+
+
     # all
-    inmat <- get(paste0(db_name, "_promoters"))
-    intvecs <- lapply(X = levels(cl), function(clu)
-      Matrix::rowSums(inmat[, names(cl)[cl == clu], drop = FALSE], sparseResult = TRUE))
-    i <- do.call(c, lapply(intvecs, slot, "i"))
-    j_lens <- vapply(intvecs, function(v) length(slot(v, "i")), numeric(1L))
-    j <- do.call(c, lapply(seq_along(j_lens), function(l) rep(1L, times = j_lens[l]) * l))
-    x <- do.call(c, lapply(intvecs, slot, "x"))
-    intmat <- Matrix::sparseMatrix(i = i, j = j, x = x,
-                                   dimnames = list(rownames(inmat), levels(cl)))
-    assign(
-      x = paste0(db_name, "_per_tf_collapsed_rowsums", cheight),
-      value = intmat
-    )
-    save(list = paste0(db_name, "_per_tf_collapsed_rowsums", cheight),
-         file = paste0(db_name, "_per_tf_collapsed_rowsums", cheight, ".rda"))
-  }
-}
-```
-
-## DPI rowSums -- integer overflow, matrices are too long...
-```{r}
-cut_height = seq(0.01, 1.5, by = 0.4)
-static <- list(remap = list(), chip_atlas = list())
-for (db_name in c("remap", "chip_atlas")) {
-  db <- get(paste0(db_name, "_promoters"))
-  db <- db[rownames(db) %in% sel_dpi, ] # readLines("dataA_dpi.txt")
-  j <- Matrix::colSums(db) >= (length(promoters_ann_core) * 0.01)
-  db <- db[, j]
-  db_meta <- get(paste0(db_name, "_meta"))
-  db_meta <- db_meta[id %in% colnames(db), ]
-  tfs <- db_meta[, unique(tf)]
-  for (cheight in cut_height) {
-    for (tf_name in tfs) {
-      sigid <- db_meta[tf == tf_name, id]
-      if (length(sigid) == 1) {
-        cl_static <- stats::setNames(
-          paste0(tf_name, "_cl1_1_R1"),
-          sigid
-        )
-      } else {
-        d_yule_sig <- proxy::dist(
-          x = as.matrix(db[, sigid]),
-          method = "Yule",
-          by_rows = FALSE,
-          convert_similarities = TRUE)
-        hc_sig <- hclust(d_yule_sig, method = "ward.D2")
-        cl_static <- cutree(hc_sig, h = cheight)
-        vec_names <- names(cl_static)
-        cl_static <-
-          paste0(tf_name, "_cl", cl_static, "_", max(cl_static))
-        reps <- table(cl_static)
-        cl_static <-
-          paste0(cl_static, "_R", reps[cl_static])
-        names(cl_static) <- vec_names
-      }
-      static[[db_name]][[as.character(cheight)]] <-
-        c(static[[db_name]][[as.character(cheight)]], cl_static)
+    for (alpha in alphas) {
+      intmat <- get(paste0(db_name, "_promoters"))
+      intmat <- intmat[, colnames(db)]
+      a <- ifelse(is.na(alpha), "rowsum", alpha)
+      out_name <- paste0(db_name, "_promoters_", method, "_", cheight, "_", a)
+      intmat <- makeClusteredX(cl, intmat, alpha)
+      assign(
+        x = out_name,
+        value = intmat
+      )
+      save(list = out_name,
+          file = paste0(out_name, ".rda"))
     }
-    cl <- static[[db_name]][[as.character(cheight)]][colnames(db)]
-    cl <- factor(cl)
-    
-    # core
-    inmat <- get(paste0(db_name, "_promoters_core"))
-    intvecs <- lapply(X = levels(cl), function(clu)
-      Matrix::rowSums(inmat[, cl == clu, drop = FALSE], sparseResult = TRUE))
-    i <- do.call(c, lapply(intvecs, slot, "i"))
-    j_lens <- vapply(intvecs, function(v) length(slot(v, "i")), numeric(1L))
-    j <- do.call(c, lapply(seq_along(j_lens), function(l) rep(1L, times = j_lens[l]) * l))
-    x <- do.call(c, lapply(intvecs, slot, "x"))
-    intmat <- Matrix::sparseMatrix(i = i, j = j, x = x,
-                                   dimnames = list(rownames(inmat), levels(cl)))
-    assign(
-      x = paste0(db_name, "_per_tf_core_collapsed_rowsums_dpi_A", cheight),
-      value = intmat
-    )
-    save(list = paste0(db_name, "_per_tf_core_collapsed_rowsums_dpi_A", cheight),
-         file = paste0(db_name, "_per_tf_core_collapsed_rowsums_dpi_A", cheight, ".rda"))
-    
-    # all
-    inmat <- get(paste0(db_name, "_promoters"))
-    intvecs <- lapply(X = levels(cl), function(clu)
-      Matrix::rowSums(inmat[, names(cl)[cl == clu], drop = FALSE], sparseResult = TRUE))
-    i <- do.call(c, lapply(intvecs, slot, "i"))
-    j_lens <- vapply(intvecs, function(v) length(slot(v, "i")), numeric(1L))
-    j <- do.call(c, lapply(seq_along(j_lens), function(l) rep(1L, times = j_lens[l]) * l))
-    x <- do.call(c, lapply(intvecs, slot, "x"))
-    intmat <- Matrix::sparseMatrix(i = i, j = j, x = x,
-                                   dimnames = list(rownames(inmat), levels(cl)))
-    assign(
-      x = paste0(db_name, "_per_tf_collapsed_rowsums_dpi_A", cheight),
-      value = intmat
-    )
-    save(list = paste0(db_name, "_per_tf_collapsed_rowsums_dpi_A", cheight),
-         file = paste0(db_name, "_per_tf_collapsed_rowsums_dpi_A", cheight, ".rda"))
   }
 }
 ```
 
-## Fixed Yule!
-## rowSums
-
-```{r}
-cut_height = seq(0.05, 1.5, by = 0.4)
-static <- list(remap = list(), chip_atlas = list())
-for (db_name in c("remap", "chip_atlas")) {
-  db <- get(paste0(db_name, "_promoters_core"))
-  j <- Matrix::colSums(db) >= 10
-  db <- db[, j]
-  db_meta <- get(paste0(db_name, "_meta"))
-  db_meta <- db_meta[id %in% colnames(db), ]
-  tfs <- db_meta[, unique(tf)]
-  for (cheight in cut_height) {
-    for (tf_name in tfs) {
-      sigid <- db_meta[tf == tf_name, id]
-      if (length(sigid) == 1) {
-        cl_static <- stats::setNames(
-          paste0(tf_name, "_cl1_1_R1"),
-          sigid
-        )
-      } else {
-        d_yule_sig <- proxy::dist(
-          x = as.matrix(db[, sigid]),
-          method = "Yule",
-          by_rows = FALSE,
-          convert_similarities = FALSE) %>%
-            `-`(1, .) %>%
-            sqrt()
-        
-        hc_sig <- hclust(d_yule_sig, method = "ward.D2")
-        cl_static <- cutree(hc_sig, h = cheight)
-        vec_names <- names(cl_static)
-        cl_static <-
-          paste0(tf_name, "_cl", cl_static, "_", max(cl_static))
-        reps <- table(cl_static)
-        cl_static <-
-          paste0(cl_static, "_R", reps[cl_static])
-        names(cl_static) <- vec_names
-      }
-      static[[db_name]][[as.character(cheight)]] <-
-        c(static[[db_name]][[as.character(cheight)]], cl_static)
-    }
-    cl <- static[[db_name]][[as.character(cheight)]][colnames(db)]
-    cl <- factor(cl)
-    
-    # core
-    inmat <- get(paste0(db_name, "_promoters_core"))
-    intvecs <- lapply(X = levels(cl), function(clu)
-      Matrix::rowSums(inmat[, names(cl)[cl == clu], drop = FALSE], sparseResult = TRUE))
-    i <- do.call(c, lapply(intvecs, slot, "i"))
-    j_lens <- vapply(intvecs, function(v) length(slot(v, "i")), numeric(1L))
-    j <- do.call(c, lapply(seq_along(j_lens), function(l) rep(1L, times = j_lens[l]) * l))
-    x <- do.call(c, lapply(intvecs, slot, "x"))
-    intmat <- Matrix::sparseMatrix(i = i, j = j, x = x,
-                                   dimnames = list(rownames(inmat), levels(cl)))
-    assign(
-      x = paste0(db_name, "_per_tf_core_collapsed_rowsums_fix", cheight),
-      value = intmat
-    )
-    save(list = paste0(db_name, "_per_tf_core_collapsed_rowsums_fix", cheight),
-         file = paste0(db_name, "_per_tf_core_collapsed_rowsums_fix", cheight, ".rda"))
-    
-    # all
-    inmat <- get(paste0(db_name, "_promoters"))
-    intvecs <- lapply(X = levels(cl), function(clu)
-      Matrix::rowSums(inmat[, cl == clu, drop = FALSE], sparseResult = TRUE))
-    i <- do.call(c, lapply(intvecs, slot, "i"))
-    j_lens <- vapply(intvecs, function(v) length(slot(v, "i")), numeric(1L))
-    j <- do.call(c, lapply(seq_along(j_lens), function(l) rep(1L, times = j_lens[l]) * l))
-    x <- do.call(c, lapply(intvecs, slot, "x"))
-    intmat <- Matrix::sparseMatrix(i = i, j = j, x = x,
-                                   dimnames = list(rownames(inmat), levels(cl)))
-    assign(
-      x = paste0(db_name, "_per_tf_collapsed_rowsums_fix", cheight),
-      value = intmat
-    )
-    save(list = paste0(db_name, "_per_tf_collapsed_rowsums_fix", cheight),
-         file = paste0(db_name, "_per_tf_collapsed_rowsums_fix", cheight, ".rda"))
-  }
-}
-```
-
-## Pearson
-## rowSums
-
-```{r}
-cut_height = seq(0.05, 1.5, by = 0.4)
-static <- list(remap = list(), chip_atlas = list())
-for (db_name in c("remap", "chip_atlas")) {
-  db <- get(paste0(db_name, "_promoters_core"))
-  j <- Matrix::colSums(db) >= 10
-  db <- db[, j]
-  db_meta <- get(paste0(db_name, "_meta"))
-  db_meta <- db_meta[id %in% colnames(db), ]
-  tfs <- db_meta[, unique(tf)]
-  for (cheight in cut_height) {
-    for (tf_name in tfs) {
-      sigid <- db_meta[tf == tf_name, id]
-      if (length(sigid) == 1) {
-        cl_static <- stats::setNames(
-          paste0(tf_name, "_cl1_1_R1"),
-          sigid
-        )
-      } else {
-        d_sig <- sqrt(1 - cor(as.matrix(db[, sigid]), method = "pearson")) %>% as.dist()
-        hc_sig <- hclust(d_sig, method = "ward.D2")
-        cl_static <- cutree(hc_sig, h = cheight)
-        vec_names <- names(cl_static)
-        cl_static <-
-          paste0(tf_name, "_cl", cl_static, "_", max(cl_static))
-        reps <- table(cl_static)
-        cl_static <-
-          paste0(cl_static, "_R", reps[cl_static])
-        names(cl_static) <- vec_names
-      }
-      static[[db_name]][[as.character(cheight)]] <-
-        c(static[[db_name]][[as.character(cheight)]], cl_static)
-    }
-    cl <- static[[db_name]][[as.character(cheight)]][colnames(db)]
-    cl <- factor(cl)
-    
-    # core
-    inmat <- get(paste0(db_name, "_promoters_core"))
-    intvecs <- lapply(X = levels(cl), function(clu)
-      Matrix::rowSums(inmat[, names(cl)[cl == clu], drop = FALSE], sparseResult = TRUE))
-    i <- do.call(c, lapply(intvecs, slot, "i"))
-    j_lens <- vapply(intvecs, function(v) length(slot(v, "i")), numeric(1L))
-    j <- do.call(c, lapply(seq_along(j_lens), function(l) rep(1L, times = j_lens[l]) * l))
-    x <- do.call(c, lapply(intvecs, slot, "x"))
-    intmat <- Matrix::sparseMatrix(i = i, j = j, x = x,
-                                   dimnames = list(rownames(inmat), levels(cl)))
-    assign(
-      x = paste0(db_name, "_per_tf_core_collapsed_rowsums_pearson", cheight),
-      value = intmat
-    )
-    save(list = paste0(db_name, "_per_tf_core_collapsed_rowsums_pearson", cheight),
-         file = paste0(db_name, "_per_tf_core_collapsed_rowsums_pearson", cheight, ".rda"))
-    
-    # all
-    inmat <- get(paste0(db_name, "_promoters"))
-    intvecs <- lapply(X = levels(cl), function(clu)
-      Matrix::rowSums(inmat[, cl == clu, drop = FALSE], sparseResult = TRUE))
-    i <- do.call(c, lapply(intvecs, slot, "i"))
-    j_lens <- vapply(intvecs, function(v) length(slot(v, "i")), numeric(1L))
-    j <- do.call(c, lapply(seq_along(j_lens), function(l) rep(1L, times = j_lens[l]) * l))
-    x <- do.call(c, lapply(intvecs, slot, "x"))
-    intmat <- Matrix::sparseMatrix(i = i, j = j, x = x,
-                                   dimnames = list(rownames(inmat), levels(cl)))
-    assign(
-      x = paste0(db_name, "_per_tf_collapsed_rowsums_pearson", cheight),
-      value = intmat
-    )
-    save(list = paste0(db_name, "_per_tf_collapsed_rowsums_pearson", cheight),
-         file = paste0(db_name, "_per_tf_collapsed_rowsums_pearson", cheight, ".rda"))
-  }
-}
-```
-
-# Explore clustering and collapsed matrices
+## Test different clusterings performance in TGFbeta context
 
 ```{r eval=FALSE}
-remap_ncl <- meta_remap[, length(unique(cluster))]
-chip_atlas_ncl <- meta_chip_atlas[, length(unique(cluster))]
+load(system.file("inst", "extdata", "TGFbeta_counts_symbol.rda",
+                 package = "xcore"))
 
-par(mfrow = c(1, 2), oma = c(0, 0, 0, 0), cex = 0.7, pty = "s")
-plotHistogram(
-  x = meta_remap[, .N, by = cluster][["N"]], 
-  breaks = "scott", 
-  main = sprintf("ReMap2020 (# clusters: %i)", remap_ncl))
-plotHistogram(
-  x = meta_chip_atlas[, .N, by = cluster][["N"]], 
-  breaks = "scott", 
-  main = sprintf("ChIP-Atlas (# clusters: %i)", chip_atlas_ncl))
-mtext(
-  "Clusters size distribution",
-  side = 3,
-  outer = TRUE,
-  line = -4,
-  font = 2,
-  cex = 1.2
-)
+# Here we look at 24h samples only
+# construct sample matrix
+samples <- data.frame(
+  samples_names = counts_symbol %>% colnames(),
+  exp_fac = counts_symbol %>%
+    colnames() %>%
+    sub(pattern = "_R.", replacement = ""),
+  stringsAsFactors = FALSE) %>%
+  dplyr::filter(grepl("00|24", samples_names))
 
-purity_dt <- meta_remap[, .(
-  tf_purity = vectorPurity(tf),
-  biotype_purity = vectorPurity(biotype),
-  study_purity = vectorPurity(study),
-  dbd_purity = vectorPurity(tf_dbd),
-  .N
-  ),
-by = cluster]
+# construct design matrix
+design_mat <- model.matrix(~ 0 + exp_fac, data = samples)
+colnames(design_mat) <- sub( "exp_fac", "" , colnames(design_mat))
+rownames(design_mat) <- samples$samples_names
 
-par(mfrow = c(1, 1), oma = c(0, 0, 0, 0), cex = 0.7, pty = "s")
+designA <- design_mat[
+  grepl("A_", rownames(design_mat)),
+  grepl("A_", colnames(design_mat)),
+  drop = FALSE
+  ]
 
-# clustered by study?
-plotSubtree(hc_remap, meta_remap[cluster == 92, ], "tf")
-mtext("Cluster 92, clustering by study?")
-plotSubtree(hc_remap, meta_remap[cluster == 175, ], "tf")
-mtext("Cluster 175, clustering by study?")
+symbol2dpi <- stats::setNames(promoters_f5_core$name, promoters_f5_core$SYMBOL)
 
-# clustered by biotype?
-plotSubtree(hc_remap, meta_remap[cluster == 46, ], "tf")
-mtext("Cluster 46, clustering by biotye?")
-plotSubtree(hc_remap, meta_remap[cluster == 110, ], "tf")
-mtext("Cluster 110, clustering by biotype?")
+mat <- counts_dpi[, grep("A_.*(00|24)", colnames(counts_dpi))]
+base_lvl <- "A_TGFb_00h"
+dataA_dpi <- prepareCountsForRegression(
+  counts = mat,
+  base_lvl = base_lvl,
+  design = designA,
+  log2 = TRUE,
+  pseudo_count = 1L)
+```
+
+# Load signatures
+
+```{r eval=FALSE}
+collapsed_sig_names <- list.files(pattern = "remap_promoters.*rda$") %>%
+  sub(pattern = "\\.rda", replacement = "")
+collapsed_sig_files <- list.files(pattern = "remap_promoters.*rda$", full.names = TRUE)
+for (sig in collapsed_sig_files) load(sig)
+
+# hot fix
+for (sig in collapsed_sig_names) {
+  s <- get(sig)
+  if (is.null(colnames(s))) {
+    colnames(s) <- colnames(get(sub("_rowsum", "_0.3",  sig)))
+    assign(x=sig, value=s)
+  }
+}
+```
+
+# Combine expression with signatures
+
+```{r eval=FALSE}
+signatures_to_add <- lapply(collapsed_sig_names, get)
+names(signatures_to_add) <- collapsed_sig_names
+signatures_to_add[["remap"]] <- remap_promoters
+
+# A-549
+signatures_to_add[["mae"]] <- dataA_dpi
+dataA_dpi <- do.call(addSignatures, signatures_to_add)
+dataA_dpi <- filterSignatures(dataA_dpi)
+
+for (sig in collapsed_sig_names) {rm(list = sig)}
+rm(signatures_to_add)
+gc()
+```
+
+## Ridge regression
+
+```{r eval=FALSE}
+regression <- list(A_549 = list())
+
+# A-549
+## DPI
+xnames <- setdiff(names(dataA_dpi), c("U", "Y"))
+regression[["A_549"]][["DPI"]] <- modelGeneExpression(
+  mae = dataA_dpi,
+  yname = "Y",
+  uname = "U",
+  xnames = xnames,
+  pvalues = FALSE,
+  precalcmodels = regression[["A_549"]][["DPI"]][["regression_models"]]
+  )
+save(regression, file = "regression.rda")
+```
+
+```{r}
+load("regression.rda")
+```
+
+# R2
+## A-549 24h
+```{r eval=FALSE}
+doMC::registerDoMC(1L)
+xnames <- setdiff(names(dataA_dpi), c("U", "Y"))
+rsqA <- foreach(nm = xnames, .inorder = TRUE, .final = function(x) setNames(x, xnames)) %:%
+  foreach(i = seq_len(4L), .combine = c) %dopar%
+    estimateStat(
+      x = dataA_dpi[[nm]],
+      y = dataA_dpi[["Y"]][, i],
+      u = dataA_dpi[["U"]],
+      s = regression[["A_549"]][["DPI"]][["regression_models"]][[nm]][[i]]$lambda.min,
+      nfold = 5,
+      statistic = rsq)
+save(rsqA, file = "rsqA.rda")
+```
+
+```{r}
+load("rsqA.rda")
+```
+
+```{r}
+library(ggplot2)
+
+rsqA_df <- lapply(
+  X = setdiff(names(rsqA), "remap"),
+  FUN = function(nm) {
+    x <- sub(pattern = "remap_promoters_", replacement = "", x = nm) %>%
+      stringr::str_split(pattern = "_", n = 3) %>%
+      unlist()
+    data.frame(
+      distance = x[1],
+      cutoff = as.numeric(x[2]),
+      collapsing = x[3],
+      mean = mean(rsqA[[nm]]),
+      stringsAsFactors = FALSE
+    )
+  }) %>%
+  do.call(what = rbind)
+
+ggplot(
+  data = rsqA_df,
+  aes(
+    x = cutoff,
+    y = mean,
+    color = distance,
+    linetype = collapsing
+  )
+) +
+  geom_line() +
+  geom_hline(yintercept = mean(rsqA[["remap"]]), linetype = "dashed") +
+  xlab("Clustering cut-off") +
+  ylab(expression(R ^ 2)) +
+  ggtitle("Comparison of different signatures clustering approaches")
+
+ggplot(
+  data = rsqA_df[rsqA_df$distance == "pearson", ],
+  aes(
+    x = cutoff,
+    y = mean,
+    color = distance,
+    linetype = collapsing
+  )
+) +
+  geom_line() +
+  geom_hline(yintercept = mean(rsqA[["remap"]]), linetype = "dashed") +
+  xlab("Clustering cut-off") +
+  ylab(expression(R ^ 2)) +
+
+  ggtitle("Comparison of different signatures clustering approaches\nPearson distance")
 ```
