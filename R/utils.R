@@ -8,25 +8,25 @@
 #' @export
 NULL
 
-#' Intersect GRanges objects
-#'
-#' \code{intersectGR} intersect two GRanges objects and return ranges from
-#' \code{a} that were overlapped by ranges in \code{b}.
-#'
-#' @param a GRanges object.
-#' @param b GRanges object.
-#' @param ... other arguments internally passed to
-#'   \code{\link[GenomicRanges]{findOverlaps}}.
-#'
-#' @return GRanges object which is a subset of \code{a}.
-#'
-intersectGR <- function(a, b, ...) {
-  warning("deprecated! use IRanges::subsetByOverlaps instead") # TODO drop from the package
-  stopifnot(is(a, "GRanges"))
-  stopifnot(is(b, "GRanges"))
-
-  IRanges::subsetByOverlaps(x = a, ranges = b, ...)
-}
+# #' Intersect GRanges objects
+# #'
+# #' \code{intersectGR} intersect two GRanges objects and return ranges from
+# #' \code{a} that were overlapped by ranges in \code{b}.
+# #'
+# #' @param a GRanges object.
+# #' @param b GRanges object.
+# #' @param ... other arguments internally passed to
+# #'   \code{\link[GenomicRanges]{findOverlaps}}.
+# #'
+# #' @return GRanges object which is a subset of \code{a}.
+# #'
+# intersectGR <- function(a, b, ...) {
+#   warning("deprecated! use IRanges::subsetByOverlaps instead") # TODO drop from the package
+#   stopifnot(is(a, "GRanges"))
+#   stopifnot(is(b, "GRanges"))
+#
+#   IRanges::subsetByOverlaps(x = a, ranges = b, ...)
+# }
 
 #' Calculate regions coverage
 #'
@@ -81,178 +81,6 @@ simplifyInteractionMatrix <- function(mat, alpha = 0.5, colname = NA) {
                        dimnames = list(rownames(mat), colname))
 }
 
-#' Calculate vector purity
-#'
-#' @export
-vectorPurity <- function(x) {
-  xtab <- table(x, useNA = "always")
-  max(xtab) / length(x)
-}
-
-#' Get most frequent value
-#'
-#'
-mostFreqValue <- function(vec) {
-  freq <- table(vec, useNA = "always")
-  freq <- sort(freq, decreasing = TRUE)
-  mostfreq <- names(freq)[1]
-
-  return(mostfreq)
-}
-
-#' Prune metadata
-#'
-#' Prunes metadata based on selected column such that only entries with most
-#' frequent items remains.
-#'
-#' @param col pruning column
-#'
-#' @export
-pruneClusterMeta <- function(meta, col) {
-  idx <- meta[[col]]
-  mostfreq <- mostFreqValue(idx)
-  mask <- idx == mostfreq
-
-  return(meta[mask, ])
-}
-
-#' Make cluster name based on metadata
-#'
-#'
-makeClusterName <- function(meta,
-                            columns = c("tf", "biotype", "study", "tf_dbd"),
-                            mixed_th = 0.5) {
-  nms <- vapply(X = columns,
-                FUN = function(x) {
-                  vec <- meta[[x]]
-                  nm <-
-                    ifelse(vectorPurity(vec) > mixed_th, mostFreqValue(vec), "mixed")
-                  paste(x, nm, sep = ".")
-                },
-                FUN.VALUE = character(1L))
-  nm <- paste(nms, collapse = "_")
-
-  return(nm)
-}
-
-#' Make cluster name based on metadata ver. 2
-#'
-#'
-makeClusterName2 <- function(meta,
-                             columns = c("tf", "biotype", "study", "tf_dbd"),
-                             inclusion_th = 0.25,
-                             mixed_th = 0.5) {
-  nms <- vapply(X = columns,
-                FUN = function(x) {
-                  vec <- meta[[x]]
-                  ifreq <- table(vec) / length(vec)
-                  ifreq <- ifreq[ifreq >= inclusion_th]
-                  if (length(ifreq)) {
-                    ifreq <- sort(ifreq, decreasing = TRUE)
-                    nms <- names(ifreq)
-                    nms <- nms[nms != "" | is.na(nms)] # drop empty names
-                    if (all(ifreq < mixed_th)) nms <- c("mixed", nms) # if none dominates add mixed prefix
-                    if (! length(nms)) nms <- "mixed" # if all names were empty
-                    nm <- paste(nms, collapse = "_")
-                  } else {
-                    nm <- "mixed"
-                  }
-                  paste(x, nm, sep = ".")
-                },
-                FUN.VALUE = character(1L))
-  nms <- nms[! grepl(".*\\.mixed$", nms)]
-  nm <- if (length(nms)) { paste(nms, collapse = ".") } else { "mixed" }
-
-  return(nm)
-}
-
-#' collapseInteractionMatrix
-#'
-#' @param pruning_purity if purity > pruning_purity then prune
-#'
-collapseInteractionMatrix <- function(mat,
-                                      meta,
-                                      cl,
-                                      alpha = 0.5,
-                                      purity_feature = "tf",
-                                      min_pruning_purity = 0.5
-) {
-  stopifnot(is(mat, "dgCMatrix"))
-  stopifnot(is(meta, "data.table"))
-  stopifnot("id" %in% colnames(meta))
-  stopifnot(all(colnames(mat) == meta$id))
-  stopifnot(length(cl) == ncol(mat))
-
-  cl <- as.factor(cl)
-  out <- list()
-  for (clu in levels(cl)) {
-    m <- cl == clu
-    purity <- vectorPurity(meta[m, ][[purity_feature]])
-
-    if (purity > min_pruning_purity) {
-      pruned_meta <- pruneClusterMeta(meta[m, ], purity_feature)
-      m <- pruned_meta[["id"]]
-      nice_name <- makeClusterName2(pruned_meta, mixed_th = min_pruning_purity)
-    } else {
-      nice_name <- makeClusterName2(meta[m, ], mixed_th = min_pruning_purity)
-    }
-    nice_name <- paste(clu, nice_name, sep = "_")
-
-    # alpha <- 0.3 # calculate alpha based on
-
-    out[[nice_name]] <- simplifyInteractionMatrix(mat = mat[, m],
-                                                  alpha = alpha,
-                                                  colname = nice_name)
-  }
-
-  new_mat <- do.call(cbind, out)
-
-  return(new_mat)
-}
-
-#' Select cutHeight and deepSplit parameters for dynamicTreeCut
-#'
-#'
-selectParams4dynamicTreeCut <- function(dendro,
-                                        distM,
-                                        ref_cl,
-                                        minClusterSize = 3,
-                                        c_deepSplit = 1:4,
-                                        c_cutHeight = seq(from = 0.5, to = 6, by = 0.2)) {
-  res <- list(deepSplit = c(), cutHeight = c(), ARI = c(), AMI = c(), N = c())
-  for (ds in c_deepSplit) {
-    for (ch in c_cutHeight) {
-      cl <- dynamicTreeCut::cutreeDynamic(
-        dendro = dendro,
-        cutHeight = ch,
-        minClusterSize = minClusterSize,
-        method = "hybrid",
-        distM = distM,
-        deepSplit = ds,
-        pamStage = TRUE)
-
-
-      res[["deepSplit"]] <- c(res[["deepSplit"]], ds)
-      res[["cutHeight"]] <- c(res[["cutHeight"]], ch)
-      res[["AMI"]] <- c(res[["AMI"]], aricode::AMI(ref_cl, cl))
-      res[["ARI"]] <- c(res[["ARI"]], aricode::ARI(ref_cl, cl))
-      res[["N"]] <- c(res[["N"]], cl %>% unique() %>% length())
-    }
-  }
-
-  res <- do.call(cbind, res) %>% as.data.table()
-
-  return(res)
-}
-
-#' Paint vector
-#'
-#' Get colors along vector
-#'
-paintVector <- function(vec) {
-  colorspace::qualitative_hcl(length(unique(vec)))[as.integer(factor(vec))]
-}
-
 #' Apply function over groups of columns
 #'
 #' Returns a array obtained by applying a function to rows of submatrices of the
@@ -288,13 +116,29 @@ applyOverColumnGroups <- function(mat, groups, f, ...) {
   return(new_mat)
 }
 
-#' Estimate a goodness of fit stat
+#' Estimate linear models goodness of fit statistic
+#'
+#' Estimate goodness of fit statistic of penalized linear regression models.
+#' Works with different goodness of fit statistic functions.
+#'
+#' @inheritParams runLinearRidge
+#' @param u offset vector as in \link{\code{glmnet}}. \code{"U"} experiment in
+#'   mae.
+#' @param s user supplied lambda.
+#' @param method currently only cross-validation is implemented.
+#' @param nfold number of fold to use in cross-validation.
+#' @param statistic function computing goodness of fit statistic. Should accept
+#'   \code{y}, \code{x}, \code{offset} arguments and return
+#'   a numeric vector of the same length. See \code{rsq}, \code{mse} for examples.
+#'
+#' @importFrom foreach foreach
+#'
 estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = R2, alpha = 0) {
   if (method == "cv") {
     out <- c()
     part <- sample(1:nfold, size = length(y), replace = TRUE)
 
-    out <- foreach::foreach(p = seq_len(nfold), .combine = c) %do% # TODO parallelization should be optional maybe?
+    out <- foreach::foreach(p = seq_len(nfold), .combine = c) %do%
       {
         py <- y[part != p]
         px <- x[part != p, ]
@@ -314,37 +158,39 @@ estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = R2, 
   return(out)
 }
 
-# https://stats.stackexchange.com/questions/186396/appropriate-way-to-calculate-cross-validated-r-square
-# 1-(sum((data[,1] - predictions)^2) / ((n-1) * var(test[,1]))
-rsq <- function(y, yhat, x, offset) {
+#' Calculate $R^2$
+#'
+#' @param y numeric vector of observed expression values.
+#' @param yhat numeric vector of predicted expression values.
+#' @param offset numeric vector giving basal expression level.
+#'
+#' @return numeric vector
+#'
+rsq <- function(y, yhat, offset) {
   y <- y - offset
   yhat <- yhat - offset
   1 - (sum((y - yhat)^2) / (var(y) * (length(y) - 1)))
 }
-pearson.sq <- function(y, yhat, x, offset) cor(y - offset, yhat - offset)^2
-mse <- function(y, yhat, ...) mean((y - yhat)^2)
-mae <- function(y, yhat, ...) mean(abs(y - yhat))
-spearman.sq <- function(y, yhat, x, offset) cor(y - offset, yhat - offset, method = "spearman")^2
 
+#' Calculate Mean Squared Error
 #'
-getAvgCoeff <- function(models, lambda = "lambda.min", drop_intercept = TRUE) {
-  coefs <- lapply(models, function(m) coef(m, s = m[[lambda]]))
-  if (drop_intercept) {
-    coefs <- lapply(coefs, function(m) {
-      keep <- grep(pattern = "(Intercept)", x = rownames(m), invert = TRUE)
-      m[keep, ]
-    })
-  }
-  coefs <- do.call(cbind, coefs)
-  coefs_avg <- rowMeans(coefs)
-  coefs_sd <- apply(coefs, 1, sd)
-  res <-
-    cbind(
-      estimate = coefs_avg,
-      sd = coefs_sd,
-      z = (coefs_avg - mean(coefs_avg)) / coefs_sd)
-  res
-}
+#' @param y numeric vector of observed expression values.
+#' @param yhat numeric vector of predicted expression values.
+#' @param offset numeric vector giving basal expression level.
+#'
+#' @return numeric vector
+#'
+mse <- function(y, yhat, ...) mean((y - yhat)^2)
+
+#' Calculate Mean Absolute Error
+#'
+#' @param y numeric vector of observed expression values.
+#' @param yhat numeric vector of predicted expression values.
+#' @param offset numeric vector giving basal expression level.
+#'
+#' @return numeric vector
+#'
+mae <- function(y, yhat, ...) mean(abs(y - yhat))
 
 #' Transform design matrix to factor
 #'
@@ -401,7 +247,6 @@ isTRUEorFALSE <- function(x) {
 #'   \code{nlevels(groups)} columns.
 #'
 applyOverDFList <- function(list_of_df, col_name, fun, groups) {
-  # TODO consider adding argument check
   stopifnot("all list_of_df names must be included in groups" = setequal(names(list_of_df), names(groups)))
   stopifnot("groups must not have unused levels" = setdiff(levels(groups), groups) == character(0))
 
@@ -421,6 +266,14 @@ applyOverDFList <- function(list_of_df, col_name, fun, groups) {
 }
 
 #' Subset keeping missing
+#'
+#' Subset matrix keeping unmatched rows as NA.
+#'
+#' @param mat matrix
+#' @param rows character
+#'
+#' @return a matrix
+#'
 subsetWithMissing <- function(mat, rows) {
   i <- match(x = rows, table = rownames(mat), nomatch = 0)
   i[i == 0] <- NA
