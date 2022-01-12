@@ -470,3 +470,31 @@ stoufferZMethod <- function(z) {
 
   return(z_cmb)
 }
+
+#' Calculate average coefficients matrix
+#'
+#' @param models list of \code{cv.glmnet} objects.
+#' @param lambda string indicating which lambda to use.
+#' @param drop_intercept logical indicating if intercept should be droped from
+#'   the output.
+#'
+#' @param a average coefficients matrix
+#'
+getAvgCoeff <- function(models, lambda = "lambda.min", drop_intercept = TRUE) {
+  coefs <- lapply(models, function(m) coef(m, s = m[[lambda]]))
+  if (drop_intercept) {
+    coefs <- lapply(coefs, function(m) {
+      keep <- grep(pattern = "(Intercept)", x = rownames(m), invert = TRUE)
+      m[keep, ]
+    })
+  }
+  coefs <- do.call(cbind, coefs)
+  coefs_avg <- rowMeans(coefs)
+  coefs_sd <- apply(coefs, 1, sd)
+  res <-
+    cbind(
+      estimate = coefs_avg,
+      sd = coefs_sd,
+      z = (coefs_avg - mean(coefs_avg)) / coefs_sd)
+  res
+}
