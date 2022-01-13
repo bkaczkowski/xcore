@@ -188,7 +188,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'       corresponding to groups in the design.}
 #'     \item{results}{Named list of a \code{data.frame}s holding replicate
 #'       average molecular signatures, overall molecular signatures Z-score and
-#'       p-values calculated over groups using Stouffer's and Fisher's methods.}}
+#'       p-values calculated over groups using Stouffer's and Fisher's methods.}
 #'   }
 #'
 #' @examples

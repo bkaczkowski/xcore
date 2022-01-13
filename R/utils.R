@@ -61,6 +61,7 @@ getCoverage <- function(mat, gr) {
 #'   \code{\link{getInteractionMatrix}}.
 #' @param alpha Number between 0 and 1 specifying voting threshold. Eg. for 3
 #'   column matrix alpha 0.5 will give voting criteria >= 2.
+#' @param colname character giving new column name.
 #'
 #' @return dgCMatrix
 #'
@@ -122,7 +123,7 @@ applyOverColumnGroups <- function(mat, groups, f, ...) {
 #' Works with different goodness of fit statistic functions.
 #'
 #' @inheritParams runLinearRidge
-#' @param u offset vector as in \link{\code{glmnet}}. \code{"U"} experiment in
+#' @param u offset vector as in \code{\link{glmnet}}. \code{"U"} experiment in
 #'   mae.
 #' @param s user supplied lambda.
 #' @param method currently only cross-validation is implemented.
@@ -176,7 +177,7 @@ rsq <- function(y, yhat, offset) {
 #'
 #' @param y numeric vector of observed expression values.
 #' @param yhat numeric vector of predicted expression values.
-#' @param offset numeric vector giving basal expression level.
+#' @param ... not used.
 #'
 #' @return numeric vector
 #'
@@ -186,7 +187,7 @@ mse <- function(y, yhat, ...) mean((y - yhat)^2)
 #'
 #' @param y numeric vector of observed expression values.
 #' @param yhat numeric vector of predicted expression values.
-#' @param offset numeric vector giving basal expression level.
+#' @param .. not used.
 #'
 #' @return numeric vector
 #'
