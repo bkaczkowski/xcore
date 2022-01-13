@@ -149,7 +149,7 @@ using lower number of cores.
 
 ```{r}
 # register parallel backend
-doMC::registerDoMC(cores = 6L)
+doMC::registerDoMC(cores = 2L)
 
 # set seed
 set.seed(314159265)
