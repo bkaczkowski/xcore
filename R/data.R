@@ -15,7 +15,7 @@
 #'
 #' Molecular signatures data intended for use in xcore vignette and examples.
 #' It is build ReMap2020 molecular signatures constructed against FANTOM5
-#' annotation, which can be found in \code{{xcoredata} package.
+#' annotation, which can be found in \code{xcoredata} package.
 #' Here the data is only a subset limited to core promoters
 #' (\code{promoters_f5_core}) and randomly selected 600 signatures.
 #'
