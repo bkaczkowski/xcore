@@ -4,14 +4,14 @@
 \alias{estimateStat}
 \title{Estimate linear models goodness of fit statistic}
 \usage{
-estimateStat(x, y, u, s, method = "cv", nfold = 10, statistic = R2, alpha = 0)
+estimateStat(x, y, u, s, method = "cv", nfold = 10, statistic = rsq, alpha = 0)
 }
 \arguments{
 \item{x}{\code{x} matrix as in \code{glmnet}.}
 
 \item{y}{response \code{y} as in \code{glmnet}.}
 
-\item{u}{offset vector as in \link{\code{glmnet}}. \code{"U"} experiment in
+\item{u}{offset vector as in \code{\link{glmnet}}. \code{"U"} experiment in
 mae.}
 
 \item{s}{user supplied lambda.}

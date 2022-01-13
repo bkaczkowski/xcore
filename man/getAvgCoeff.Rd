@@ -13,8 +13,9 @@ getAvgCoeff(models, lambda = "lambda.min", drop_intercept = TRUE)
 
 \item{drop_intercept}{logical indicating if intercept should be droped from
 the output.}
-
-\item{a}{average coefficients matrix}
+}
+\value{
+average coefficients matrix
 }
 \description{
 Calculate average coefficients matrix

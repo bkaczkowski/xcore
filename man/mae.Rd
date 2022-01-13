@@ -11,7 +11,7 @@ mae(y, yhat, ...)
 
 \item{yhat}{numeric vector of predicted expression values.}
 
-\item{offset}{numeric vector giving basal expression level.}
+\item{..}{not used.}
 }
 \value{
 numeric vector

@@ -12,6 +12,8 @@ simplifyInteractionMatrix(mat, alpha = 0.5, colname = NA)
 
 \item{alpha}{Number between 0 and 1 specifying voting threshold. Eg. for 3
 column matrix alpha 0.5 will give voting criteria >= 2.}
+
+\item{colname}{character giving new column name.}
 }
 \value{
 dgCMatrix
