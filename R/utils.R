@@ -134,23 +134,23 @@ applyOverColumnGroups <- function(mat, groups, f, ...) {
 #'
 #' @importFrom foreach foreach
 #'
-estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = R2, alpha = 0) {
+estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = rsq, alpha = 0) {
   if (method == "cv") {
     out <- c()
     part <- sample(1:nfold, size = length(y), replace = TRUE)
 
-    out <- foreach::foreach(p = seq_len(nfold), .combine = c) %do%
+    out <- foreach::foreach(p_ = seq_len(nfold), .combine = c) %do%
       {
-        py <- y[part != p]
-        px <- x[part != p, ]
-        poffset <- u[part != p, ]
+        py <- y[part != p_]
+        px <- x[part != p_, ]
+        poffset <- u[part != p_, ]
         mod <- glmnet::glmnet(x = px, y = py, offset = poffset, lambda = s, alpha = alpha)
 
         # evaluate on held-out fold
-        py <- y[part == p]
-        px <- x[part == p, ]
-        poffset <- u[part == p, ]
-        yhat <- predict(mod, newx = px, newoffset = poffset, s = s)
+        py <- y[part == p_]
+        px <- x[part == p_, ]
+        poffset <- u[part == p_, ]
+        yhat <- stats::predict(mod, newx = px, newoffset = poffset, s = s)
         stat <- statistic(py, yhat, px, poffset)
         out <- c(out, stat)
       }
@@ -158,6 +158,9 @@ estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = R2, 
 
   return(out)
 }
+
+# declare estimateStat foreach variables
+utils::globalVariables("p_")
 
 #' Calculate $R^2$
 #'
@@ -251,20 +254,23 @@ applyOverDFList <- function(list_of_df, col_name, fun, groups) {
   stopifnot("all list_of_df names must be included in groups" = setequal(names(list_of_df), names(groups)))
   stopifnot("groups must not have unused levels" = setdiff(levels(groups), groups) == character(0))
 
-  col_fun_mat <- foreach::foreach(gr = levels(groups), .combine = cbind) %dopar% # parallel version is bit faster
+  col_fun_mat <- foreach::foreach(gr_ = levels(groups), .combine = cbind) %dopar% # parallel version is bit faster
     {
-      i <- groups == gr
+      i <- groups == gr_
       attr <- lapply(list_of_df[i], function(df) df[[col_name]])
       attr <- do.call(cbind, attr)
       matrix(
         data = apply(X = attr, MARGIN = 1, FUN = fun),
         ncol = 1L,
-        dimnames = list(rownames(attr), gr)
+        dimnames = list(rownames(attr), gr_)
       )
     }
 
   return(col_fun_mat)
 }
+
+# declare applyOverDFList foreach variables
+utils::globalVariables("gr_")
 
 #' Subset keeping missing
 #'

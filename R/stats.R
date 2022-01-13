@@ -100,7 +100,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
   varmat <- sig2hat * varmat
   se <- sqrt(diag(varmat))
   tstat <- abs(beta / se)
-  pval <- 2 * (1 - pnorm(tstat))
+  pval <- 2 * (1 - stats::pnorm(tstat))
 
   res <-
     list(
@@ -289,8 +289,8 @@ modelGeneExpression <- function(mae,
 
   message("##------ modelGeneExpression: started ridge regression ", timestamp(prefix = "", quiet = TRUE))
   regression_models <- foreach::foreach(
-    x = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
-    xn = xnames,
+    x_ = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
+    xn_ = xnames,
     .inorder = TRUE,
     .final = function(x) setNames(x, xnames),
     .packages = "xcore"
@@ -302,12 +302,12 @@ modelGeneExpression <- function(mae,
       .final = function(x) setNames(x, names(groups)),
       .packages = "xcore"
     ) %dopar% {
-      if (yn %in% iter_to_pass[[xn]]) {
+      if (yn %in% iter_to_pass[[xn_]]) {
         res <- "precalc"
       } else {
-        args[["x"]] <- x
+        args[["x"]] <- x_
         args[["y"]] <- y
-        rm(x, y); gc()
+        rm(x_, y); gc()
         res <- do.call(runLinearRidge, args)
       }
 
@@ -331,36 +331,36 @@ modelGeneExpression <- function(mae,
       }
     }
     svdX <- foreach::foreach(
-      x = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
+      x_ = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
       .inorder = TRUE,
       .final = function(x) setNames(x, xnames)
-    ) %dopar% svd(x)
+    ) %dopar% svd(x_)
 
     pvalues <- foreach::foreach(
-      x = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
-      xnm = xnames,
+      x_ = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
+      xnm_ = xnames,
       .inorder = TRUE,
       .final = function(x) setNames(x, xnames)
       # .packages = "xcore"
     ) %:%
       foreach::foreach(
         y = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
-        id = names(groups),
+        id_ = names(groups),
         .inorder = TRUE,
         .final = function(x) setNames(x, names(groups))
         # .packages = "xcore"
       ) %dopar% {
         y <- y - mae[[uname]]
-        lambda <- regression_models[[xnm]][[id]]$lambda.min
-        beta <- coef(regression_models[[xnm]][[id]], s = lambda)
+        lambda <- regression_models[[xnm_]][[id_]]$lambda.min
+        beta <- coef(regression_models[[xnm_]][[id_]], s = lambda)
         beta <- beta[-1, ] # drop intercept
         ridgePvals(
-          x = x,
+          x = x_,
           y = y,
           beta = beta,
           lambda = lambda,
           standardizex = FALSE,
-          svdX = svdX[[xnm]]
+          svdX = svdX[[xnm_]]
         )
       }
 
@@ -408,6 +408,9 @@ modelGeneExpression <- function(mae,
     results = results
   ))
 }
+
+# declare modelGeneExpression foreach variables
+utils::globalVariables(c("x_", "xn_", "xnm_", "id_"))
 
 #' Calculate replicate averaged Z-scores
 #'
@@ -478,7 +481,7 @@ stoufferZMethod <- function(z) {
 #' @param drop_intercept logical indicating if intercept should be droped from
 #'   the output.
 #'
-#' @param a average coefficients matrix
+#' @return average coefficients matrix
 #'
 getAvgCoeff <- function(models, lambda = "lambda.min", drop_intercept = TRUE) {
   coefs <- lapply(models, function(m) coef(m, s = m[[lambda]]))
@@ -490,7 +493,7 @@ getAvgCoeff <- function(models, lambda = "lambda.min", drop_intercept = TRUE) {
   }
   coefs <- do.call(cbind, coefs)
   coefs_avg <- rowMeans(coefs)
-  coefs_sd <- apply(coefs, 1, sd)
+  coefs_sd <- apply(coefs, 1, stats::sd)
   res <-
     cbind(
       estimate = coefs_avg,
