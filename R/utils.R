@@ -132,6 +132,8 @@ applyOverColumnGroups <- function(mat, groups, f, ...) {
 #'   \code{y}, \code{x}, \code{offset} arguments and return
 #'   a numeric vector of the same length. See \code{rsq}, \code{mse} for examples.
 #'
+#' @return numeric vector of \code{statistic} estimates.
+#'
 #' @importFrom foreach foreach
 #'
 estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = rsq, alpha = 0) {

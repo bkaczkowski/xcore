@@ -29,6 +29,9 @@ The penalty is defined as
 \deqn{(1-\alpha)/2||\beta||_2^2+\alpha||\beta||_1.} \code{alpha=1} is the
 lasso penalty, and \code{alpha=0} the ridge penalty.}
 }
+\value{
+numeric vector of \code{statistic} estimates.
+}
 \description{
 Estimate goodness of fit statistic of penalized linear regression models.
 Works with different goodness of fit statistic functions.
