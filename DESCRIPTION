@@ -1,6 +1,6 @@
 Package: xcore
 Title: xcore gene expression modeling framework
-Version: 0.0.0.9000
+Version: 0.99.0
 Authors@R: 
     c(person(given = "Maciej",
            family = "Migdał",
