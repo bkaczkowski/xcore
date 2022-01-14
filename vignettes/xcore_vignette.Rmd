@@ -241,3 +241,7 @@ molecular_signature <- getInteractionMatrix(
   ext = 500
 )
 ```
+
+```{r}
+sessionInfo()
+```
