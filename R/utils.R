@@ -190,7 +190,7 @@ mse <- function(y, yhat, ...) mean((y - yhat)^2)
 #'
 #' @param y numeric vector of observed expression values.
 #' @param yhat numeric vector of predicted expression values.
-#' @param .. not used.
+#' @param ... not used.
 #'
 #' @return numeric vector
 #'

@@ -11,7 +11,7 @@ mae(y, yhat, ...)
 
 \item{yhat}{numeric vector of predicted expression values.}
 
-\item{..}{not used.}
+\item{...}{not used.}
 }
 \value{
 numeric vector
