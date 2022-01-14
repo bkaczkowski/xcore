@@ -1,5 +1,5 @@
 Package: xcore
-Title: xcore gene expression modeling framework
+Title: xcore expression regulators inference
 Version: 0.99.0
 Authors@R: 
     c(person(given = "Maciej",
