@@ -414,7 +414,7 @@ utils::globalVariables(c("x_", "xn_", "xnm_", "id_"))
 
 #' Calculate replicate averaged Z-scores
 #'
-#' Replicate averaged Z-scores for is calculated by dividing replicate average
+#' Replicate averaged Z-scores is calculated by dividing replicate average
 #' coefficient by replicate pooled standard error.
 #'
 #' @param pvalues Data frame with \code{'se'} (standard error) and \code{'coef'}
