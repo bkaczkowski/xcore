@@ -9,6 +9,8 @@
 #'   columns to time points at which expression was measured 0 and 24 hours post
 #'   infection.
 #'
+#' @usage data(rinderpest_mini)
+#'
 "rinderpest_mini"
 
 #' xcore example molecular signatures
@@ -23,5 +25,7 @@
 #'   interaction matrix for subset of ReMap2020 molecular signatures against
 #'   FANTOM5 annotation. Rows corresponds to FANTOM5 promoters and columns to
 #'   signatures.
+#'
+#' @usage data(remap_mini)
 #'
 "remap_mini"
