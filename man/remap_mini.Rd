@@ -11,7 +11,7 @@ FANTOM5 annotation. Rows corresponds to FANTOM5 promoters and columns to
 signatures.
 }
 \usage{
-remap_mini
+data(remap_mini)
 }
 \description{
 Molecular signatures data intended for use in xcore vignette and examples.

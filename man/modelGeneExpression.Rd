@@ -107,6 +107,7 @@ accompanying this package.
 }
 \examples{
 \dontrun{
+data("rinderpest_mini", "remap_mini")
 base_lvl <- "00hr"
 design <- matrix(
   data = c(1, 0, 0,

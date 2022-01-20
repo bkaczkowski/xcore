@@ -11,7 +11,7 @@ columns to time points at which expression was measured 0 and 24 hours post
 infection.
 }
 \usage{
-rinderpest_mini
+data(rinderpest_mini)
 }
 \description{
 Expression data intended for use in xcore vignette and examples. It is build
