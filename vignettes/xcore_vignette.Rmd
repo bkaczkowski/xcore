@@ -27,6 +27,7 @@ samples and only for a subset of FANTOM5 promoters. We can find this example
 data shipped with `xcore` package.
 
 ```{r}
+data("rinderpest_mini")
 head(rinderpest_mini)
 ```
 
