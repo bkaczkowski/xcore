@@ -18,6 +18,6 @@ Numeric matrix of averaged Z-scores. Columns correspond to groups and
 rows to predictors.
 }
 \description{
-Replicate averaged Z-scores for is calculated by dividing replicate average
+Replicate averaged Z-scores is calculated by dividing replicate average
 coefficient by replicate pooled standard error.
 }
