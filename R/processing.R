@@ -29,6 +29,7 @@
 #'   available for \code{modelGeneExpression}.
 #'
 #' @examples
+#' data("rinderpest_mini")
 #' base_lvl <- "00hr"
 #' design <- matrix(
 #'   data = c(1, 0, 0,
@@ -108,6 +109,7 @@ prepareCountsForRegression <- function(counts,
 #' @return MultiAssayExperiment object with new experiments added.
 #'
 #' @examples
+#' data("rinderpest_mini", "remap_mini")
 #' base_lvl <- "00hr"
 #' design <- matrix(
 #'   data = c(1, 0, 0,
@@ -257,6 +259,7 @@ getInteractionMatrix <- function(a, b, ext = 500, count = FALSE) {
 #' @importFrom methods is
 #'
 #' @examples
+#' data("rinderpest_mini", "remap_mini")
 #' base_lvl <- "00hr"
 #' design <- matrix(
 #'   data = c(1, 0, 0,

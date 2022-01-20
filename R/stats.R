@@ -193,6 +193,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'
 #' @examples
 #' \dontrun{
+#' data("rinderpest_mini", "remap_mini")
 #' base_lvl <- "00hr"
 #' design <- matrix(
 #'   data = c(1, 0, 0,
