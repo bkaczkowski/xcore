@@ -1,4 +1,5 @@
 test_that("prepareCountsForRegression", {
+  data("rinderpest_mini")
   design <- matrix(
     data = c(1, 0,
              0, 1),
@@ -66,6 +67,7 @@ test_that("prepareCountsForRegression", {
 })
 
 test_that("addSignatures", {
+  data("rinderpest_mini", "remap_mini")
   base_lvl <- "00hr"
   design <- matrix(
     data = c(1, 0,
@@ -182,6 +184,7 @@ test_that("getInteractionMatrix", {
 })
 
 test_that("filterSignatures", {
+  data("rinderpest_mini", "remap_mini")
   base_lvl <- "00hr"
   design <- matrix(
     data = c(1, 0,

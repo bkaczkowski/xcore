@@ -20,6 +20,7 @@ test_that("ridgePvals", {
 })
 
 test_that("modelGeneExpression", {
+  data("rinderpest_mini", "remap_mini")
   base_lvl <- "00hr"
   design <- matrix(
     data = c(1, 0,
