@@ -106,7 +106,7 @@ For detailed pipeline description we refer interested user to paper
 accompanying this package.
 }
 \examples{
-\dontrun{
+\donttest{
 data("rinderpest_mini", "remap_mini")
 base_lvl <- "00hr"
 design <- matrix(
@@ -133,7 +133,7 @@ res <- modelGeneExpression(
   mae = mae,
   yname = yname,
   uname = uname,
-  xnames = xnames))
+  xnames = xnames)
 }
 
 }
