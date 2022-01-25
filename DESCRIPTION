@@ -46,7 +46,6 @@ Suggests:
     ExperimentHub (>= 2.2.0),
     KernSmooth (>= 2.23.20),
     knitr (>= 1.37),
-    rmarkdown (>= 2.11),
     pheatmap (>= 1.0.12),
     proxy (>= 0.4.26),
     ridge (>= 3.0),
