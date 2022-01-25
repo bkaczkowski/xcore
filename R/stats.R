@@ -216,9 +216,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #' mae <- filterSignatures(mae)
 #' res <- modelGeneExpression(
 #'   mae = mae,
-#'   yname = yname,
-#'   uname = uname,
-#'   xnames = xnames)
+#'   xnames = "remap")
 #'
 #' @importFrom foreach foreach %do% %dopar% %:%
 #' @importFrom methods is
