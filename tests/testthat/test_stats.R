@@ -266,5 +266,5 @@ test_that("modelGeneExpression", {
     yname = yname,
     uname = uname,
     xnames = xnames)))
-  testthat::expect_equal(digest::digest(res), "abb95b49700a9f09086a3bf9d8d12b4f")
+  testthat::expect_equal(digest::digest(res), "d650ad7e3f963bbf4d9e29b4457aa392")
 })

@@ -63,7 +63,7 @@ test_that("prepareCountsForRegression", {
     counts = rinderpest_mini,
     design = design,
     base_lvl = "00hr")
-  testthat::expect_equal(digest::digest(mae), "a4fff024e3fa50599bf59de21684234a")
+  testthat::expect_equal(digest::digest(mae), "54607bfcf129a298f38049912ee24985")
 })
 
 test_that("addSignatures", {
@@ -104,7 +104,7 @@ test_that("addSignatures", {
   )
 
   mae <- addSignatures(mae, remap = remap_mini)
-  testthat::expect_equal(digest::digest(mae), "b0287dfe29a52559bab00b0ed8ff8a56")
+  testthat::expect_equal(digest::digest(mae), "b1493e0edf55d3347b328d6928ab15fb")
 })
 
 test_that("getInteractionMatrix", {
