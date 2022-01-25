@@ -150,7 +150,7 @@ applyOverColumnGroups <- function(mat, groups, f, ...) {
 estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = rsq, alpha = 0) {
   if (method == "cv") {
     out <- c()
-    part <- sample(1:nfold, size = length(y), replace = TRUE)
+    part <- sample(seq_len(nfold), size = length(y), replace = TRUE)
 
     out <- foreach::foreach(p_ = seq_len(nfold), .combine = c) %do%
       {
