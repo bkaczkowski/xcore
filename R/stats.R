@@ -192,7 +192,6 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'   }
 #'
 #' @examples
-#' \donttest{
 #' data("rinderpest_mini", "remap_mini")
 #' base_lvl <- "00hr"
 #' design <- matrix(
@@ -220,7 +219,6 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'   yname = yname,
 #'   uname = uname,
 #'   xnames = xnames)
-#' }
 #'
 #' @importFrom foreach foreach %do% %dopar% %:%
 #' @importFrom methods is
