@@ -79,7 +79,6 @@ getCoverage <- function(mat, gr) {
 #'
 #' @importFrom Matrix rowSums sparseMatrix
 #'
-#' @export
 simplifyInteractionMatrix <- function(mat, alpha = 0.5, colname = NA) {
   stopifnot(is(mat, "dgCMatrix"))
   stopifnot(is.numeric(alpha) && (length(alpha) == 1))
