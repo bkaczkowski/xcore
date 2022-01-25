@@ -130,8 +130,6 @@ mae <- addSignatures(mae, remap = remap_mini)
 mae <- filterSignatures(mae)
 res <- modelGeneExpression(
   mae = mae,
-  yname = yname,
-  uname = uname,
-  xnames = xnames)
+  xnames = "remap")
 
 }
