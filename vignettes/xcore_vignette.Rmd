@@ -87,8 +87,16 @@ advantage of pre-computed molecular signatures found in `xcoredata` package.
 Particularly, molecular signatures constructed from ReMap2020 against FANTOM5
 annotation.
 
+At the moment, molecular signatures can be accessed using the *ExperimentHub*
+interface.
+
 ```{r}
-data("remap_promoters_f5", package = "xcoredata")
+library("ExperimentHub")
+
+eh <- ExperimentHub()
+query(eh, "xcoredata")
+
+remap_promoters_f5 <- eh[["EH7301"]]
 ```
 
 Molecular signature is a simple binary matrix indicating if transcription factor
