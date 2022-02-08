@@ -12,11 +12,13 @@ vignette: >
 
 ```{r include=FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE, mc.cores = 6)
-
-devtools::load_all()
 ```
 
 This document introduces the xcore package and showcase its basic usage.
+
+```{r}
+library("xcore")
+```
 
 # Gene expression modeling in context of rinderpest infection
 
