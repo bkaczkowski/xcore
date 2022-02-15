@@ -110,3 +110,9 @@ downloadDataset http://expdata.cmmt.ubc.ca/JASPAR/downloads/UCSC_tracks/2020/JAS
 
 # swissregulon tfbs
 downloadDataset https://swissregulon.unibas.ch/data/hg38_f5/hg38_sites_v1.gff.gz
+
+# GSE17708_Keshamouni_TGFB1_logs.xls
+downloadDataset https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE17708&format=file&file=GSE17708%5FKeshamouni%5FTGFB1%5Flogs%2Exls%2Egz
+if [ ! -f GSE17708_Keshamouni_TGFB1_logs.xls ]; then
+	        gunzip GSE17708_Keshamouni_TGFB1_logs.xls.gz
+fi
