@@ -277,47 +277,19 @@ modelGeneExpression <- function(mae,
   groups <- design2factor(design)
   stopifnot("design try to use samples not included in mae[[yname]]" = all(names(groups) %in% colnames(mae[[yname]])))
 
-  iter_to_pass <- lapply(precalcmodels, names)
-
-  args <- list(...)
-  args[["offset"]] <- mae[[uname]]
-  args[["standardize"]] <- standardize
-  args[["parallel"]] <- parallel
-
   message("##------ modelGeneExpression: started ridge regression ", timestamp(prefix = "", quiet = TRUE))
-  regression_models <- foreach::foreach(
-    x_ = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
-    xn_ = xnames,
-    .inorder = TRUE,
-    .final = function(x) setNames(x, xnames),
-    .packages = "xcore"
-  ) %:%
-    foreach::foreach(
-      y = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
-      yn = names(groups),
-      .inorder = TRUE,
-      .final = function(x) setNames(x, names(groups)),
-      .packages = "xcore"
-    ) %dopar% {
-      if (yn %in% iter_to_pass[[xn_]]) {
-        res <- "precalc"
-      } else {
-        args[["x"]] <- x_
-        args[["y"]] <- y
-        rm(x_, y); gc()
-        res <- do.call(runLinearRidge, args)
-      }
-
-      return(res)
-      rm(args, res); gc()
-    }
-  # add precalculated models
-  for (xn in names(iter_to_pass)) {
-    for (yn in iter_to_pass[[xn]])
-      if (yn %in% names(groups)) {
-        regression_models[[xn]][[yn]] <- precalcmodels[[xn]][[yn]]
-      }
-  }
+  regression_models <-
+    modelGeneExpression_ridge_regression_wraper(
+      mae = mae,
+      yname = yname,
+      uname = uname,
+      xnames = xnames,
+      groups = groups,
+      offset = offset,
+      standardize = standardize,
+      parallel = parallel,
+      precalcmodels = precalcmodels,
+      ...)
   message("##------ modelGeneExpression: finished begining ridge  ", timestamp(prefix = "", quiet = TRUE))
 
   if (pvalues) {
@@ -408,6 +380,81 @@ modelGeneExpression <- function(mae,
 
 # declare modelGeneExpression foreach variables
 utils::globalVariables(c("x_", "xn_", "xnm_", "id_"))
+
+#' Ridge regression wrapper for modelGeneExpression
+#'
+#' Internal function used in \code{modelGeneExpression}. It runs ridge regression
+#' parallely across signatures and samples as specified by experiment design.
+#'
+#' @inheritParams modelGeneExpression
+#' @param groups factor representation of design matrix.
+#' @param offset a vector of length nobs that is included in the linear predictor.
+#'   Usually the U experiment in \code{mae}.
+#' @param pvalues logical flag indicating if significance testing for the
+#'   estimated molecular signatures activities should be performed.
+#' @param ... arguments passed to glmnet::cv.glmnet.
+#'
+#' @return Named list with elements corresponding to signatures specified in
+#'   \code{xnames}. Each of these is a list holding \code{'cv.glmnet'} objects
+#'   corresponding to each sample.
+#'
+#' @importFrom foreach foreach %dopar% %:%
+#' @importFrom iterators iter
+#' @importFrom stats setNames
+#'
+modelGeneExpression_ridge_regression_wraper <- function(mae,
+                                                        yname,
+                                                        uname,
+                                                        xnames,
+                                                        groups,
+                                                        offset,
+                                                        standardize,
+                                                        parallel,
+                                                        precalcmodels,
+                                                        ...) {
+  iter_to_pass <- lapply(precalcmodels, names)
+
+  args <- list(...)
+  args[["offset"]] <- mae[[uname]]
+  args[["standardize"]] <- standardize
+  args[["parallel"]] <- parallel
+
+  regression_models <- foreach::foreach(
+    x_ = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
+    xn_ = xnames,
+    .inorder = TRUE,
+    .final = function(x) setNames(x, xnames),
+    .packages = "xcore"
+  ) %:%
+    foreach::foreach(
+      y = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
+      yn = names(groups),
+      .inorder = TRUE,
+      .final = function(x) setNames(x, names(groups)),
+      .packages = "xcore"
+    ) %dopar% {
+      if (yn %in% iter_to_pass[[xn_]]) {
+        res <- "precalc"
+      } else {
+        args[["x"]] <- x_
+        args[["y"]] <- y
+        rm(x_, y); gc()
+        res <- do.call(runLinearRidge, args)
+      }
+
+      return(res)
+      rm(args, res); gc()
+    }
+  # add precalculated models
+  for (xn in names(iter_to_pass)) {
+    for (yn in iter_to_pass[[xn]])
+      if (yn %in% names(groups)) {
+        regression_models[[xn]][[yn]] <- precalcmodels[[xn]][[yn]]
+      }
+  }
+
+  return(regression_models)
+}
 
 #' Calculate replicate averaged Z-scores
 #'
