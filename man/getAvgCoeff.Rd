@@ -4,14 +4,16 @@
 \alias{getAvgCoeff}
 \title{Calculate average coefficients matrix}
 \usage{
-getAvgCoeff(models, lambda = "lambda.min", drop_intercept = TRUE)
+getAvgCoeff(models, group = NULL, lambda = "lambda.min", drop_intercept = TRUE)
 }
 \arguments{
 \item{models}{list of \code{cv.glmnet} objects.}
 
+\item{group}{optional factor giving the grouping.}
+
 \item{lambda}{string indicating which lambda to use.}
 
-\item{drop_intercept}{logical indicating if intercept should be droped from
+\item{drop_intercept}{logical indicating if intercept should be dropped from
 the output.}
 }
 \value{

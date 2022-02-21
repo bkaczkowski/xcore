@@ -302,42 +302,49 @@ modelGeneExpression <- function(mae,
       groups = groups,
       standardize = standardize,
       regression_models = regression_models)
-
     zscore_avg <- lapply(pvalues, repAvgZscore, groups = groups)
-    coef_avg <- lapply(
-      X = pvalues,
-      FUN = function(pv) {
-        applyOverDFList(list_of_df = pv,
-                        col_name = "coef",
-                        fun = mean,
-                        groups = groups)
-      })
-    results <- lapply(
-      X = names(coef_avg),
-      FUN = function(nm) {
-        coef <- coef_avg[[nm]]
-        x <- split(coef, col(coef, as.factor = TRUE))
-        x <- c(list(name = rownames(coef)), x)
-        x[["z_score"]] <- apply(zscore_avg[[nm]], 1, stoufferZMethod)
-        pvallen <- length(pvalues[[nm]][[1]][["pval"]])
-        pvalmat <- vapply(X = pvalues[[nm]],
-                          FUN = function(x) x[["pval"]],
-                          FUN.VALUE = numeric(pvallen))
-        x[["pvalue"]] <- apply(pvalmat, 1, fisherMethod, log.p = FALSE)
-        class(x) <- "data.frame"
-        attr(x, "row.names") <- seq_len(nrow(coef))
-        ord <- order(abs(x[["z_score"]]), decreasing = TRUE)
-        x <- x[ord, ]
-        x
-      })
-    names(results) <- names(coef_avg)
     message("##------ modelGeneExpression: finished significance testing  ", timestamp(prefix = "", quiet = TRUE))
   } else {
     pvalues <- NULL
     zscore_avg <- NULL
-    coef_avg <- NULL
-    results <- NULL
   }
+
+  # gather results
+  coef_avg <- lapply(X = xnames, function(xnm_) {
+    getAvgCoeff(models = regression_models[[xnm_]], group = groups, drop_intercept = TRUE)
+  })
+  names(coef_avg) <- xnames
+
+  results <- lapply(
+    X = names(coef_avg),
+    FUN = function(xnm_) {
+      coef <- coef_avg[[xnm_]]
+      x <- split(coef, col(coef, as.factor = TRUE))
+      x <- c(list(name = rownames(coef)), x)
+
+      if (length(zscore_avg)) {
+        x[["z_score"]] <- apply(zscore_avg[[xnm_]], 1, stoufferZMethod)
+      } else {
+        x[["z_score"]] <- NA
+      }
+
+      if (length(pvalues)) {
+        pvallen <- length(pvalues[[xnm_]][[1]][["pval"]])
+        pvalmat <- vapply(X = pvalues[[xnm_]],
+                          FUN = function(x) x[["pval"]],
+                          FUN.VALUE = numeric(pvallen))
+        x[["pvalue"]] <- apply(pvalmat, 1, fisherMethod, log.p = FALSE)
+      }
+
+      class(x) <- "data.frame"
+      attr(x, "row.names") <- seq_len(nrow(coef))
+      if (length(zscore_avg)) {
+        ord <- order(abs(x[["z_score"]]), decreasing = TRUE)
+        x <- x[ord, ]
+      }
+      x
+    })
+  names(results) <- names(coef_avg)
 
   return(list(
     regression_models = regression_models,
@@ -558,13 +565,14 @@ stoufferZMethod <- function(z) {
 #' Calculate average coefficients matrix
 #'
 #' @param models list of \code{cv.glmnet} objects.
+#' @param group optional factor giving the grouping.
 #' @param lambda string indicating which lambda to use.
-#' @param drop_intercept logical indicating if intercept should be droped from
+#' @param drop_intercept logical indicating if intercept should be dropped from
 #'   the output.
 #'
 #' @return average coefficients matrix
 #'
-getAvgCoeff <- function(models, lambda = "lambda.min", drop_intercept = TRUE) {
+getAvgCoeff <- function(models, group = NULL, lambda = "lambda.min", drop_intercept = TRUE) {
   coefs <- lapply(models, function(m) coef(m, s = m[[lambda]]))
   if (drop_intercept) {
     coefs <- lapply(coefs, function(m) {
@@ -572,13 +580,12 @@ getAvgCoeff <- function(models, lambda = "lambda.min", drop_intercept = TRUE) {
       m[keep, ]
     })
   }
-  coefs <- do.call(cbind, coefs)
-  coefs_avg <- rowMeans(coefs)
-  coefs_sd <- apply(coefs, 1, stats::sd)
-  res <-
-    cbind(
-      estimate = coefs_avg,
-      sd = coefs_sd,
-      z = (coefs_avg - mean(coefs_avg)) / coefs_sd)
-  res
+  coefs_avg <- lapply(X = levels(group), function(gr) {
+    mat <- do.call(cbind, coefs[group == gr])
+    rowMeans(mat)
+  })
+  coefs_avg <- do.call(cbind, coefs_avg)
+  colnames(coefs_avg) <- levels(group)
+
+  return(coefs_avg)
 }
