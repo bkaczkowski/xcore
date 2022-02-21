@@ -334,6 +334,8 @@ modelGeneExpression <- function(mae,
                           FUN = function(x) x[["pval"]],
                           FUN.VALUE = numeric(pvallen))
         x[["pvalue"]] <- apply(pvalmat, 1, fisherMethod, log.p = FALSE)
+      } else {
+        x[["pvalue"]] <- NA
       }
 
       class(x) <- "data.frame"
