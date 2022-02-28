@@ -63,7 +63,13 @@ test_that("prepareCountsForRegression", {
     counts = rinderpest_mini,
     design = design,
     base_lvl = "00hr")
-  testthat::expect_equal(digest::digest(mae), "54607bfcf129a298f38049912ee24985")
+
+  testthat::expect_equal(is(mae, "MultiAssayExperiment"), TRUE)
+  testthat::expect_equal(maeSummary(mae),
+                         list(
+                           U = c(10071, 1, 5.28377913984554, 1.75790456840985),
+                           Y = c(10071, 1, 5.2984245709768, 1.71812858157914)
+                         ))
 })
 
 test_that("addSignatures", {
@@ -104,7 +110,13 @@ test_that("addSignatures", {
   )
 
   mae <- addSignatures(mae, remap = remap_mini)
-  testthat::expect_equal(digest::digest(mae), "b1493e0edf55d3347b328d6928ab15fb")
+  testthat::expect_equal(is(mae, "MultiAssayExperiment"), TRUE)
+  testthat::expect_equal(maeSummary(mae),
+                         list(
+                           U = c(9889, 1, 5.3102854677531, 1.73803891501281),
+                           Y = c(9889, 3, 5.33225844498918, 1.69387219691185),
+                           remap = c(9889, 600, 0.281297401152796, 0.449632302365562)
+                         ))
 })
 
 test_that("getInteractionMatrix", {

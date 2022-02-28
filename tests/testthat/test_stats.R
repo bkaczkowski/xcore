@@ -266,5 +266,49 @@ test_that("modelGeneExpression", {
     yname = yname,
     uname = uname,
     xnames = xnames)))
-  testthat::expect_equal(digest::digest(res), "d650ad7e3f963bbf4d9e29b4457aa392")
+  testthat::expect_equal(is(res, "list"), TRUE)
+  testthat::expect_equal(
+    names(res),
+    c("regression_models", "pvalues", "zscore_avg", "coef_avg", "results"))
+  testthat::expect_equal(
+    vapply(res$regression_models$remap, function(x) x[["lambda.min"]], numeric(1L)),
+    c(`24hr_rep1` = 0.511733047560191, `24hr_rep2` = 0.519567836447116, `24hr_rep3` = 0.49538499285586)
+  )
+  testthat::expect_equal(
+    head(res$results$remap, 5),
+    structure(
+      list(
+        name = c(
+          "GSE41561.E2F4.MCF-7_ICI",
+          "GSE46055.KDM5B.SUM185_SHCTCF",
+          "ENCSR218GSN.ZFX.HEK293T",
+          "GSE110655.BAF155.VCaP_shARID1A",
+          "ENCSR854MCV.IRF1.K-562"
+        ),
+        `24hr` = c(
+          0.11515487852585,
+          -0.100550457624076,-0.0738555719041244,
+          -0.0708811255351241,
+          0.0609161135939251
+        ),
+        z_score = c(
+          `GSE41561.E2F4.MCF-7_ICI` = 12.8884796572437,
+          GSE46055.KDM5B.SUM185_SHCTCF = -8.38371174822282,
+          ENCSR218GSN.ZFX.HEK293T = -7.88258930989191,
+          GSE110655.BAF155.VCaP_shARID1A = -7.04006551108391,
+          `ENCSR854MCV.IRF1.K-562` = 7.02448209071396
+        ),
+        pvalue = c(
+          `GSE41561.E2F4.MCF-7_ICI` = 0,
+          GSE46055.KDM5B.SUM185_SHCTCF = 0,
+          ENCSR218GSN.ZFX.HEK293T = 0,
+          GSE110655.BAF155.VCaP_shARID1A = 2.063037048441e-32,
+          `ENCSR854MCV.IRF1.K-562` = 2.72916916143984e-32
+        )
+      ),
+      row.names = c(123L,
+                    52L, 318L, 62L, 101L),
+      class = "data.frame"
+    )
+  )
 })

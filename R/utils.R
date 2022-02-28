@@ -301,3 +301,18 @@ subsetWithMissing <- function(mat, rows) {
   rownames(smat) <- rows
   smat
 }
+
+#' Helper summarizing MAE object
+#'
+#' @param mae MultiAssayExperiment object.
+#'
+#' @return named list giving number of rows and columns, overall mean and
+#'   standard deviation in \code{mae}'s experiments.
+#'
+#' @importFrom MultiAssayExperiment experiments
+#' @importFrom Matrix mean+-
+#'
+#'
+maeSummary <- function(mae) {
+  lapply(MultiAssayExperiment::experiments(mae), function(x) c(dim(x), Matrix::mean(x), sd(x)))
+}
