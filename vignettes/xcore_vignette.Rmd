@@ -130,7 +130,7 @@ around 10 minutes to compute and used up to 8 GB RAM on Intel(R) Xeon(R) CPU
 E5-2680 v3 using 2 cores. This unfortunately exceeds the resources available for
 Bioconductor vignettes. This being said, we will further proceed by taking only
 a subset of ReMap2020 signatures such that we fit into the time limits. However,
-for running a `xcore` in a normal setting the whole molecular signatures matrix
+for running `xcore` in a normal setting the whole molecular signatures matrix
 should be used!
 
 ```{r}
@@ -192,7 +192,8 @@ of the ReMap2020 molecular signatures matrix.
 
 ```{r}
 # register parallel backend
-doMC::registerDoMC(cores = 2L)
+doParallel::registerDoParallel(2L)
+BiocParallel::register(BiocParallel::DoparParam(), default = TRUE)
 
 # set seed
 set.seed(314159265)
@@ -228,10 +229,11 @@ head(res$results$remap)
 To visualize the result we can plot a heatmap of molecular signatures activities
 for the top identified molecular signatures.
 
-```{r fig.cap = "foo bar"}
+```{r fig.cap = "Predicted activities for the top-scoring molecular signatures"}
 top_signatures <- head(res$results$remap, 10)
 pheatmap::pheatmap(
   mat = top_signatures[, c("12hr", "24hr")],
+  scale = "none",
   labels_row = top_signatures$name,
   cluster_cols = FALSE,
   color = colorRampPalette(c("blue", "white", "red"))(15),
@@ -246,7 +248,6 @@ on results interpretation can be made. The top-scoring transcription factors
 can be hypothesized to be associated with observed changes in gene expression.
 Moreover, the predicted activities indicate if promoters targeted by a specific
 signature tend to be downregulated or upregulated.
-
 
 # Constructing molecular signatures
 
@@ -263,7 +264,7 @@ function, where we can specify the `ext` parameter that will control how
 much promoters are extended in both directions before intersecting with binding
 data.
 
-```{r eval=FALSE}
+```{r}
 # obtain binding sites
 motevo_hg38_f5 <- rtracklayer::import(
   con = "https://swissregulon.unibas.ch/data/hg38_f5/hg38_sites_v1.gff.gz"

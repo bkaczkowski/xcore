@@ -39,10 +39,11 @@ Imports:
     utils
 Suggests:
     BiocGenerics (>= 0.38.0),
+    BiocStyle (>= 2.20.2),
     data.table (>= 1.14.0),
     devtools (>= 2.4.2),
     digest (>= 0.6.28),
-    doMC (>= 1.3.7),
+    doParallel (>= 1.0.16),
     ExperimentHub (>= 2.2.0),
     KernSmooth (>= 2.23.20),
     knitr (>= 1.37),
