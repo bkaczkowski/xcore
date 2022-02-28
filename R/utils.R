@@ -310,7 +310,7 @@ subsetWithMissing <- function(mat, rows) {
 #'   standard deviation in \code{mae}'s experiments.
 #'
 #' @importFrom MultiAssayExperiment experiments
-#' @importFrom Matrix mean+-
+#' @importFrom Matrix mean
 #'
 #'
 maeSummary <- function(mae) {
