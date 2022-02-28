@@ -88,7 +88,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
   if (standardizex) x <- scale(x)
   if (is.null(svdX)) svdX <- svd(x)
   U <- svdX$u
-  D <- svdX$d
+  # D <- svdX$d # not used?
   D2 <- svdX$d ^ 2
   V <- svdX$v
   div <- D2 + lambda
