@@ -100,7 +100,8 @@ in \link[ridge]{ridge-package}.
 
 If replicates are available the signatures activities estimates and
 their standard error estimates can be combined. This is done by averaging
-signatures activities estimates and pooling their significance estimates.
+signatures activities estimates and pooling their significance estimates
+using Stouffer's method for the Z-scores and Fisher's method for the p-values.
 
 For detailed pipeline description we refer interested user to paper
 accompanying this package.

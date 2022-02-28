@@ -138,7 +138,8 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'
 #' If replicates are available the signatures activities estimates and
 #' their standard error estimates can be combined. This is done by averaging
-#' signatures activities estimates and pooling their significance estimates.
+#' signatures activities estimates and pooling their significance estimates
+#' using Stouffer's method for the Z-scores and Fisher's method for the p-values.
 #'
 #' For detailed pipeline description we refer interested user to paper
 #' accompanying this package.
@@ -322,18 +323,22 @@ modelGeneExpression <- function(mae,
       x <- split(coef, col(coef, as.factor = TRUE))
       x <- c(list(name = rownames(coef)), x)
 
-      if (length(zscore_avg)) {
+      if (length(zscore_avg) > 1) {
         x[["z_score"]] <- apply(zscore_avg[[xnm_]], 1, stoufferZMethod)
+      } else if (length(zscore_avg) == 1) {
+        x[["z_score"]] <- zscore_avg[[xnm_]][, 1L, drop = TRUE]
       } else {
         x[["z_score"]] <- NA
       }
 
-      if (length(pvalues)) {
+      if (length(pvalues) > 1) {
         pvallen <- length(pvalues[[xnm_]][[1]][["pval"]])
         pvalmat <- vapply(X = pvalues[[xnm_]],
                           FUN = function(x) x[["pval"]],
                           FUN.VALUE = numeric(pvallen))
         x[["pvalue"]] <- apply(pvalmat, 1, fisherMethod, log.p = FALSE)
+      } else if (length(pvalues) == 1) {
+        x[["pvalue"]] <- pvalues[[xnm_]][[1L]][["pval"]]
       } else {
         x[["pvalue"]] <- NA
       }
@@ -579,12 +584,16 @@ getAvgCoeff <- function(models, group = NULL, lambda = "lambda.min", drop_interc
   if (drop_intercept) {
     coefs <- lapply(coefs, function(m) {
       keep <- grep(pattern = "(Intercept)", x = rownames(m), invert = TRUE)
-      m[keep, ]
+      m[keep, , drop = FALSE]
     })
   }
   coefs_avg <- lapply(X = levels(group), function(gr) {
     mat <- do.call(cbind, coefs[group == gr])
-    rowMeans(mat)
+    if (ncol(mat) > 1) {
+      rowMeans(mat)
+    } else {
+      mat
+    }
   })
   coefs_avg <- do.call(cbind, coefs_avg)
   colnames(coefs_avg) <- levels(group)

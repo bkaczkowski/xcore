@@ -311,4 +311,60 @@ test_that("modelGeneExpression", {
       class = "data.frame"
     )
   )
+
+  # modelGeneExpression works with 1 replicate
+  mae[["Y"]] <- mae[["Y"]][, 1, drop = FALSE]
+  MultiAssayExperiment::metadata(mae)[["design"]] <-
+    MultiAssayExperiment::metadata(mae)[["design"]][1:4,]
+  res <- suppressWarnings(suppressMessages(modelGeneExpression(
+    mae = mae,
+    yname = yname,
+    uname = uname,
+    xnames = xnames)))
+
+  testthat::expect_equal(is(res, "list"), TRUE)
+  testthat::expect_equal(
+    names(res),
+    c("regression_models", "pvalues", "zscore_avg", "coef_avg", "results"))
+  testthat::expect_equal(
+    vapply(res$regression_models$remap, function(x) x[["lambda.min"]], numeric(1L)),
+    c(`24hr_rep1` = 0.466272094050723)
+  )
+  testthat::expect_equal(
+    head(res$results$remap, 5),
+    structure(
+      list(
+        name = c(
+          "GSE41561.E2F4.MCF-7_ICI",
+          "GSE46055.KDM5B.SUM185_SHCTCF",
+          "GSE110655.BAF155.VCaP_shARID1A",
+          "ENCSR218GSN.ZFX.HEK293T",
+          "ENCSR000BJR.NR3C1.A-549"
+        ),
+        `24hr` = c(
+          0.120925741266464,
+          -0.108759726296339,-0.0779421141739958,
+          -0.06915105435568,
+          -0.0722428635927672
+        ),
+        z_score = c(
+          `GSE41561.E2F4.MCF-7_ICI` = 13.4700840066981,
+          GSE46055.KDM5B.SUM185_SHCTCF = -9.02506580798332,
+          GSE110655.BAF155.VCaP_shARID1A = -7.70459397587716,
+          ENCSR218GSN.ZFX.HEK293T = -7.34541840217504,
+          `ENCSR000BJR.NR3C1.A-549` = -7.29921518261001
+        ),
+        pvalue = c(
+          `GSE41561.E2F4.MCF-7_ICI` = 0,
+          GSE46055.KDM5B.SUM185_SHCTCF = 0,
+          GSE110655.BAF155.VCaP_shARID1A = 1.31006316905768e-14,
+          ENCSR218GSN.ZFX.HEK293T = 2.05169214950729e-13,
+          `ENCSR000BJR.NR3C1.A-549` = 2.89546164822241e-13
+        )
+      ),
+      row.names = c(123L,
+                    52L, 62L, 318L, 345L),
+      class = "data.frame"
+    )
+  )
 })
