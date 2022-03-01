@@ -480,15 +480,15 @@ modelGeneExpression_significance_testing_wraper <- function(mae,
     x_ = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
     xnm_ = xnames,
     .inorder = TRUE,
-    .final = function(x) setNames(x, xnames)
-    # .packages = "xcore"
+    .final = function(x) setNames(x, xnames),
+    .packages = "xcore"
   ) %:%
     foreach::foreach(
       y = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
       id_ = names(groups),
       .inorder = TRUE,
-      .final = function(x) setNames(x, names(groups))
-      # .packages = "xcore"
+      .final = function(x) setNames(x, names(groups)),
+      .packages = "xcore"
     ) %dopar% {
       y <- y - mae[[uname]]
       lambda <- regression_models[[xnm_]][[id_]]$lambda.min
