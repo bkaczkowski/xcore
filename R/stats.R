@@ -584,7 +584,7 @@ getAvgCoeff <- function(models, group = NULL, lambda = "lambda.min", drop_interc
   if (drop_intercept) {
     coefs <- lapply(coefs, function(m) {
       keep <- grep(pattern = "(Intercept)", x = rownames(m), invert = TRUE)
-      m[keep, , drop = FALSE]
+      m[keep, ]
     })
   }
   coefs_avg <- lapply(X = levels(group), function(gr) {
