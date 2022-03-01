@@ -279,7 +279,7 @@ TFBS.
 
 ```{r}
 # obtain promoters annotation; *promoter name must be stored under column 'name'
-data("promoters_f5", package = "xcoredata")
+promoters_f5 <- eh[["EH7303"]]
 head(promoters_f5)
 ```
 
