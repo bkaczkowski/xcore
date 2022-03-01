@@ -38,6 +38,7 @@ Imports:
     S4Vectors (>= 0.30.0),
     utils
 Suggests:
+    AnnotationHub (>= 3.0.2),
     BiocGenerics (>= 0.38.0),
     BiocStyle (>= 2.20.2),
     data.table (>= 1.14.0),
