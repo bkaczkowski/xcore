@@ -457,13 +457,13 @@ modelGeneExpression_significance_testing_wraper <- function(mae,
       id_ = names(groups),
       .inorder = TRUE,
       .final = function(x) setNames(x, names(groups)),
-      .packages = "xcore"
+      .export = "ridgePvals"
     ) %dopar% {
       y <- y - mae[[uname]]
       lambda <- regression_models[[xnm_]][[id_]]$lambda.min
       beta <- coef(regression_models[[xnm_]][[id_]], s = lambda)
       beta <- beta[-1, ] # drop intercept
-      xcore:::ridgePvals(
+      ridgePvals(
         x = x_,
         y = y,
         beta = beta,
