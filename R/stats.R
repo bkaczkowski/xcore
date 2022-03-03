@@ -256,7 +256,6 @@ modelGeneExpression <- function(mae,
       uname = uname,
       xnames = xnames,
       groups = groups,
-      offset = offset,
       standardize = standardize,
       parallel = parallel,
       precalcmodels = precalcmodels,
@@ -333,7 +332,7 @@ modelGeneExpression <- function(mae,
 }
 
 # declare modelGeneExpression foreach variables
-utils::globalVariables(c("x_", "xn_", "xnm_", "id_"))
+utils::globalVariables(c("x_", "xn_", "xnm_", "y_", "yn_", "id_"))
 
 #' Ridge regression wrapper for modelGeneExpression
 #'
@@ -342,8 +341,6 @@ utils::globalVariables(c("x_", "xn_", "xnm_", "id_"))
 #'
 #' @inheritParams modelGeneExpression
 #' @param groups factor representation of design matrix.
-#' @param offset a vector of length nobs that is included in the linear predictor.
-#'   Usually the U experiment in \code{mae}.
 #' @param ... arguments passed to glmnet::cv.glmnet.
 #'
 #' @return Named list with elements corresponding to signatures specified in
@@ -359,7 +356,6 @@ modelGeneExpression_ridge_regression_wraper <- function(mae,
                                                         uname,
                                                         xnames,
                                                         groups,
-                                                        offset,
                                                         standardize,
                                                         parallel,
                                                         precalcmodels,
@@ -379,18 +375,18 @@ modelGeneExpression_ridge_regression_wraper <- function(mae,
     .final = function(x) setNames(x, xnames)
   ) %:%
     foreach::foreach(
-      y = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
-      yn = names(groups),
+      y_ = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
+      yn_ = names(groups),
       .inorder = TRUE,
       .final = function(x) setNames(x, names(groups)),
       .packages = "glmnet"
     ) %dopar% {
-      if (yn %in% iter_to_pass[[xn_]]) {
+      if (yn_ %in% iter_to_pass[[xn_]]) {
         res <- "precalc"
       } else {
         args[["x"]] <- x_
-        args[["y"]] <- y
-        rm(x_, y); gc()
+        args[["y"]] <- y_
+        rm(x_, y_); gc()
         res <- do.call(glmnet::cv.glmnet, args)
       }
 
@@ -453,19 +449,19 @@ modelGeneExpression_significance_testing_wraper <- function(mae,
     .final = function(x) setNames(x, xnames)
   ) %:%
     foreach::foreach(
-      y = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
+      y_ = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
       id_ = names(groups),
       .inorder = TRUE,
       .final = function(x) setNames(x, names(groups)),
       .export = "ridgePvals"
     ) %dopar% {
-      y <- y - mae[[uname]]
+      y_ <- y_ - mae[[uname]]
       lambda <- regression_models[[xnm_]][[id_]]$lambda.min
       beta <- coef(regression_models[[xnm_]][[id_]], s = lambda)
       beta <- beta[-1, ] # drop intercept
       ridgePvals(
         x = x_,
-        y = y,
+        y = y_,
         beta = beta,
         lambda = lambda,
         standardizex = FALSE,

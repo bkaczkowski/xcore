@@ -10,7 +10,6 @@ modelGeneExpression_ridge_regression_wraper(
   uname,
   xnames,
   groups,
-  offset,
   standardize,
   parallel,
   precalcmodels,
@@ -31,9 +30,6 @@ expression level.}
 molecular signatures.}
 
 \item{groups}{factor representation of design matrix.}
-
-\item{offset}{a vector of length nobs that is included in the linear predictor.
-Usually the U experiment in \code{mae}.}
 
 \item{standardize}{logical flag indicating if the molecular signatures should
 be scaled. Advised to be set to \code{TRUE}.}

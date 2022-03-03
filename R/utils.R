@@ -311,6 +311,7 @@ subsetWithMissing <- function(mat, rows) {
 #'
 #' @importFrom MultiAssayExperiment experiments
 #' @importFrom Matrix mean
+#' @importFrom stats sd
 #'
 #'
 maeSummary <- function(mae) {
