@@ -24,52 +24,21 @@ fisherMethod <- function(p.value, lower.tail = FALSE, log.p = TRUE) {
   return(cmbp)
 }
 
-#' Linear ridge regression
-#'
-#' Wrapper around \code{\link[glmnet]{cv.glmnet}} to run linear ridge regression
-#' with lambda selection using cross-validation.
-#'
-#' @inheritParams glmnet::cv.glmnet
-#' @inheritParams glmnet::glmnet
-#'
-#' @return an object of class "cv.glmnet" is returned. See
-#'   \code{\link[glmnet]{cv.glmnet}} for more details.
-#'
-#' @importFrom glmnet cv.glmnet
-#'
-runLinearRidge <-
-  function(x,
-           y,
-           offset,
-           alpha = 0,
-           standardize = TRUE,
-           ...) {
-    cv <- glmnet::cv.glmnet(
-      x = x,
-      y = y,
-      offset = offset,
-      alpha = alpha,
-      standardize = standardize,
-      ...)
-
-    return(cv)
-  }
-
 #' Significance testing in linear ridge regression
 #'
 #' Standard error estimation and significance testing for coefficients
 #' estimated in linear ridge regression. \code{ridgePvals} re-implement
 #' original method by (Cule et al. BMC Bioinformatics 2011.) found in
 #' \link[ridge]{ridge-package}. This function is intended to use with
-#' \code{\link{runLinearRidge}} output.
+#' \code{\link[glmnet]{cv.glmnet}} output.
 #'
-#' @param x input matrix, same as used in \code{\link{runLinearRidge}}.
-#' @param y response variable, same as used in \code{\link{runLinearRidge}}.
+#' @param x input matrix, same as used in \code{\link[glmnet]{cv.glmnet}}.
+#' @param y response variable, same as used in \code{\link[glmnet]{cv.glmnet}}.
 #' @param beta matrix of coefficients, estimated using
-#'   \code{\link{runLinearRidge}}.
+#'   \code{\link[glmnet]{cv.glmnet}}.
 #' @param lambda lambda value for which \code{beta} was estimated.
 #' @param standardizex logical flag for x variable standardization, should be
-#'   set to same value as \code{standarize} flag in \code{\link{runLinearRidge}}.
+#'   set to same value as \code{standarize} flag in \code{\link[glmnet]{cv.glmnet}}.
 #' @param svdX optional singular-value decomposition of \code{x} matrix. One can
 #'   be obtained using \code{link[base]{svd}}. Passing this argument omits
 #'   internal call to \code{link[base]{svd}}, this is useful when calling
@@ -220,6 +189,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'   xnames = "remap")
 #'
 #' @importFrom foreach foreach %do% %dopar% %:%
+#' @importFrom glmnet cv.glmnet
 #' @importFrom methods is
 #' @importFrom MultiAssayExperiment metadata
 #' @importFrom iterators iter
@@ -398,6 +368,7 @@ modelGeneExpression_ridge_regression_wraper <- function(mae,
 
   args <- list(...)
   args[["offset"]] <- mae[[uname]]
+  args[["alpha"]] <- 0
   args[["standardize"]] <- standardize
   args[["parallel"]] <- parallel
 
@@ -405,15 +376,14 @@ modelGeneExpression_ridge_regression_wraper <- function(mae,
     x_ = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
     xn_ = xnames,
     .inorder = TRUE,
-    .final = function(x) setNames(x, xnames),
-    .packages = "xcore"
+    .final = function(x) setNames(x, xnames)
   ) %:%
     foreach::foreach(
       y = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
       yn = names(groups),
       .inorder = TRUE,
       .final = function(x) setNames(x, names(groups)),
-      .packages = "xcore"
+      .packages = "glmnet"
     ) %dopar% {
       if (yn %in% iter_to_pass[[xn_]]) {
         res <- "precalc"
@@ -421,7 +391,7 @@ modelGeneExpression_ridge_regression_wraper <- function(mae,
         args[["x"]] <- x_
         args[["y"]] <- y
         rm(x_, y); gc()
-        res <- do.call(runLinearRidge, args)
+        res <- do.call(glmnet::cv.glmnet, args)
       }
 
       return(res)
@@ -480,8 +450,7 @@ modelGeneExpression_significance_testing_wraper <- function(mae,
     x_ = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
     xnm_ = xnames,
     .inorder = TRUE,
-    .final = function(x) setNames(x, xnames),
-    .packages = "xcore"
+    .final = function(x) setNames(x, xnames)
   ) %:%
     foreach::foreach(
       y = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
@@ -494,7 +463,7 @@ modelGeneExpression_significance_testing_wraper <- function(mae,
       lambda <- regression_models[[xnm_]][[id_]]$lambda.min
       beta <- coef(regression_models[[xnm_]][[id_]], s = lambda)
       beta <- beta[-1, ] # drop intercept
-      ridgePvals(
+      xcore:::ridgePvals(
         x = x_,
         y = y,
         beta = beta,

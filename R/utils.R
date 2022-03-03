@@ -133,7 +133,7 @@ applyOverColumnGroups <- function(mat, groups, f, ...) {
 #' Estimate goodness of fit statistic of penalized linear regression models.
 #' Works with different goodness of fit statistic functions.
 #'
-#' @inheritParams runLinearRidge
+#' @inheritParams glmnet::glmnet
 #' @param u offset vector as in \code{\link{glmnet}}. \code{"U"} experiment in
 #'   mae.
 #' @param s user supplied lambda.
