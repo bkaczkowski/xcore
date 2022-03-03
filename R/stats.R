@@ -186,7 +186,8 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #' mae <- filterSignatures(mae)
 #' res <- modelGeneExpression(
 #'   mae = mae,
-#'   xnames = "remap")
+#'   xnames = "remap",
+#'   nfolds = 5)
 #'
 #' @importFrom foreach foreach %do% %dopar% %:%
 #' @importFrom glmnet cv.glmnet
