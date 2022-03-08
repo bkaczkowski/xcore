@@ -10,14 +10,14 @@
     
     <a class="navbar-brand me-2" href="../index.html">xcore</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.6</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
 
-    <div id="navbar" class="collapse navbar-collapse ms-2">
+    <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="active nav-item">
   <a class="nav-link" href="../reference/index.html">Reference</a>
 </li>
@@ -68,11 +68,6 @@
         <dd>Apply function over selected column in list of data frames</dd>
       </dl><dl><dt>
           
-          <code><a href="collapseInteractionMatrix.html">collapseInteractionMatrix()</a></code> 
-        </dt>
-        <dd>collapseInteractionMatrix</dd>
-      </dl><dl><dt>
-          
           <code><a href="design2factor.html">design2factor()</a></code> 
         </dt>
         <dd>Transform design matrix to factor</dd>
@@ -80,7 +75,7 @@
           
           <code><a href="estimateStat.html">estimateStat()</a></code> 
         </dt>
-        <dd>Estimate a goodness of fit stat</dd>
+        <dd>Estimate linear models goodness of fit statistic</dd>
       </dl><dl><dt>
           
           <code><a href="filterSignatures.html">filterSignatures()</a></code> 
@@ -93,6 +88,11 @@
         <dd>Combine p-values using Fisher method</dd>
       </dl><dl><dt>
           
+          <code><a href="getAvgCoeff.html">getAvgCoeff()</a></code> 
+        </dt>
+        <dd>Calculate average coefficients matrix</dd>
+      </dl><dl><dt>
+          
           <code><a href="getCoverage.html">getCoverage()</a></code> 
         </dt>
         <dd>Calculate regions coverage</dd>
@@ -103,24 +103,19 @@
         <dd>Compute interaction matrix</dd>
       </dl><dl><dt>
           
-          <code><a href="intersectGR.html">intersectGR()</a></code> 
-        </dt>
-        <dd>Intersect GRanges objects</dd>
-      </dl><dl><dt>
-          
           <code><a href="isTRUEorFALSE.html">isTRUEorFALSE()</a></code> 
         </dt>
         <dd>Check if argument is a binary flag</dd>
       </dl><dl><dt>
           
-          <code><a href="makeClusterName.html">makeClusterName()</a></code> 
+          <code><a href="mae.html">mae()</a></code> 
         </dt>
-        <dd>Make cluster name based on metadata</dd>
+        <dd>Calculate Mean Absolute Error</dd>
       </dl><dl><dt>
           
-          <code><a href="makeClusterName2.html">makeClusterName2()</a></code> 
+          <code><a href="maeSummary.html">maeSummary()</a></code> 
         </dt>
-        <dd>Make cluster name based on metadata ver. 2</dd>
+        <dd>Helper summarizing MAE object</dd>
       </dl><dl><dt>
           
           <code><a href="modelGeneExpression.html">modelGeneExpression()</a></code> 
@@ -128,49 +123,24 @@
         <dd>Gene expression modeling pipeline</dd>
       </dl><dl><dt>
           
-          <code><a href="mostFreqValue.html">mostFreqValue()</a></code> 
+          <code><a href="modelGeneExpression_ridge_regression_wraper.html">modelGeneExpression_ridge_regression_wraper()</a></code> 
         </dt>
-        <dd>Get most frequent value</dd>
+        <dd>Ridge regression wrapper for modelGeneExpression</dd>
       </dl><dl><dt>
           
-          <code><a href="paintVector.html">paintVector()</a></code> 
+          <code><a href="modelGeneExpression_significance_testing_wraper.html">modelGeneExpression_significance_testing_wraper()</a></code> 
         </dt>
-        <dd>Paint vector</dd>
+        <dd>Statistical testing of ridge regression estimates wrapper for modelGeneExpression</dd>
+      </dl><dl><dt>
+          
+          <code><a href="mse.html">mse()</a></code> 
+        </dt>
+        <dd>Calculate Mean Squared Error</dd>
       </dl><dl><dt>
           
           <code><a href="pipe.html">%&gt;%</a></code> 
         </dt>
         <dd>re-export magrittr pipe operator</dd>
-      </dl><dl><dt>
-          
-          <code><a href="plotExperimentsHeatmap.html">plotExperimentsHeatmap()</a></code> 
-        </dt>
-        <dd>Experiment's heatmap</dd>
-      </dl><dl><dt>
-          
-          <code><a href="plotHeatmap.html">plotHeatmap()</a></code> 
-        </dt>
-        <dd>Heatmap</dd>
-      </dl><dl><dt>
-          
-          <code><a href="plotHeatmapScaleBar.html">plotHeatmapScaleBar()</a></code> 
-        </dt>
-        <dd>Scale bar to use with heatmaps</dd>
-      </dl><dl><dt>
-          
-          <code><a href="plotHistogram.html">plotHistogram()</a></code> 
-        </dt>
-        <dd>Histogram with summary</dd>
-      </dl><dl><dt>
-          
-          <code><a href="plotSubtree.html">plotSubtree()</a></code> 
-        </dt>
-        <dd>Plot subtree</dd>
-      </dl><dl><dt>
-          
-          <code><a href="plotTitle.html">plotTitle()</a></code> 
-        </dt>
-        <dd>plot title</dd>
       </dl><dl><dt>
           
           <code><a href="poolSE.html">poolSE()</a></code> 
@@ -181,16 +151,6 @@
           <code><a href="prepareCountsForRegression.html">prepareCountsForRegression()</a></code> 
         </dt>
         <dd>Process count matrix for expression modeling</dd>
-      </dl><dl><dt>
-          
-          <code><a href="pruneClusterMeta.html">pruneClusterMeta()</a></code> 
-        </dt>
-        <dd>Prune metadata</dd>
-      </dl><dl><dt>
-          
-          <code><a href="rdBuPalette.html">rdBuPalette()</a></code> 
-        </dt>
-        <dd>Customized color pallette</dd>
       </dl><dl><dt>
           
           <code><a href="remap_mini.html">remap_mini</a></code> 
@@ -213,14 +173,9 @@
         <dd>xcore example expression data</dd>
       </dl><dl><dt>
           
-          <code><a href="runLinearRidge.html">runLinearRidge()</a></code> 
+          <code><a href="rsq.html">rsq()</a></code> 
         </dt>
-        <dd>Linear ridge regression</dd>
-      </dl><dl><dt>
-          
-          <code><a href="selectParams4dynamicTreeCut.html">selectParams4dynamicTreeCut()</a></code> 
-        </dt>
-        <dd>Select cutHeight and deepSplit parameters for dynamicTreeCut</dd>
+        <dd>Calculate $R^2$</dd>
       </dl><dl><dt>
           
           <code><a href="simplifyInteractionMatrix.html">simplifyInteractionMatrix()</a></code> 
@@ -228,19 +183,14 @@
         <dd>Simplify Interaction Matrix</dd>
       </dl><dl><dt>
           
-          <code><a href="summaryString.html">summaryString()</a></code> 
+          <code><a href="stoufferZMethod.html">stoufferZMethod()</a></code> 
         </dt>
-        <dd>Object Summary as a string</dd>
+        <dd>Combine Z-scores using Stouffer's method</dd>
       </dl><dl><dt>
           
-          <code><a href="tau.html">tau()</a></code> 
+          <code><a href="subsetWithMissing.html">subsetWithMissing()</a></code> 
         </dt>
-        <dd>Calculate Tau</dd>
-      </dl><dl><dt>
-          
-          <code><a href="vectorPurity.html">vectorPurity()</a></code> 
-        </dt>
-        <dd>Calculate vector purity</dd>
+        <dd>Subset keeping missing</dd>
       </dl></div>
   </main></div>
 
@@ -250,7 +200,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
 </div>
 
     </footer></div>
