@@ -1,11 +1,19 @@
 # xcore
 
+xcore is an R package for transcription factor activity modeling
+based on known molecular signatures and user's gene expression data.
+Accompanying [xcoredata](https://github.com/mcjmigdal/xcoredata/) package
+provides a collection of molecular signatures, constructed from publicly
+available ChiP-seq experiments.
+
+We refer interested users to our [bioRxiv preprint](https://www.biorxiv.org/content/10.1101/2022.02.23.481130v1).
+
 ## Installation
 
-You can install the developmental version of xcore from [github](https://github.com/bkaczkowski/xcore) with:
+You can install xcore for `R` 4.1 from [github](https://github.com/bkaczkowski/xcore) with:
 
 ``` r
-devtools::install_github("bkaczkowski/xcore")
+devtools::install_github("bkaczkowski/xcore@r4_1")
 ```
 
 ## Usage
