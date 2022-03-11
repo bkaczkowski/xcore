@@ -126,6 +126,13 @@ query(eh, "xcoredata")
 remap_promoters_f5 <- eh[["EH7301"]]
 ```
 
+Alternatively, molecular signatures can be accessed directly from 
+[xcoredata package](https://github.com/mcjmigdal/xcoredata).
+ 
+```{r eval=FALSE}
+data("remap_promoters_f5", package = "xcoredata")
+```
+
 Molecular signature is a simple binary matrix indicating if a transcription factor
 binding site was found or not found in promoter vicinity.
 
