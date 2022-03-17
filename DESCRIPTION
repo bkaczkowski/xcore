@@ -44,6 +44,7 @@ Imports:
 Suggests:
     AnnotationHub (>= 3.0.2),
     BiocGenerics (>= 0.38.0),
+    BiocParallel (>= 1.28),
     BiocStyle (>= 2.20.2),
     data.table (>= 1.14.0),
     devtools (>= 2.4.2),
