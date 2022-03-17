@@ -19,7 +19,7 @@ devtools::install_github("mcjmigdal/xcoredata")
 However, you can also install xcore for `R` 4.1 from [github](https://github.com/bkaczkowski/xcore) with:
 ``` r
 devtools::install_github("bkaczkowski/xcore@r4_1")
-devtools::install_github("mcjmigdal/xcoredata@r4_1")
+devtools::install_gitlab("mcjmigdal/xcoredata@r4_1")
 ```
 
 ## Usage
