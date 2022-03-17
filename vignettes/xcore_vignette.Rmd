@@ -133,7 +133,8 @@ remap_promoters_f5 <- eh[["EH7301"]]
 
 Currently, molecular signatures can be accessed directly from 
 [xcoredata package](https://gitlab.com/mcjmigdal/xcoredata).
- ```{r eval=FALSE}
+
+```{r eval=FALSE}
 devtools::install_gitlab("mcjmigdal/xcoredata@r4_1")
 ```
 
