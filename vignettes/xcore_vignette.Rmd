@@ -32,10 +32,15 @@ with the highest predicted effect on the observed expression changes.
 
 # Installation
 
-The package can be installed from Bioconductor.
+Currently, you can install `xcore` package for `R` 4.1 from [github](https://github.com/bkaczkowski/xcore) using:
 
 ```{r eval=FALSE}
-BiocManager::install("xcore")
+devtools::install_github("bkaczkowski/xcore@r4_1")
+```
+
+`xcore` package is currently being submitted for mid April release of the Bioconductor. After mid April, it will be possible to install it as Bioconductor package.
+```{r eval=FALSE}
+BiocManager::install("xcore") # after mid April
 ```
 
 # Gene expression modeling in context of rinderpest infection
@@ -115,10 +120,10 @@ Particularly, molecular signatures constructed from ReMap2020 against FANTOM5
 annotation.
 
 Molecular signatures can be conveniently accessed using the *ExperimentHub*
-interface.
+interface. This functionality will be available after mid April.
 
 ```{r}
-library("ExperimentHub")
+library("ExperimentHub") # after mid April
 
 eh <- ExperimentHub()
 query(eh, "xcoredata")
@@ -126,9 +131,12 @@ query(eh, "xcoredata")
 remap_promoters_f5 <- eh[["EH7301"]]
 ```
 
-Alternatively, molecular signatures can be accessed directly from 
-[xcoredata package](https://github.com/mcjmigdal/xcoredata).
- 
+Currently, molecular signatures can be accessed directly from 
+[xcoredata package](https://gitlab.com/mcjmigdal/xcoredata).
+ ```{r eval=FALSE}
+devtools::install_gitlab("mcjmigdal/xcoredata@r4_1")
+```
+
 ```{r eval=FALSE}
 data("remap_promoters_f5", package = "xcoredata")
 ```
