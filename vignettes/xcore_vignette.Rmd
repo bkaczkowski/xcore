@@ -128,7 +128,7 @@ library("ExperimentHub") # after mid April
 eh <- ExperimentHub()
 query(eh, "xcoredata")
 
-remap_promoters_f5 <- eh[["EH7301"]]
+remap_promoters_f5 <- eh[["EH7301"]] # after mid April
 ```
 
 Currently, molecular signatures can be accessed directly from 
