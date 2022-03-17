@@ -10,7 +10,7 @@ We refer interested users to our [bioRxiv preprint](https://www.biorxiv.org/cont
 
 ## Installation
 xcore and xcoredata are currently being submitted for mid-April release of the Bioconductor and thus they require `R` 4.2 version (currently R-devel).
-Wnen using `R` 4.2 , the packages can be installed with:
+When using `R` 4.2 , the packages can be installed with:
 ``` r
 devtools::install_github("bkaczkowski/xcore")
 devtools::install_github("mcjmigdal/xcoredata")
