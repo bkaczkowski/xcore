@@ -172,7 +172,7 @@
 <span class="va">eh</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/ExperimentHub/man/ExperimentHub-class.html" class="external-link">ExperimentHub</a></span><span class="op">(</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/AnnotationHub/man/AnnotationHub-class.html" class="external-link">query</a></span><span class="op">(</span><span class="va">eh</span>, <span class="st">"xcoredata"</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">## ExperimentHub with 6 records</span>
-<span class="co">## # snapshotDate(): 2022-03-01</span>
+<span class="co">## # snapshotDate(): 2022-03-16</span>
 <span class="co">## # $dataprovider: ReMap, RIKEN, ChIP-Atlas</span>
 <span class="co">## # $species: Homo sapiens, NA</span>
 <span class="co">## # $rdataclass: dgCMatrix, data.table, GRanges</span>
@@ -288,12 +288,12 @@
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">##                                   name        12hr        24hr    z_score</span>
-<span class="co">## 17              MYC.NCI-H2171.GSE36354 -0.11825963 -0.19690440 -20.622860</span>
-<span class="co">## 32      MED1.MM1-S_JQ1_5000NM.GSE49224 -0.08930339 -0.04381683 -10.209985</span>
-<span class="co">## 41           SREBF1.Hep-G2.ENCSR000EEO -0.04915322 -0.01806615  -9.895791</span>
-<span class="co">## 58 ESR1.breast_tumor_Male_23.GSE104399 -0.04977897 -0.03236000  -9.518113</span>
-<span class="co">## 8                CEBPA.U-937.ERP008568  0.04641792  0.02675549   9.268661</span>
-<span class="co">## 50           ZNF513.HEK293.ENCSR503DPC -0.04662038 -0.03328536  -9.173974</span>
+<span class="co">## 17              MYC.NCI-H2171.GSE36354 -0.12001452 -0.20160785 -20.928874</span>
+<span class="co">## 32      MED1.MM1-S_JQ1_5000NM.GSE49224 -0.09117331 -0.04592682 -10.423748</span>
+<span class="co">## 41           SREBF1.Hep-G2.ENCSR000EEO -0.04950877 -0.01864958  -9.967367</span>
+<span class="co">## 58 ESR1.breast_tumor_Male_23.GSE104399 -0.05034192 -0.03299956  -9.625747</span>
+<span class="co">## 8                CEBPA.U-937.ERP008568  0.04665421  0.02671389   9.315837</span>
+<span class="co">## 50           ZNF513.HEK293.ENCSR503DPC -0.04706698 -0.03402750  -9.261850</span>
 <span class="co">##    pvalue</span>
 <span class="co">## 17      0</span>
 <span class="co">## 32      0</span>
@@ -394,7 +394,7 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">## hg19::chr1:100435545..100435597,+;hg_4201.1         .</span></code></pre>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## R Under development (unstable) (2022-03-09 r81867)</span>
+<pre><code><span class="co">## R Under development (unstable) (2022-03-14 r81896)</span>
 <span class="co">## Platform: x86_64-pc-linux-gnu (64-bit)</span>
 <span class="co">## Running under: Ubuntu 20.04.4 LTS</span>
 <span class="co">## </span>
@@ -413,8 +413,8 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">## [8] base     </span>
 <span class="co">## </span>
 <span class="co">## other attached packages:</span>
-<span class="co">##  [1] GenomicRanges_1.47.6 GenomeInfoDb_1.31.4  IRanges_2.29.1      </span>
-<span class="co">##  [4] S4Vectors_0.33.10    glmnet_4.1-3         Matrix_1.4-0        </span>
+<span class="co">##  [1] GenomicRanges_1.47.6 GenomeInfoDb_1.31.5  IRanges_2.29.1      </span>
+<span class="co">##  [4] S4Vectors_0.33.11    glmnet_4.1-3         Matrix_1.4-0        </span>
 <span class="co">##  [7] ExperimentHub_2.3.5  AnnotationHub_3.3.9  BiocFileCache_2.3.4 </span>
 <span class="co">## [10] dbplyr_2.1.1         BiocGenerics_0.41.2  xcore_0.99.6        </span>
 <span class="co">## [13] BiocStyle_2.23.1    </span>
@@ -432,7 +432,7 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">##  [19] curl_4.3.2                    compiler_4.2.0               </span>
 <span class="co">##  [21] textshaping_0.3.6             cli_3.2.0                    </span>
 <span class="co">##  [23] Biobase_2.55.0                desc_1.4.1                   </span>
-<span class="co">##  [25] DelayedArray_0.21.2           bookdown_0.24                </span>
+<span class="co">##  [25] DelayedArray_0.21.2           bookdown_0.25                </span>
 <span class="co">##  [27] sass_0.4.0                    scales_1.1.1                 </span>
 <span class="co">##  [29] rappdirs_0.3.3                pkgdown_2.0.2                </span>
 <span class="co">##  [31] systemfonts_1.0.4             stringr_1.4.0                </span>
@@ -444,17 +444,17 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">##  [43] RSQLite_2.2.10                shiny_1.7.1                  </span>
 <span class="co">##  [45] shape_1.4.6                   jquerylib_0.1.4              </span>
 <span class="co">##  [47] generics_0.1.2                jsonlite_1.8.0               </span>
-<span class="co">##  [49] BiocParallel_1.29.15          dplyr_1.0.8                  </span>
+<span class="co">##  [49] BiocParallel_1.29.17          dplyr_1.0.8                  </span>
 <span class="co">##  [51] RCurl_1.98-1.6                magrittr_2.0.2               </span>
 <span class="co">##  [53] GenomeInfoDbData_1.2.7        munsell_0.5.0                </span>
-<span class="co">##  [55] Rcpp_1.0.8                    fansi_1.0.2                  </span>
+<span class="co">##  [55] Rcpp_1.0.8.3                  fansi_1.0.2                  </span>
 <span class="co">##  [57] lifecycle_1.0.1               stringi_1.7.6                </span>
 <span class="co">##  [59] yaml_2.3.5                    edgeR_3.37.0                 </span>
 <span class="co">##  [61] SummarizedExperiment_1.25.3   zlibbioc_1.41.0              </span>
 <span class="co">##  [63] grid_4.2.0                    blob_1.2.2                   </span>
 <span class="co">##  [65] parallel_4.2.0                promises_1.2.0.1             </span>
 <span class="co">##  [67] crayon_1.5.0                  lattice_0.20-45              </span>
-<span class="co">##  [69] Biostrings_2.63.1             splines_4.2.0                </span>
+<span class="co">##  [69] Biostrings_2.63.2             splines_4.2.0                </span>
 <span class="co">##  [71] KEGGREST_1.35.0               locfit_1.5-9.5               </span>
 <span class="co">##  [73] knitr_1.37                    pillar_1.7.0                 </span>
 <span class="co">##  [75] codetools_0.2-18              glue_1.6.2                   </span>
