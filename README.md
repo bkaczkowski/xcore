@@ -28,7 +28,7 @@ A vignette showing xcore basic usage is available [here](https://bkaczkowski.git
 
 ## Parallel computing
 
-xcore can take of parallelization to speed up calculations, especially for model
+xcore can take advantage of parallelization to speed up calculations, especially for model
 training and estimates testing. To use parallel computing in `R` one have to first
 register parallel backend. While there are many parallel backends to choose 
 from, internally xcore uses [`foreach`](https://cran.r-project.org/web/packages/foreach)
