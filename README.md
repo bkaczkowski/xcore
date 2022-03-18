@@ -25,3 +25,25 @@ devtools::install_gitlab("mcjmigdal/xcoredata@r4_1")
 ## Usage
 
 A vignette showing xcore basic usage is available [here](https://bkaczkowski.github.io/xcore/articles/xcore_vignette.html).
+
+## Parallel computing
+
+xcore can take advantage of parallelization to speed up calculations, especially for model
+training and estimates testing. To use parallel computing in `R` one have to first
+register parallel backend. While there are many parallel backends to choose 
+from, internally xcore uses [`foreach`](https://cran.r-project.org/web/packages/foreach)
+to implement parallel computing. Having this in mind we should use a backend
+supported by `foreach`. 
+
+In the vignette we are using [`doParallel`](https://cran.r-project.org/package=doParallel)
+backend, together with [`BiocParallel`](https://bioconductor.org/packages/release/bioc/html/BiocParallel.html)
+package providing unified interface across different OS. Those packages can be
+installed with:
+
+``` r
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("BiocParallel")
+install.packages("doParallel")
+```
