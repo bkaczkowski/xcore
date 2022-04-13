@@ -280,6 +280,7 @@ for the top identified molecular signatures.
 
 ```{r fig.cap = "Predicted activities for the top-scoring molecular signatures"}
 top_signatures <- head(res$results$remap, 10)
+library(pheatmap)
 pheatmap::pheatmap(
   mat = top_signatures[, c("12hr", "24hr")],
   scale = "none",
