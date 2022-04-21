@@ -301,18 +301,6 @@ modelGeneExpression <- function(mae,
         x[["z_score"]] <- NA
       }
 
-      if (length(pvalues) > 1) {
-        pvallen <- length(pvalues[[xnm_]][[1]][["pval"]])
-        pvalmat <- vapply(X = pvalues[[xnm_]],
-                          FUN = function(x) x[["pval"]],
-                          FUN.VALUE = numeric(pvallen))
-        x[["pvalue"]] <- apply(pvalmat, 1, fisherMethod, log.p = FALSE)
-      } else if (length(pvalues) == 1) {
-        x[["pvalue"]] <- pvalues[[xnm_]][[1L]][["pval"]]
-      } else {
-        x[["pvalue"]] <- NA
-      }
-
       class(x) <- "data.frame"
       attr(x, "row.names") <- seq_len(nrow(coef))
       if (length(zscore_avg)) {
