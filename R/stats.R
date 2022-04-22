@@ -293,24 +293,12 @@ modelGeneExpression <- function(mae,
       x <- split(coef, col(coef, as.factor = TRUE))
       x <- c(list(name = rownames(coef)), x)
 
-      if (length(zscore_avg) > 1) {
+      if (ncol(zscore_avg[[xnm_]]) > 1) {
         x[["z_score"]] <- apply(zscore_avg[[xnm_]], 1, stoufferZMethod)
-      } else if (length(zscore_avg) == 1) {
+      } else if (ncol(zscore_avg[[xnm_]]) == 1) {
         x[["z_score"]] <- zscore_avg[[xnm_]][, 1L, drop = TRUE]
       } else {
         x[["z_score"]] <- NA
-      }
-
-      if (length(pvalues) > 1) {
-        pvallen <- length(pvalues[[xnm_]][[1]][["pval"]])
-        pvalmat <- vapply(X = pvalues[[xnm_]],
-                          FUN = function(x) x[["pval"]],
-                          FUN.VALUE = numeric(pvallen))
-        x[["pvalue"]] <- apply(pvalmat, 1, fisherMethod, log.p = FALSE)
-      } else if (length(pvalues) == 1) {
-        x[["pvalue"]] <- pvalues[[xnm_]][[1L]][["pval"]]
-      } else {
-        x[["pvalue"]] <- NA
       }
 
       class(x) <- "data.frame"
@@ -530,7 +518,7 @@ poolSE <- function(x) {
 #'
 stoufferZMethod <- function(z) {
   z <- z[! is.na(z)]
-  z_cmb <- sum(z) / sqrt(length(z))
+  z_cmb <- sum(abs(z)) / sqrt(length(z))
 
   return(z_cmb)
 }
