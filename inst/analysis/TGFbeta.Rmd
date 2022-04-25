@@ -128,6 +128,65 @@ dataM_dpi <- prepareCountsForRegression(
   pseudo_count = 1L)
 ```
 
+
+# Microarray TGFbeta dataset Keshamouni et al.
+
+We complement the analysis of CAGE TGFβ treatment data using publicly available
+microarray data from TGFβ treatment in A-549 cell line (GSE17708). This dataset
+is already normalized and in logarithmic base thus no further normalization is
+applied.
+
+```{r}
+in_counts <- system.file("inst", "extdata", "GSE17708_Keshamouni_TGFB1_logs.xls", package = "xcore")
+countsK <- readxl::read_excel(in_counts, col_names = TRUE, skip = 3)
+colnames(countsK) <- countsK[1, ]
+countsK <- countsK[-1, ]
+countsK <- countsK[, c(1:5, grep("^V[0-9]", colnames(countsK)))]
+samplesK <- c(
+  "0hr_1", "0hr_2", "0hr_3", # 1
+  "0.5hr_1", "0.5hr_2", "0.5hr_3", # 2
+  "1hr_1", "1hr_2", "1hr_3", # 3
+  "2hr_1", "2hr_2", # 4
+  "4hr_1", "4hr_2", "4hr_3", # 5
+  "8hr_1", "8hr_2", "8hr_3", # 6
+  "16hr_1", "16hr_2", "16hr_3", # 7
+  "24hr_1", "24hr_2", "24hr_3", # 8
+  "72hr_1", "72hr_2", "72hr_3" # 9
+)
+colnames(countsK) <- c(
+  colnames(countsK)[1:5],
+  samplesK
+)
+```
+
+```{r}
+cond <- sub("_.*", "", samplesK)
+ncond <- cond %>% unique() %>% length()
+designK <- diag(ncond)[rep(seq_len(ncond), times = table(cond)[unique(cond)]), ]
+rownames(designK) <- samplesK
+colnames(designK) <- unique(cond)
+```
+
+```{r}
+countsK_entrez <- countsK[, -c(1:5)] %>% as.matrix() %>% type.convert()
+rownames(countsK_entrez) <- countsK$`Entrez Gene`
+colnames(countsK_entrez) <- samplesK
+countsK_entrez <- countsK_entrez[rownames(countsK_entrez) %in% promoters_f5_core$ENTREZID, ]
+entrez2fantom <- setNames(promoters_f5_core$name, promoters_f5_core$ENTREZID)
+rownames(countsK_entrez) <- entrez2fantom[rownames(countsK_entrez)]
+```
+
+```{r}
+designK_wo_base <- designK
+designK_wo_base[, "0hr"] <- 0
+dataK_symbol <- MultiAssayExperiment::MultiAssayExperiment(
+  experiments = MultiAssayExperiment::ExperimentList(
+      U = matrix(data = rowMeans(countsK_entrez[, 1:3]), ncol = 1, dimnames = list(rownames(countsK_entrez), "u")),
+      Y = countsK_entrez[, samplesK[-c(1:3)]]),
+    metadata = list(designK = designK_wo_base)
+)
+```
+
 # Load signatures
 
 The molecular signatures were constructed by first, extending FANTOM5 promoters
@@ -220,6 +279,14 @@ dataM_symbol <- filterSignatures(dataM_symbol)
 molecular_signatures[["mae"]] <- dataM_dpi
 dataM_dpi <- do.call(addSignatures, molecular_signatures)
 dataM_dpi <- filterSignatures(dataM_dpi)
+
+# Keshamouni A-549
+## SYMBOL
+# here we only look at ReMap and ChIP-Atlas
+dataK_symbol <- addSignatures(dataK_symbol,
+                              remap = remap_promoters_f5,
+                              chip_atlas = chip_atlas_promoters_f5)
+dataK_symbol <- filterSignatures(dataK_symbol)
 
 rm(
   molecular_signatures,
@@ -365,7 +432,7 @@ plotRegressionTypeSelection <- function() {
 
   graphics::boxplot(
     MDAMB231,
-    main = "MDA-MB-231 24h DPI",
+    main = "MDA-231-D 24h DPI",
     ylab = expression(R ^ 2),
     xlab = "",
     ylim = c(0.10, 0.36),
@@ -567,7 +634,7 @@ plotMolecularSignaturesSetComparison <- function() {
   graphics::boxplot(
     x = rsqM$dpi[xsel],
     names = xlabs,
-    main = "MDA-MB-549",
+    main = "MDA-321-D",
     ylab = expression(R ^ 2),
     xlab = "",
     ylim = c(0, 0.4),
@@ -720,8 +787,8 @@ plotScatterPlotWithErrorBars(rsqA, ord_remap, xsize_remap, title_suffix = "A-549
 plotBoxplotWithTwoGroups(rsqA, ord_remap, title_suffix = "A-549 ReMap2020 24h")
 
 xsize_remap <- vapply(ord_remap, function(x) ncol(dataM_dpi[[x]]), FUN.VALUE = numeric(1L))
-plotScatterPlotWithErrorBars(rsqM, ord_remap, xsize_remap, title_suffix = "MDA-MB-231 ReMap2020 24h")
-plotBoxplotWithTwoGroups(rsqM, ord_remap, title_suffix = "MDA-MB-231 ReMap2020 24h")
+plotScatterPlotWithErrorBars(rsqM, ord_remap, xsize_remap, title_suffix = "MDA-231-D ReMap2020 24h")
+plotBoxplotWithTwoGroups(rsqM, ord_remap, title_suffix = "MDA-231-D ReMap2020 24h")
 ```
 
 ```{r}
@@ -751,7 +818,7 @@ plotBoxplotWithTwoGroups(rsqM, ord_chip_atlas, title_suffix = "MDA-MB-231 ChIP-A
 # Significant signatures selection
 
 ```{r eval=FALSE}
-top_regression <- list(A_549 = list(), MDA_MB_231 = list())
+top_regression <- list(A_549 = list(), MDA_MB_231 = list(), Keshamouni = list())
 xnames <- c("remap", "chip_atlas", "jaspar", "swissregulon")
 
 top_regression[["A_549"]][["DPI"]] <- modelGeneExpression(
@@ -770,6 +837,15 @@ top_regression[["MDA_MB_231"]][["DPI"]] <- modelGeneExpression(
   xnames = xnames,
   pvalues = TRUE,
   precalcmodels = regression[["MDA_MB_231"]][["DPI"]][["regression_models"]][xnames])
+
+xnames <- c("remap", "chip_atlas")
+top_regression[["Keshamouni"]][["SYMBOL"]] <- modelGeneExpression(
+  mae = dataK_symbol,
+  yname = "Y",
+  uname = "U",
+  xnames = xnames,
+  pvalues = TRUE)
+
 save(top_regression, file = "top_regression.rda")
 ```
 
@@ -970,7 +1046,13 @@ plotTopSignaturesHeatmap <- function(signature = "remap") {
     head(10) %>%
     names()
 
-  rows <- base::union(top10A_549, top10MDA_MB_231)
+  top10Keshamouni <- apply(top_regression$Keshamouni$SYMBOL$zscore_avg[[signature]], 1, stoufferZMethod) %>%
+    abs() %>%
+    sort(decreasing = TRUE) %>%
+    head(10) %>%
+    names()
+
+  rows <- Reduce(base::union, list(top10A_549, top10MDA_MB_231, top10Keshamouni))
 
   am <- applyOverDFList(
       list_of_df = top_regression$A_549$DPI$pvalues[[signature]],
@@ -986,7 +1068,15 @@ plotTopSignaturesHeatmap <- function(signature = "remap") {
       groups = design2factor(metadata(dataM_dpi)$design)) %>%
     subsetWithMissing(rows = rows)
 
-  mats_cb <- cbind(am, mm)
+  km <- applyOverDFList(
+      list_of_df = top_regression$Keshamouni$SYMBOL$pvalues[[signature]],
+      col_name = "coef",
+      fun = mean,
+      groups = design2factor(metadata(dataK_symbol)$design)) %>%
+    subsetWithMissing(rows = rows)
+  km <- km[, c("1hr", "2hr", "4hr", "8hr", "16hr", "24hr")]
+
+  mats_cb <- do.call(cbind, list(am, mm, km))
   i_na <- is.na(mats_cb)
   mats_cb[i_na] <- 0
   hc <- hclust(dist(mats_cb))
@@ -995,18 +1085,32 @@ plotTopSignaturesHeatmap <- function(signature = "remap") {
 
   graphics::layout(
     mat = matrix(
-      data = c(1, 2, 3,
-              0, 2, 3),
+      data = c(1, 2, 3, 4, 5, 6,
+               0, 2, 3, 0, 5, 6),
       nrow = 2,
-      ncol = 3,
+      ncol = 6,
       byrow = TRUE),
     heights = c(1, 4),
-    widths = c(1, 6, 6)
+    widths = c(1, 3, 3, 1, 4, 8)
   )
 
-  breaks <- seq(from = -0.08, to = 0.08, length.out = 51)
+  breaks <- seq(from = -0.07, to = 0.07, length.out = 10) # even to map white to 0
 
   plotHeatmapScaleBar(breaks, main = "activity", mar = c(1.1, 4.1, 3.1, 2.1))
+
+  mat <- mm[i, ]
+  colnames(mat) <- sub("._TGFb_", "", colnames(mat))
+  plotHeatmap(
+    mat,
+    breaks,
+    main = "MDA-231-D",
+    rownames = FALSE,
+    clust_rows = FALSE,
+    add_grid = TRUE,
+    cex.main = 1.3,
+    cex.axis = 1.1,
+   mar = c(6.1, 0.1, 4.1, 1.1)
+  )
 
   mat <- am[i,]
   colnames(mat) <- sub("._TGFb_", "", colnames(mat))
@@ -1014,22 +1118,47 @@ plotTopSignaturesHeatmap <- function(signature = "remap") {
     mat,
     breaks,
     main = "A-549",
+    rownames = FALSE,
     clust_rows = FALSE,
+    add_grid = TRUE,
     cex.main = 1.3,
     cex.axis = 1.1,
-    mar = c(6.1, 0.1, 4.1, 24.1)
+    mar = c(6.1, 0.1, 4.1, 1.1)
   )
 
-  mat <- mm[i, ]
-  colnames(mat) <- sub("._TGFb_", "", colnames(mat))
+  # Keshamouni
+  breaks <- seq(from = -0.015, to = 0.015, length.out = 10) # even to map white to 0
+
+  plotHeatmapScaleBar(breaks, main = "activity", mar = c(1.1, 4.1, 3.1, 2.1))
+
+  mat <- km[i, ]
+  colnames(mat) <- sub("hr", "h", colnames(mat))
   plotHeatmap(
     mat,
     breaks,
-    main = "MDA-MB-231",
+    main = "A-549 (GSE17708)",
+    rownames = FALSE,
     clust_rows = FALSE,
+    add_grid = TRUE,
     cex.main = 1.3,
     cex.axis = 1.1,
-   mar = c(6.1, 0.1, 4.1, 24.1)
+   mar = c(6.1, 0.1, 4.1, 1.1)
+  )
+
+  # row labels
+  graphics::axis(
+    side = 4,
+    at = seq(
+      from = 0,
+      to = 1,
+      length.out = length(i)
+    ),
+    labels = i,
+    las = 2,
+    line = 0.5,
+    tick = 0,
+    cex.axis = 1.2,
+    family = "mono"
   )
 
   invisible()

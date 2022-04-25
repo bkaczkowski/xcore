@@ -122,7 +122,7 @@ plotSubtree <- function(hc, meta, j) {
   tree <- as.dendrogram(hc)
   subtree <- dendextend::find_dendrogram(tree, meta[["id"]])
   if (is.null(subtree)) {stop("Could not find subtree. It happens sometimes.")}
-  data.table::setkeyv(meta, "id") 
+  data.table::setkeyv(meta, "id")
   cols <- meta[stats:::labels.dendrogram(subtree)][[j]]
   dendextend::labels_colors(subtree) <- paintVector(cols)
   par(cex=0.8, mar=c(15, 4, 1, 1))
@@ -130,15 +130,15 @@ plotSubtree <- function(hc, meta, j) {
 }
 
 #' Customized color pallette
-#' 
-#'  
+#'
+#'
 rdBuPalette <- function(n) {
   colorspace::diverge_hsv(n = n, power = 0.75, h = c(245, 0), s = 0.9)
 }
 
 #' Scale bar to use with heatmaps
-#' 
-#' 
+#'
+#'
 plotHeatmapScaleBar <-
   function(breaks,
            col = rdBuPalette(length(breaks) - 1),
@@ -151,7 +151,7 @@ plotHeatmapScaleBar <-
     omar <- par()$mar
     on.exit(par(mar = omar))
     par(mar = mar, cex = cex, cex.main = cex.main)
-    
+
     image(
       matrix(data = breaks, nrow = 1),
       breaks = breaks,
@@ -172,20 +172,21 @@ plotHeatmapScaleBar <-
         length.out = nticks
       )
     )
-    
+
     invisible()
   }
 
 #' Heatmap
-#' 
-#' 
+#'
+#'
 plotHeatmap <-
   function(x,
            breaks,
-           col = rdBuPalette(length(breaks) - 1),
+           col = colorRampPalette(c("blue", "white", "red"))(length(breaks) - 1),
            rownames = TRUE,
            colnames = TRUE,
            clust_rows = TRUE,
+           add_grid = FALSE,
            na.color = "grey",
            mar = c(6.1, 0.1, 4.1, 22.1),
            cex = 1,
@@ -201,25 +202,25 @@ plotHeatmap <-
       # tmp substitute NA with 0
       i_na <- is.na(x)
       x[i_na] <- 0
-      
+
       if (nrow(x) > 1) {
         hc <- hclust(dist(x))
         ord <- order.dendrogram(as.dendrogram(hc))
         x <- x[rev(ord), , drop = FALSE] # ordering in image is reversed
       }
-      
+
       # restore NA
       x[i_na[rev(ord)]] <- NA
     }
-    
+
     # cap data to fit breaks
-    x <- ifelse(test = x < min(breaks, na.rm = TRUE), 
-                yes = min(breaks, na.rm = TRUE), 
+    x <- ifelse(test = x < min(breaks, na.rm = TRUE),
+                yes = min(breaks, na.rm = TRUE),
                 no = x)
-    x <- ifelse(test = x > max(breaks, na.rm = TRUE), 
-                yes = max(breaks, na.rm = TRUE), 
+    x <- ifelse(test = x > max(breaks, na.rm = TRUE),
+                yes = max(breaks, na.rm = TRUE),
                 no = x)
-    
+
     graphics::image(
       x = t(x),
       breaks = breaks,
@@ -227,7 +228,7 @@ plotHeatmap <-
       axes = FALSE,
       ...
     )
-    
+
     # plot NAs if needed -- taken from gplots::heatmap.2
     if (any(is.na(x))) {
       namat <- ifelse(is.na(x), 1, NA)
@@ -240,7 +241,23 @@ plotHeatmap <-
         add = TRUE
       )
     }
-    
+
+    if (add_grid) {
+      # horizontal lines
+      h <- seq(0, 1, length.out = nrow(x))
+      hgap <- h[2] / 2
+      hfix <- h[-c(nrow(x))] + hgap
+      abline(h = hfix, col = "darkgrey")
+
+      # vertical lines
+      v <- seq(0, 1, length.out = ncol(x))
+      vgap <- v[2] / 2
+      vfix <- v[-c(ncol(x))] + vgap
+      abline(v = vfix, col = "darkgrey")
+
+      box(col = "darkgrey")
+    }
+
     if (colnames) {
       graphics::axis(
         side = 1,
@@ -251,12 +268,12 @@ plotHeatmap <-
         ),
         labels = colnames(x),
         las = 2,
-        line = -0.5, 
+        line = -0.5,
         tick = 0,
         family = "mono"
       )
     }
-    
+
     if (rownames) {
       graphics::axis(
         side = 4,
@@ -267,23 +284,23 @@ plotHeatmap <-
         ),
         labels = rownames(x),
         las = 2,
-        line = -0.5, 
+        line = -0.5,
         tick = 0,
         family = "mono"
       )
     }
-    
+
     invisible()
   }
 
 #' plot title
-#' 
-#' 
+#'
+#'
 plotTitle <- function(labels, mar = c(0.1, 1.1, 0.1, 1.1)) {
   omar <- par()$mar
   on.exit(par(mar = omar))
   par(mar = mar, oma = c(0, 0, 0, 0))
-  
+
   plot.new()
   graphics::text(
     x = 0.5,
@@ -293,6 +310,6 @@ plotTitle <- function(labels, mar = c(0.1, 1.1, 0.1, 1.1)) {
     cex = 1.75,
     font = 2
   )
-  
+
   invisible()
 }
