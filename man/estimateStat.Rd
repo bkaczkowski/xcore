@@ -2,10 +2,50 @@
 % Please edit documentation in R/utils.R
 \name{estimateStat}
 \alias{estimateStat}
-\title{Estimate a goodness of fit stat}
+\title{Estimate linear models goodness of fit statistic}
 \usage{
-estimateStat(x, y, u, s, method = "cv", nfold = 10, statistic = R2, alpha = 0)
+estimateStat(x, y, u, s, method = "cv", nfold = 10, statistic = rsq, alpha = 0)
+}
+\arguments{
+\item{x}{input matrix, of dimension nobs x nvars; each row is an observation
+vector. Can be in sparse matrix format (inherit from class
+\code{"sparseMatrix"} as in package \code{Matrix})}
+
+\item{y}{response variable. Quantitative for \code{family="gaussian"}, or
+\code{family="poisson"} (non-negative counts). For \code{family="binomial"}
+should be either a factor with two levels, or a two-column matrix of counts
+or proportions (the second column is treated as the target class; for a
+factor, the last level in alphabetical order is the target class). For
+\code{family="multinomial"}, can be a \code{nc>=2} level factor, or a matrix
+with \code{nc} columns of counts or proportions. For either
+\code{"binomial"} or \code{"multinomial"}, if \code{y} is presented as a
+vector, it will be coerced into a factor. For \code{family="cox"}, preferably
+a \code{Surv} object from the survival package: see Details section for
+more information. For \code{family="mgaussian"}, \code{y} is a matrix
+of quantitative responses.}
+
+\item{u}{offset vector as in \code{\link{glmnet}}. \code{"U"} experiment in
+mae.}
+
+\item{s}{user supplied lambda.}
+
+\item{method}{currently only cross-validation is implemented.}
+
+\item{nfold}{number of fold to use in cross-validation.}
+
+\item{statistic}{function computing goodness of fit statistic. Should accept
+\code{y}, \code{x}, \code{offset} arguments and return
+a numeric vector of the same length. See \code{rsq}, \code{mse} for examples.}
+
+\item{alpha}{The elasticnet mixing parameter, with \eqn{0\le\alpha\le 1}.
+The penalty is defined as
+\deqn{(1-\alpha)/2||\beta||_2^2+\alpha||\beta||_1.} \code{alpha=1} is the
+lasso penalty, and \code{alpha=0} the ridge penalty.}
+}
+\value{
+numeric vector of \code{statistic} estimates.
 }
 \description{
-Estimate a goodness of fit stat
+Estimate goodness of fit statistic of penalized linear regression models.
+Works with different goodness of fit statistic functions.
 }

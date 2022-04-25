@@ -50,6 +50,7 @@ level expression is calculated by averaging \code{base_lvl} samples
 expression values.
 }
 \examples{
+data("rinderpest_mini")
 base_lvl <- "00hr"
 design <- matrix(
   data = c(1, 0, 0,

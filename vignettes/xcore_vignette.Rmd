@@ -1,8 +1,8 @@
 ---
 title: "xcore vignette"
-author: "Migdal"
-date: "12/2021"
-output: html_document
+author: "migdal"
+package: xcore
+output: BiocStyle::html_document
 vignette: >
   %\VignetteIndexEntry{xcore vignette}
   %\VignetteEngine{knitr::rmarkdown}
@@ -11,22 +11,55 @@ vignette: >
 
 
 ```{r include=FALSE}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE, mc.cores = 6)
-
-devtools::load_all()
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
-This document introduces the xcore package and showcase its basic usage.
+# Introduction
+
+`xcore` package provides a framework for transcription factor (TF) activity
+modeling based on their molecular signatures and user’s gene expression data.
+Additionally, `xcoredata` package provides a collection of pre-processed TF
+molecular signatures constructed from ChiP-seq experiments available in
+[ReMap2020](www.remap2020.univ-amu.fr) or [ChIP-Atlas](www.chip-atlas.org)
+databases.
+
+![xcore flow chart](flowchart.png)
+
+`xcore` use ridge regression to model changes in expression as a linear
+combination of molecular signatures and find their unknown activities. Obtained,
+estimates can be further tested for significance to select molecular signatures
+with the highest predicted effect on the observed expression changes.
+
+# Installation
+
+Currently, you can install `xcore` package for `R` 4.1 from [github](https://github.com/bkaczkowski/xcore) using:
+
+```{r eval=FALSE}
+devtools::install_github("bkaczkowski/xcore@r4_1")
+```
+
+`xcore` package is currently being submitted for mid April release of the Bioconductor. After mid April, it will be possible to install it as Bioconductor package.
+```{r eval=FALSE}
+BiocManager::install("xcore") # after mid April
+```
 
 # Gene expression modeling in context of rinderpest infection
 
-Here we will use subset of 293SLAM rinderpest infection dataset from
+```{r}
+library("xcore")
+```
+
+Here we will use a subset of 293SLAM rinderpest infection dataset from
 [FANTOM5](https://fantom.gsc.riken.jp/5/sstar/Rinderpest_infection_series).
 This subset contains expression counts for 0, 12 and 24 hours post infection
 samples and only for a subset of FANTOM5 promoters. We can find this example
-data shipped with `xcore` package.
+data shipped together with `xcore` package.
+
+This is a simple count matrix, with columns corresponding to samples and rows
+corresponding to FANTOM5 promoters.
 
 ```{r}
+data("rinderpest_mini")
 head(rinderpest_mini)
 ```
 
@@ -71,7 +104,7 @@ expressed promoters, normalized for the library size and transformed into counts
 per million (CPM). Finally, CPM are log2 transformed with addition of pseudo
 count 1. Moreover, we designate the base level samples, 0 hours after treatment
 in our example, from which basal expression level is calculated. This basal
-level will be used as a reference when modeling expression changes.
+level will be used as a reference when modeling the expression changes.
 
 ```{r}
 mae <- prepareCountsForRegression(counts = rinderpest_mini,
@@ -82,19 +115,59 @@ mae <- prepareCountsForRegression(counts = rinderpest_mini,
 `xcore` models the expression as a function of molecular signatures. Such
 signatures can be constructed eg. from the known transcription factor binding
 sites (see [Constructing molecular signatures] section). Here, we will take
-advantage of pre-computed molecular signatures found in `xcoredata` package.
+advantage of pre-computed molecular signatures found in the `xcoredata` package.
 Particularly, molecular signatures constructed from ReMap2020 against FANTOM5
 annotation.
 
+Molecular signatures can be conveniently accessed using the *ExperimentHub*
+interface. This functionality will be available after mid April.
+
 ```{r}
+library("ExperimentHub") # after mid April
+
+eh <- ExperimentHub()
+query(eh, "xcoredata")
+
+remap_promoters_f5 <- eh[["EH7301"]] # after mid April
+```
+
+Currently, molecular signatures can be accessed directly from 
+[xcoredata package](https://gitlab.com/mcjmigdal/xcoredata).
+
+```{r eval=FALSE}
+devtools::install_gitlab("mcjmigdal/xcoredata@r4_1")
+```
+
+```{r eval=FALSE}
 data("remap_promoters_f5", package = "xcoredata")
 ```
 
-Molecular signature is a simple binary matrix indicating if transcription factor
-binding site was found or not in promoter vicinity.
+Molecular signature is a simple binary matrix indicating if a transcription factor
+binding site was found or not found in promoter vicinity.
 
 ```{r}
-print(remap_promoters_f5[1:3, 1:3])
+print(remap_promoters_f5[3:6, 3:6])
+```
+
+### Computational resources consideration
+
+Running `xcore` using extensive ReMap2020 or ChIP-Atlas molecular signatures,
+can be quite time and memory consuming. As an example, modeling the example
+293SLAM rinderpest infection dataset with ReMap2020 signatures matrix took
+around 10 minutes to compute and used up to 8 GB RAM on Intel(R) Xeon(R) CPU
+E5-2680 v3 using 2 cores. This unfortunately exceeds the resources available for
+Bioconductor vignettes. This being said, we will further proceed by taking only
+a subset of ReMap2020 signatures such that we fit into the time limits. However,
+for running `xcore` in a normal setting the whole molecular signatures matrix
+should be used!
+
+```{r}
+# here we subset ReMap2020 molecular signatures matrix for the purpose of the
+# vignette only! In a normal setting the whole molecular signatures matrix should
+# be used!
+set.seed(432123)
+i <- sample(x = seq_len(ncol(remap_promoters_f5)), size = 100, replace = FALSE)
+remap_promoters_f5 <- remap_promoters_f5[, i]
 ```
 
 To add signatures to our `MultiAssayExperiment` object we can use
@@ -133,7 +206,28 @@ print(mae)
 
 Finally, we can run our expression modeling using `modelGeneExpression`
 function. `modelGeneExpression` can take advantage of parallelization to
-speedup its calculations, to use it we need to register parallel backend.
+speed up the calculations. To use it we need to register a parallel backend.
+
+
+### Parallel computing
+
+While there are many parallel backends to choose from, internally `xcore` uses 
+[`foreach`](https://cran.r-project.org/web/packages/foreach) to implement 
+parallel computing. Having this in mind we should use a backend supported by 
+`foreach`. 
+
+Here we are using [`doParallel`](https://cran.r-project.org/package=doParallel)
+backend, together with [`BiocParallel`](https://bioconductor.org/packages/release/bioc/html/BiocParallel.html)
+package providing unified interface across different OS. Those packages can be
+installed with:
+
+```{r eval=FALSE}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("BiocParallel")
+install.packages("doParallel")
+```
 
 Our modeling will inherently contain some level of randomness due to
 using cross validation, here we set the seed so that our results can be
@@ -142,14 +236,13 @@ replicated.
 This step is time consuming as we need to train a separate model for each of our
 samples. To speed up the calculations we will lower number of folds used in
 cross-validation procedure from 10 to 5 using `nfolds` argument, which is
-internally passed to `cv.glmnet` function. Using 2 cores on
-Intel(R) Xeon(R) CPU E5-2680 v3 calculations took around 10 minutes to compute
-and used up to 8 GB RAM. If needed memory requirement could be brought down by
-using lower number of cores.
+internally passed to `cv.glmnet` function. Moreover here we only use a subset
+of the ReMap2020 molecular signatures matrix.
 
 ```{r}
 # register parallel backend
-doMC::registerDoMC(cores = 6L)
+doParallel::registerDoParallel(2L)
+BiocParallel::register(BiocParallel::DoparParam(), default = TRUE)
 
 # set seed
 set.seed(314159265)
@@ -176,19 +269,21 @@ Output returned by `modelGeneExpression` is a list with following elements:
 
 `results` is likely of most interest. As you can see below this `data.frame`
 holds replicate averaged molecular signatures activities, as well as overall
-Z-score which should be used to rank signatures.
+Z-score which can be used to rank signatures.
 
 ```{r}
 head(res$results$remap)
 ```
 
-Now we can plot a heatmap of molecular signatures activities for the top
-identified molecular signatures.
+To visualize the result we can plot a heatmap of molecular signatures activities
+for the top identified molecular signatures.
 
-```{r}
+```{r fig.cap = "Predicted activities for the top-scoring molecular signatures"}
 top_signatures <- head(res$results$remap, 10)
+library(pheatmap)
 pheatmap::pheatmap(
   mat = top_signatures[, c("12hr", "24hr")],
+  scale = "none",
   labels_row = top_signatures$name,
   cluster_cols = FALSE,
   color = colorRampPalette(c("blue", "white", "red"))(15),
@@ -197,47 +292,55 @@ pheatmap::pheatmap(
 )
 ```
 
-Among others, our analysis indicates RELA and IRF9 as the top transcription
-factor associated with observed changes in expression. These transcription
-factors are known to play a role during measles infection, which is closely
-related to rinderpest
-([KEGG Measles pathway](https://www.genome.jp/kegg-bin/show_pathway?hsa05162)).
-
-Moreover, activities sign indicate that promoters targeted by RELA tend to be
-downregulated, while those targeted by IRF9 tend to be upregulated.
-
+As we only used a random subset of ReMap2020 molecular signatures the obtained
+result most likely has no biological meaning. Nonetheless, some general comment
+on results interpretation can be made. The top-scoring transcription factors
+can be hypothesized to be associated with observed changes in gene expression.
+Moreover, the predicted activities indicate if promoters targeted by a specific
+signature tend to be downregulated or upregulated.
 
 # Constructing molecular signatures
 
 Constructing molecular signatures is as simple as intersecting promoters
-annotation with TFBS. For example here we downloaded Motevo predictions of
-binding sites from SwissRegulon website. The file is GFF format and we can
-read it using `rtracklayer::import`. After we read it into R we will get
-a `GRanges` object. For our purposes it is required that TF/motif name is
-held under `name` column.
+annotation with transcription factors binding sites (TFBS). For example, here we
+use FANTOM5' promoters annotation found in the `xcoredata` package and predicted
+CTCF binding sites available in
+[CTCF](https://bioconductor.org/packages/release/data/annotation/html/CTCF.html)
+`AnnotationHub`'s resource.
 
-Next we construct our molecular signatures matrix using FANTOM5 annotation found
-in `xcoredata` package. This is done using `getInteractionMatrix`
+Promoter annotations and TFBS should be stored as a `GRanges` object. Moreover,
+it is required that the promoter/TF name is held under the `name` column.
+Next we can construct a molecular signatures matrix using `getInteractionMatrix`
 function, where we can specify the `ext` parameter that will control how
-much promoters are extended in both directions before intersecting with binding
-data.
+much the promoters are extended in both directions before intersecting with
+TFBS.
 
-```{r eval=FALSE}
-# obtain binding sites
-motevo_hg38_f5 <- rtracklayer::import(
-  con = "https://swissregulon.unibas.ch/data/hg38_f5/hg38_sites_v1.gff.gz"
-)
+```{r}
+# obtain promoters annotation; *promoter name must be stored under column 'name'
+promoters_f5 <- eh[["EH7303"]]
+head(promoters_f5)
+```
 
-# TF / motif name must be stored as 'name'
-motevo_hg38_f5$name <- motevo_hg38_f5$Motif
+```{r}
+# obtain predicted CTCF binding for hg38;
+# *TF/motif name must be stored under column 'name'
+library("AnnotationHub")
+ah <- AnnotationHub()
+CTCF_hg38 <- ah[["AH95566"]]
+CTCF_hg38$name <- CTCF_hg38$motif
+head(CTCF_hg38)
+```
 
-# obtain promoters annotation, *promoter name must be stored as 'name'
-data("promoters_f5", package = "xcoredata")
-
+```{r}
 # construct molecular signatures matrix
 molecular_signature <- getInteractionMatrix(
   a = promoters_f5,
-  b = motevo_hg38_f5,
+  b = CTCF_hg38,
   ext = 500
 )
+head(molecular_signature)
+```
+
+```{r}
+sessionInfo()
 ```

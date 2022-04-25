@@ -24,6 +24,7 @@ Rows consistency is ensured by taking an intersection of rows after new
 experiments are added.
 }
 \examples{
+data("rinderpest_mini", "remap_mini")
 base_lvl <- "00hr"
 design <- matrix(
   data = c(1, 0, 0,

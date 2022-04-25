@@ -24,52 +24,21 @@ fisherMethod <- function(p.value, lower.tail = FALSE, log.p = TRUE) {
   return(cmbp)
 }
 
-#' Linear ridge regression
-#'
-#' Wrapper around \code{\link[glmnet]{cv.glmnet}} to run linear ridge regression
-#' with lambda selection using cross-validation.
-#'
-#' @inheritParams glmnet::cv.glmnet
-#' @inheritParams glmnet::glmnet
-#'
-#' @return an object of class "cv.glmnet" is returned. See
-#'   \code{\link[glmnet]{cv.glmnet}} for more details.
-#'
-#' @importFrom glmnet cv.glmnet
-#'
-runLinearRidge <-
-  function(x,
-           y,
-           offset,
-           alpha = 0,
-           standardize = TRUE,
-           ...) {
-    cv <- glmnet::cv.glmnet(
-      x = x,
-      y = y,
-      offset = offset,
-      alpha = alpha,
-      standardize = standardize,
-      ...)
-
-    return(cv)
-  }
-
 #' Significance testing in linear ridge regression
 #'
 #' Standard error estimation and significance testing for coefficients
 #' estimated in linear ridge regression. \code{ridgePvals} re-implement
 #' original method by (Cule et al. BMC Bioinformatics 2011.) found in
 #' \link[ridge]{ridge-package}. This function is intended to use with
-#' \code{\link{runLinearRidge}} output.
+#' \code{\link[glmnet]{cv.glmnet}} output.
 #'
-#' @param x input matrix, same as used in \code{\link{runLinearRidge}}.
-#' @param y response variable, same as used in \code{\link{runLinearRidge}}.
+#' @param x input matrix, same as used in \code{\link[glmnet]{cv.glmnet}}.
+#' @param y response variable, same as used in \code{\link[glmnet]{cv.glmnet}}.
 #' @param beta matrix of coefficients, estimated using
-#'   \code{\link{runLinearRidge}}.
+#'   \code{\link[glmnet]{cv.glmnet}}.
 #' @param lambda lambda value for which \code{beta} was estimated.
 #' @param standardizex logical flag for x variable standardization, should be
-#'   set to same value as \code{standarize} flag in \code{\link{runLinearRidge}}.
+#'   set to same value as \code{standarize} flag in \code{\link[glmnet]{cv.glmnet}}.
 #' @param svdX optional singular-value decomposition of \code{x} matrix. One can
 #'   be obtained using \code{link[base]{svd}}. Passing this argument omits
 #'   internal call to \code{link[base]{svd}}, this is useful when calling
@@ -88,7 +57,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
   if (standardizex) x <- scale(x)
   if (is.null(svdX)) svdX <- svd(x)
   U <- svdX$u
-  D <- svdX$d
+  # D <- svdX$d # not used?
   D2 <- svdX$d ^ 2
   V <- svdX$v
   div <- D2 + lambda
@@ -100,7 +69,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
   varmat <- sig2hat * varmat
   se <- sqrt(diag(varmat))
   tstat <- abs(beta / se)
-  pval <- 2 * (1 - pnorm(tstat))
+  pval <- 2 * (1 - stats::pnorm(tstat))
 
   res <-
     list(
@@ -117,7 +86,7 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #' Gene expression modeling pipeline
 #'
 #' \code{modelGeneExpression} uses parallelization if parallel backend is
-#' registered. For that reason we advise agains passing \code{parallel} argument
+#' registered. For that reason we advise against passing \code{parallel} argument
 #' to internally called \code{\link[glmnet]{cv.glmnet}} routine.
 #'
 #' For speeding up the calculations consider lowering number of folds used in
@@ -138,8 +107,8 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'
 #' If replicates are available the signatures activities estimates and
 #' their standard error estimates can be combined. This is done by averaging
-#' signatures activities estimates and pooling standard errors following
-#' (Cohen 1977) formulation for pooled standard deviation.
+#' signatures activities estimates and pooling their significance estimates
+#' using Stouffer's method for the Z-scores and Fisher's method for the p-values.
 #'
 #' For detailed pipeline description we refer interested user to paper
 #' accompanying this package.
@@ -186,11 +155,14 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #'     \item{coef_avg}{Named list with elements corresponding to
 #'       signatures specified in \code{xnames}. Each of these is a \code{matrix}
 #'       holding replicate averaged signatures activities with columns
-#'       corresponding to groups in the design.}}
+#'       corresponding to groups in the design.}
+#'     \item{results}{Named list of a \code{data.frame}s holding replicate
+#'       average molecular signatures, overall molecular signatures Z-score and
+#'       p-values calculated over groups using Stouffer's and Fisher's methods.}
 #'   }
 #'
 #' @examples
-#' \dontrun{
+#' data("rinderpest_mini", "remap_mini")
 #' base_lvl <- "00hr"
 #' design <- matrix(
 #'   data = c(1, 0, 0,
@@ -214,13 +186,11 @@ ridgePvals <- function (x, y, beta, lambda, standardizex = TRUE, svdX = NULL) {
 #' mae <- filterSignatures(mae)
 #' res <- modelGeneExpression(
 #'   mae = mae,
-#'   yname = yname,
-#'   uname = uname,
-#'   xnames = xnames,
-#'   design = design))
-#' }
+#'   xnames = "remap",
+#'   nfolds = 5)
 #'
 #' @importFrom foreach foreach %do% %dopar% %:%
+#' @importFrom glmnet cv.glmnet
 #' @importFrom methods is
 #' @importFrom MultiAssayExperiment metadata
 #' @importFrom iterators iter
@@ -279,35 +249,134 @@ modelGeneExpression <- function(mae,
   groups <- design2factor(design)
   stopifnot("design try to use samples not included in mae[[yname]]" = all(names(groups) %in% colnames(mae[[yname]])))
 
+  message("##------ modelGeneExpression: started ridge regression ", timestamp(prefix = "", quiet = TRUE))
+  regression_models <-
+    modelGeneExpression_ridge_regression_wraper(
+      mae = mae,
+      yname = yname,
+      uname = uname,
+      xnames = xnames,
+      groups = groups,
+      standardize = standardize,
+      parallel = parallel,
+      precalcmodels = precalcmodels,
+      ...)
+  message("##------ modelGeneExpression: finished begining ridge  ", timestamp(prefix = "", quiet = TRUE))
+
+  if (pvalues) {
+    message("##------ modelGeneExpression: started significance testing  ", timestamp(prefix = "", quiet = TRUE))
+    pvalues <- modelGeneExpression_significance_testing_wraper(
+      mae = mae,
+      yname = yname,
+      uname = uname,
+      xnames = xnames,
+      groups = groups,
+      standardize = standardize,
+      regression_models = regression_models)
+    zscore_avg <- lapply(pvalues, repAvgZscore, groups = groups)
+    message("##------ modelGeneExpression: finished significance testing  ", timestamp(prefix = "", quiet = TRUE))
+  } else {
+    pvalues <- NULL
+    zscore_avg <- NULL
+  }
+
+  # gather results
+  coef_avg <- lapply(X = xnames, function(xnm_) {
+    getAvgCoeff(models = regression_models[[xnm_]], group = groups, drop_intercept = TRUE)
+  })
+  names(coef_avg) <- xnames
+
+  results <- lapply(
+    X = names(coef_avg),
+    FUN = function(xnm_) {
+      coef <- coef_avg[[xnm_]]
+      x <- split(coef, col(coef, as.factor = TRUE))
+      x <- c(list(name = rownames(coef)), x)
+
+      if (ncol(zscore_avg[[xnm_]]) > 1) {
+        x[["z_score"]] <- apply(zscore_avg[[xnm_]], 1, stoufferZMethod)
+      } else if (ncol(zscore_avg[[xnm_]]) == 1) {
+        x[["z_score"]] <- zscore_avg[[xnm_]][, 1L, drop = TRUE]
+      } else {
+        x[["z_score"]] <- NA
+      }
+
+      class(x) <- "data.frame"
+      attr(x, "row.names") <- seq_len(nrow(coef))
+      if (length(zscore_avg)) {
+        ord <- order(abs(x[["z_score"]]), decreasing = TRUE)
+        x <- x[ord, ]
+      }
+      x
+    })
+  names(results) <- names(coef_avg)
+
+  return(list(
+    regression_models = regression_models,
+    pvalues = pvalues,
+    zscore_avg = zscore_avg,
+    coef_avg = coef_avg,
+    results = results
+  ))
+}
+
+# declare modelGeneExpression foreach variables
+utils::globalVariables(c("x_", "xn_", "xnm_", "y_", "yn_", "id_"))
+
+#' Ridge regression wrapper for modelGeneExpression
+#'
+#' Internal function used in \code{modelGeneExpression}. It runs ridge regression
+#' parallelly across signatures and samples as specified by experiment design.
+#'
+#' @inheritParams modelGeneExpression
+#' @param groups factor representation of design matrix.
+#' @param ... arguments passed to glmnet::cv.glmnet.
+#'
+#' @return Named list with elements corresponding to signatures specified in
+#'   \code{xnames}. Each of these is a list holding \code{'cv.glmnet'} objects
+#'   corresponding to each sample.
+#'
+#' @importFrom foreach foreach %dopar% %:%
+#' @importFrom iterators iter
+#' @importFrom stats setNames
+#'
+modelGeneExpression_ridge_regression_wraper <- function(mae,
+                                                        yname,
+                                                        uname,
+                                                        xnames,
+                                                        groups,
+                                                        standardize,
+                                                        parallel,
+                                                        precalcmodels,
+                                                        ...) {
   iter_to_pass <- lapply(precalcmodels, names)
 
   args <- list(...)
   args[["offset"]] <- mae[[uname]]
+  args[["alpha"]] <- 0
   args[["standardize"]] <- standardize
   args[["parallel"]] <- parallel
 
-  message("##------ modelGeneExpression: started ridge regression ", timestamp(prefix = "", quiet = TRUE))
   regression_models <- foreach::foreach(
-    x = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
-    xn = xnames,
+    x_ = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
+    xn_ = xnames,
     .inorder = TRUE,
-    .final = function(x) setNames(x, xnames),
-    .packages = "xcore"
+    .final = function(x) setNames(x, xnames)
   ) %:%
     foreach::foreach(
-      y = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
-      yn = names(groups),
+      y_ = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
+      yn_ = names(groups),
       .inorder = TRUE,
       .final = function(x) setNames(x, names(groups)),
-      .packages = "xcore"
+      .packages = "glmnet"
     ) %dopar% {
-      if (yn %in% iter_to_pass[[xn]]) {
+      if (yn_ %in% iter_to_pass[[xn_]]) {
         res <- "precalc"
       } else {
-        args[["x"]] <- x
-        args[["y"]] <- y
-        rm(x, y); gc()
-        res <- do.call(runLinearRidge, args)
+        args[["x"]] <- x_
+        args[["y"]] <- y_
+        rm(x_, y_); gc()
+        res <- do.call(glmnet::cv.glmnet, args)
       }
 
       return(res)
@@ -320,92 +389,81 @@ modelGeneExpression <- function(mae,
         regression_models[[xn]][[yn]] <- precalcmodels[[xn]][[yn]]
       }
   }
-  message("##------ modelGeneExpression: finished begining ridge  ", timestamp(prefix = "", quiet = TRUE))
 
-  if (pvalues) {
-    message("##------ modelGeneExpression: started significance testing  ", timestamp(prefix = "", quiet = TRUE))
-    if (standardize) { # scale here to avoid scaling multiple times in ridgePvals
-      for (xn in xnames) {
-        mae[[xn]] <- scale(mae[[xn]])
-      }
+  return(regression_models)
+}
+
+#' Statistical testing of ridge regression estimates wrapper for modelGeneExpression
+#'
+#' Internal function used in \code{modelGeneExpression}. It runs \code{ridgePvals}
+#' parallelly across signatures and samples as specified by experiment design.
+#'
+#' @inheritParams modelGeneExpression
+#' @param groups factor representation of design matrix.
+#' @param regression_models Named list with elements corresponding to signatures
+#'   specified in \code{xnames}. Each of these is a list holding
+#'   \code{'cv.glmnet'} objects corresponding to each sample. Usually returned
+#'   by \code{modelGeneExpression_ridge_regression_wraper}.
+#'
+#' @return Named list with elements corresponding to signatures specified in
+#'   \code{xnames}. Each of these is a list holding \code{data.frame} of
+#'   signature's p-values and test statistics estimated for each sample.
+#'
+#' @importFrom foreach foreach %dopar% %:%
+#' @importFrom iterators iter
+#' @importFrom stats coef setNames
+#'
+modelGeneExpression_significance_testing_wraper <- function(mae,
+                                                            yname,
+                                                            uname,
+                                                            xnames,
+                                                            groups,
+                                                            standardize,
+                                                            regression_models) {
+  if (standardize) { # scale here to avoid scaling multiple times in ridgePvals
+    for (xn in xnames) {
+      mae[[xn]] <- scale(mae[[xn]])
     }
-    svdX <- foreach::foreach(
-      x = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
-      .inorder = TRUE,
-      .final = function(x) setNames(x, xnames)
-    ) %dopar% svd(x)
-
-    pvalues <- foreach::foreach(
-      x = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
-      xnm = xnames,
-      .inorder = TRUE,
-      .final = function(x) setNames(x, xnames)
-      # .packages = "xcore"
-    ) %:%
-      foreach::foreach(
-        y = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
-        id = names(groups),
-        .inorder = TRUE,
-        .final = function(x) setNames(x, names(groups))
-        # .packages = "xcore"
-      ) %dopar% {
-        y <- y - mae[[uname]]
-        lambda <- regression_models[[xnm]][[id]]$lambda.min
-        beta <- coef(regression_models[[xnm]][[id]], s = lambda)
-        beta <- beta[-1, ] # drop intercept
-        ridgePvals(
-          x = x,
-          y = y,
-          beta = beta,
-          lambda = lambda,
-          standardizex = FALSE,
-          svdX = svdX[[xnm]]
-        )
-      }
-
-    zscore_avg <- lapply(pvalues, repAvgZscore, groups = groups)
-    coef_avg <- lapply(
-      X = pvalues,
-      FUN = function(pv) {
-        applyOverDFList(list_of_df = pv,
-                        col_name = "coef",
-                        fun = mean,
-                        groups = groups)
-      })
-    results <- lapply(
-      X = names(coef_avg),
-      FUN = function(nm) {
-        coef <- coef_avg[[nm]]
-        x <- split(coef, col(coef, as.factor = TRUE))
-        x <- c(list(name = rownames(coef)), x)
-        x[["z_score"]] <- apply(zscore_avg[[nm]], 1, stoufferZMethod)
-        class(x) <- "data.frame"
-        attr(x, "row.names") <- seq_len(nrow(coef))
-        ord <- order(abs(x[["z_score"]]), decreasing = TRUE)
-        x <- x[ord, ]
-        x
-      })
-    names(results) <- names(coef_avg)
-    message("##------ modelGeneExpression: finished significance testing  ", timestamp(prefix = "", quiet = TRUE))
-  } else {
-    pvalues <- NULL
-    zscore_avg <- NULL
-    coef_avg <- NULL
-    results <- NULL
   }
+  svdX <- foreach::foreach(
+    x_ = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
+    .inorder = TRUE,
+    .final = function(x) setNames(x, xnames)
+  ) %dopar% svd(x_)
 
-  return(list(
-    regression_models = regression_models,
-    pvalues = pvalues,
-    zscore_avg = zscore_avg,
-    coef_avg = coef_avg,
-    results = results
-  ))
+  pvalues <- foreach::foreach(
+    x_ = iterators::iter(suppressWarnings(suppressMessages(mae[, , xnames]))),
+    xnm_ = xnames,
+    .inorder = TRUE,
+    .final = function(x) setNames(x, xnames)
+  ) %:%
+    foreach::foreach(
+      y_ = iterators::iter(mae[[yname]][, names(groups), drop = FALSE]),
+      id_ = names(groups),
+      .inorder = TRUE,
+      .final = function(x) setNames(x, names(groups)),
+      .export = "ridgePvals"
+    ) %dopar% {
+      y_ <- y_ - mae[[uname]]
+      lambda <- regression_models[[xnm_]][[id_]]$lambda.min
+      beta <- coef(regression_models[[xnm_]][[id_]], s = lambda)
+      beta <- beta[-1, ] # drop intercept
+      ridgePvals(
+        x = x_,
+        y = y_,
+        beta = beta,
+        lambda = lambda,
+        standardizex = FALSE,
+        svdX = svdX[[xnm_]]
+      )
+    }
+
+  return(pvalues)
 }
 
 #' Calculate replicate averaged Z-scores
 #'
-#' Replicate averaged Z-scores for is calculated by dividing replicate average
+#' Replicate averaged Z-scores is calculated by dividing replicate average
 #' coefficient by replicate pooled standard error.
 #'
 #' @param pvalues Data frame with \code{'se'} (standard error) and \code{'coef'}
@@ -460,7 +518,39 @@ poolSE <- function(x) {
 #'
 stoufferZMethod <- function(z) {
   z <- z[! is.na(z)]
-  z_cmb <- sum(z) / sqrt(length(z))
+  z_cmb <- sum(abs(z)) / sqrt(length(z))
 
   return(z_cmb)
+}
+
+#' Calculate average coefficients matrix
+#'
+#' @param models list of \code{cv.glmnet} objects.
+#' @param group optional factor giving the grouping.
+#' @param lambda string indicating which lambda to use.
+#' @param drop_intercept logical indicating if intercept should be dropped from
+#'   the output.
+#'
+#' @return average coefficients matrix
+#'
+getAvgCoeff <- function(models, group = NULL, lambda = "lambda.min", drop_intercept = TRUE) {
+  coefs <- lapply(models, function(m) coef(m, s = m[[lambda]]))
+  if (drop_intercept) {
+    coefs <- lapply(coefs, function(m) {
+      keep <- grep(pattern = "(Intercept)", x = rownames(m), invert = TRUE)
+      m[keep, ]
+    })
+  }
+  coefs_avg <- lapply(X = levels(group), function(gr) {
+    mat <- do.call(cbind, coefs[group == gr])
+    if (ncol(mat) > 1) {
+      rowMeans(mat)
+    } else {
+      mat
+    }
+  })
+  coefs_avg <- do.call(cbind, coefs_avg)
+  colnames(coefs_avg) <- levels(group)
+
+  return(coefs_avg)
 }

@@ -63,15 +63,22 @@ signatures specified in \code{xnames}. Each of these is a list holding
 signatures specified in \code{xnames}. Each of these is a list holding
 \code{data.frame} of signature's p-values and test statistics
 estimated for each sample.}
-\item{replicate_avg}{Named list with elements corresponding to
+\item{zscore_avg}{Named list with elements corresponding to
 signatures specified in \code{xnames}. Each of these is a \code{matrix}
 holding replicate average Z-scores with columns corresponding to groups
 in the design.}
+\item{coef_avg}{Named list with elements corresponding to
+signatures specified in \code{xnames}. Each of these is a \code{matrix}
+holding replicate averaged signatures activities with columns
+corresponding to groups in the design.}
+\item{results}{Named list of a \code{data.frame}s holding replicate
+average molecular signatures, overall molecular signatures Z-score and
+p-values calculated over groups using Stouffer's and Fisher's methods.}
 }
 }
 \description{
 \code{modelGeneExpression} uses parallelization if parallel backend is
-registered. For that reason we advise agains passing \code{parallel} argument
+registered. For that reason we advise against passing \code{parallel} argument
 to internally called \code{\link[glmnet]{cv.glmnet}} routine.
 }
 \details{
@@ -93,14 +100,14 @@ in \link[ridge]{ridge-package}.
 
 If replicates are available the signatures activities estimates and
 their standard error estimates can be combined. This is done by averaging
-signatures activities estimates and pooling standard errors following
-(Cohen 1977) formulation for pooled standard deviation.
+signatures activities estimates and pooling their significance estimates
+using Stouffer's method for the Z-scores and Fisher's method for the p-values.
 
 For detailed pipeline description we refer interested user to paper
 accompanying this package.
 }
 \examples{
-\dontrun{
+data("rinderpest_mini", "remap_mini")
 base_lvl <- "00hr"
 design <- matrix(
   data = c(1, 0, 0,
@@ -124,10 +131,7 @@ mae <- addSignatures(mae, remap = remap_mini)
 mae <- filterSignatures(mae)
 res <- modelGeneExpression(
   mae = mae,
-  yname = yname,
-  uname = uname,
-  xnames = xnames,
-  design = design))
-}
+  xnames = "remap",
+  nfolds = 5)
 
 }

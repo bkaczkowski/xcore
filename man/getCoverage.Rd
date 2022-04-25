@@ -22,3 +22,16 @@ matrix) by features (columns). It is possible to specify features grouping
 variable \code{gr} then coverage tells how many distinct groups the region
 overlap with.
 }
+\examples{
+data("remap_mini")
+y <- colnames(remap_mini)
+
+# simple coverage
+gr <- seq_along(y) \%>\% as.factor()
+getCoverage(remap_mini, gr)
+
+# per cell type coverage
+gr <- sub(".*\\\\.", "", y) \%>\% as.factor()
+getCoverage(remap_mini, gr)
+
+}

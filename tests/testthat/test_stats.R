@@ -20,6 +20,7 @@ test_that("ridgePvals", {
 })
 
 test_that("modelGeneExpression", {
+  data("rinderpest_mini", "remap_mini")
   base_lvl <- "00hr"
   design <- matrix(
     data = c(1, 0,
@@ -265,5 +266,91 @@ test_that("modelGeneExpression", {
     yname = yname,
     uname = uname,
     xnames = xnames)))
-  testthat::expect_equal(digest::digest(res), "483bd14d63b66f9873f4ac6954ae85c3")
+  testthat::expect_equal(is(res, "list"), TRUE)
+  testthat::expect_equal(
+    names(res),
+    c("regression_models", "pvalues", "zscore_avg", "coef_avg", "results"))
+  testthat::expect_equal(
+    vapply(res$regression_models$remap, function(x) x[["lambda.min"]], numeric(1L)),
+    c(`24hr_rep1` = 0.511733047560191, `24hr_rep2` = 0.519567836447116, `24hr_rep3` = 0.49538499285586)
+  )
+  testthat::expect_equal(
+    head(res$results$remap, 5),
+    structure(
+      list(
+        name = c(
+          "GSE41561.E2F4.MCF-7_ICI",
+          "GSE46055.KDM5B.SUM185_SHCTCF",
+          "ENCSR218GSN.ZFX.HEK293T",
+          "GSE110655.BAF155.VCaP_shARID1A",
+          "ENCSR854MCV.IRF1.K-562"
+        ),
+        `24hr` = c(
+          0.115154878728437,
+          -0.100550457825014,-0.0738555720078653,
+          -0.0708811256498562,
+          0.0609161136775344
+        ),
+        z_score = c(
+          `GSE41561.E2F4.MCF-7_ICI` = 12.888479679913,
+          GSE46055.KDM5B.SUM185_SHCTCF = -8.38371176497113,
+          ENCSR218GSN.ZFX.HEK293T = -7.88258932096109,
+          GSE110655.BAF155.VCaP_shARID1A = -7.04006552247605,
+          `ENCSR854MCV.IRF1.K-562` = 7.02448210035296
+        )
+      ),
+      row.names = c(123L,
+                    52L, 318L, 62L, 101L),
+      class = "data.frame"
+    )
+  )
+
+  # modelGeneExpression works with 1 replicate
+  mae[["Y"]] <- mae[["Y"]][, 1, drop = FALSE]
+  MultiAssayExperiment::metadata(mae)[["design"]] <-
+    MultiAssayExperiment::metadata(mae)[["design"]][1:4,]
+  res <- suppressWarnings(suppressMessages(modelGeneExpression(
+    mae = mae,
+    yname = yname,
+    uname = uname,
+    xnames = xnames)))
+
+  testthat::expect_equal(is(res, "list"), TRUE)
+  testthat::expect_equal(
+    names(res),
+    c("regression_models", "pvalues", "zscore_avg", "coef_avg", "results"))
+  testthat::expect_equal(
+    vapply(res$regression_models$remap, function(x) x[["lambda.min"]], numeric(1L)),
+    c(`24hr_rep1` = 0.466272094050723)
+  )
+  testthat::expect_equal(
+    head(res$results$remap, 5),
+    structure(
+      list(
+        name = c(
+          "GSE41561.E2F4.MCF-7_ICI",
+          "GSE46055.KDM5B.SUM185_SHCTCF",
+          "GSE110655.BAF155.VCaP_shARID1A",
+          "ENCSR218GSN.ZFX.HEK293T",
+          "ENCSR000BJR.NR3C1.A-549"
+        ),
+        `24hr` = c(
+          0.120925741473048,
+          -0.108759726505401,-0.0779421142937784,
+          -0.0691510544420742,
+          -0.0722428637001296
+        ),
+        z_score = c(
+          `GSE41561.E2F4.MCF-7_ICI` = 13.470084029705,
+          GSE46055.KDM5B.SUM185_SHCTCF = -9.02506582532614,
+          GSE110655.BAF155.VCaP_shARID1A = -7.70459398771434,
+          ENCSR218GSN.ZFX.HEK293T = -7.34541841134943,
+          `ENCSR000BJR.NR3C1.A-549` = -7.29921519345464
+        )
+      ),
+      row.names = c(123L,
+                    52L, 62L, 318L, 345L),
+      class = "data.frame"
+    )
+  )
 })

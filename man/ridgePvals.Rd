@@ -7,17 +7,17 @@
 ridgePvals(x, y, beta, lambda, standardizex = TRUE, svdX = NULL)
 }
 \arguments{
-\item{x}{input matrix, same as used in \code{\link{runLinearRidge}}.}
+\item{x}{input matrix, same as used in \code{\link[glmnet]{cv.glmnet}}.}
 
-\item{y}{response variable, same as used in \code{\link{runLinearRidge}}.}
+\item{y}{response variable, same as used in \code{\link[glmnet]{cv.glmnet}}.}
 
 \item{beta}{matrix of coefficients, estimated using
-\code{\link{runLinearRidge}}.}
+\code{\link[glmnet]{cv.glmnet}}.}
 
 \item{lambda}{lambda value for which \code{beta} was estimated.}
 
 \item{standardizex}{logical flag for x variable standardization, should be
-set to same value as \code{standarize} flag in \code{\link{runLinearRidge}}.}
+set to same value as \code{standarize} flag in \code{\link[glmnet]{cv.glmnet}}.}
 
 \item{svdX}{optional singular-value decomposition of \code{x} matrix. One can
 be obtained using \code{link[base]{svd}}. Passing this argument omits
@@ -38,5 +38,5 @@ Standard error estimation and significance testing for coefficients
 estimated in linear ridge regression. \code{ridgePvals} re-implement
 original method by (Cule et al. BMC Bioinformatics 2011.) found in
 \link[ridge]{ridge-package}. This function is intended to use with
-\code{\link{runLinearRidge}} output.
+\code{\link[glmnet]{cv.glmnet}} output.
 }

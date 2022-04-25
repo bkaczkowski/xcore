@@ -35,6 +35,7 @@ Filter signatures overlapping low or high number of promoters. Useful to get
 rid of signatures that have very low variance.
 }
 \examples{
+data("rinderpest_mini", "remap_mini")
 base_lvl <- "00hr"
 design <- matrix(
   data = c(1, 0, 0,

@@ -1,8 +1,9 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-^\data-raw$
+^data-raw
 ^\.github$
 ^\_pkgdown\.yml$
 ^docs$
 ^pkgdown$
 ^_pkgdown\.yml$
+^\.nojekyll$
