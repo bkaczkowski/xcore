@@ -183,7 +183,7 @@ dataK_symbol <- MultiAssayExperiment::MultiAssayExperiment(
   experiments = MultiAssayExperiment::ExperimentList(
       U = matrix(data = rowMeans(countsK_entrez[, 1:3]), ncol = 1, dimnames = list(rownames(countsK_entrez), "u")),
       Y = countsK_entrez[, samplesK[-c(1:3)]]),
-    metadata = list(designK = designK_wo_base)
+    metadata = list(design = designK_wo_base)
 )
 ```
 
