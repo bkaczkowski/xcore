@@ -285,7 +285,6 @@ modelGeneExpression <- function(mae,
     getAvgCoeff(models = regression_models[[xnm_]], group = groups, drop_intercept = TRUE)
   })
   names(coef_avg) <- xnames
-
   results <- lapply(
     X = names(coef_avg),
     FUN = function(xnm_) {
@@ -293,9 +292,10 @@ modelGeneExpression <- function(mae,
       x <- split(coef, col(coef, as.factor = TRUE))
       x <- c(list(name = rownames(coef)), x)
 
-      if (ncol(zscore_avg[[xnm_]]) > 1) {
+      has_zscore <- ! is.null(zscore_avg)
+      if (has_zscore && ncol(zscore_avg[[xnm_]]) > 1) {
         x[["z_score"]] <- apply(zscore_avg[[xnm_]], 1, stoufferZMethod)
-      } else if (ncol(zscore_avg[[xnm_]]) == 1) {
+      } else if (has_zscore && ncol(zscore_avg[[xnm_]]) == 1) {
         x[["z_score"]] <- zscore_avg[[xnm_]][, 1L, drop = TRUE]
       } else {
         x[["z_score"]] <- NA
