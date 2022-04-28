@@ -11,8 +11,11 @@ We refer interested users to our [bioRxiv preprint](https://www.biorxiv.org/cont
 ## Installation
 xcore and xcoredata can be installed from Bioconductor:
 ``` r
-devtools::install_github("bkaczkowski/xcore")
-devtools::install_github("mcjmigdal/xcoredata")
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("xcore")
+BiocManager::install("xcoredata")
 ```
 
 ## Usage
