@@ -305,12 +305,12 @@
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">##                                 name        12hr        24hr  z_score</span>
-<span class="co">## 17            MYC.NCI-H2171.GSE36354 -0.12198878 -0.19855600 29.93693</span>
-<span class="co">## 51      E2F4.lymphoblastoid.GSE21488  0.04605913  0.19968248 23.16563</span>
-<span class="co">## 10            ATF3.K-562.ENCSR632DCH  0.03146142  0.18310167 19.73251</span>
-<span class="co">## 28 NELFA.HeLa_Flavo-0-H2O2.GSE100742 -0.03996647 -0.14323272 13.75690</span>
-<span class="co">## 31           MXD4.Hep-G2.ENCSR441KFW -0.07307876 -0.07376809 10.78558</span>
-<span class="co">## 59              MYC.HFF_OHT.GSE65544  0.03342319 -0.06778091 10.25242</span></code></pre>
+<span class="co">## 17            MYC.NCI-H2171.GSE36354 -0.12128025 -0.20259601 30.15259</span>
+<span class="co">## 51      E2F4.lymphoblastoid.GSE21488  0.04569192  0.20313521 23.40526</span>
+<span class="co">## 10            ATF3.K-562.ENCSR632DCH  0.03145784  0.18682048 20.04449</span>
+<span class="co">## 28 NELFA.HeLa_Flavo-0-H2O2.GSE100742 -0.03884256 -0.14786837 13.94045</span>
+<span class="co">## 31           MXD4.Hep-G2.ENCSR441KFW -0.07125066 -0.07559764 10.72018</span>
+<span class="co">## 59              MYC.HFF_OHT.GSE65544  0.03294708 -0.06886239 10.27738</span></code></pre>
 <p>To visualize the result we can plot a heatmap of molecular signatures activities for the top identified molecular signatures.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">top_signatures</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span>, <span class="fl">10</span><span class="op">)</span>
@@ -424,11 +424,11 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">## [8] base     </span>
 <span class="co">## </span>
 <span class="co">## other attached packages:</span>
-<span class="co">##  [1] GenomicRanges_1.47.6 GenomeInfoDb_1.31.10 IRanges_2.29.1      </span>
-<span class="co">##  [4] S4Vectors_0.33.17    pheatmap_1.0.12      glmnet_4.1-4        </span>
-<span class="co">##  [7] Matrix_1.4-1         xcoredata_0.99.2     ExperimentHub_2.3.7 </span>
-<span class="co">## [10] AnnotationHub_3.3.12 BiocFileCache_2.3.5  dbplyr_2.1.1        </span>
-<span class="co">## [13] BiocGenerics_0.41.2  xcore_0.99.8         BiocStyle_2.23.1    </span>
+<span class="co">##  [1] GenomicRanges_1.48.0 GenomeInfoDb_1.32.0  IRanges_2.30.0      </span>
+<span class="co">##  [4] S4Vectors_0.34.0     pheatmap_1.0.12      glmnet_4.1-4        </span>
+<span class="co">##  [7] Matrix_1.4-1         xcoredata_0.99.2     ExperimentHub_2.4.0 </span>
+<span class="co">## [10] AnnotationHub_3.4.0  BiocFileCache_2.4.0  dbplyr_2.1.1        </span>
+<span class="co">## [13] BiocGenerics_0.42.0  xcore_0.99.8         BiocStyle_2.24.0    </span>
 <span class="co">## </span>
 <span class="co">## loaded via a namespace (and not attached):</span>
 <span class="co">##   [1] bitops_1.0-7                  matrixStats_0.62.0           </span>
@@ -442,35 +442,35 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">##  [17] tidyselect_1.1.2              bit_4.0.4                    </span>
 <span class="co">##  [19] curl_4.3.2                    compiler_4.2.0               </span>
 <span class="co">##  [21] textshaping_0.3.6             cli_3.3.0                    </span>
-<span class="co">##  [23] Biobase_2.55.2                desc_1.4.1                   </span>
-<span class="co">##  [25] DelayedArray_0.21.2           bookdown_0.26                </span>
+<span class="co">##  [23] Biobase_2.56.0                desc_1.4.1                   </span>
+<span class="co">##  [25] DelayedArray_0.22.0           bookdown_0.26                </span>
 <span class="co">##  [27] sass_0.4.1                    scales_1.2.0                 </span>
 <span class="co">##  [29] rappdirs_0.3.3                pkgdown_2.0.3                </span>
 <span class="co">##  [31] systemfonts_1.0.4             stringr_1.4.0                </span>
 <span class="co">##  [33] digest_0.6.29                 rmarkdown_2.14               </span>
-<span class="co">##  [35] XVector_0.35.0                pkgconfig_2.0.3              </span>
-<span class="co">##  [37] htmltools_0.5.2               MatrixGenerics_1.7.0         </span>
+<span class="co">##  [35] XVector_0.36.0                pkgconfig_2.0.3              </span>
+<span class="co">##  [37] htmltools_0.5.2               MatrixGenerics_1.8.0         </span>
 <span class="co">##  [39] highr_0.9                     fastmap_1.1.0                </span>
-<span class="co">##  [41] limma_3.51.8                  rlang_1.0.2                  </span>
+<span class="co">##  [41] limma_3.52.0                  rlang_1.0.2                  </span>
 <span class="co">##  [43] RSQLite_2.2.12                shiny_1.7.1                  </span>
 <span class="co">##  [45] shape_1.4.6                   jquerylib_0.1.4              </span>
 <span class="co">##  [47] generics_0.1.2                jsonlite_1.8.0               </span>
-<span class="co">##  [49] BiocParallel_1.29.21          dplyr_1.0.8                  </span>
+<span class="co">##  [49] BiocParallel_1.30.0           dplyr_1.0.8                  </span>
 <span class="co">##  [51] RCurl_1.98-1.6                magrittr_2.0.3               </span>
 <span class="co">##  [53] GenomeInfoDbData_1.2.8        munsell_0.5.0                </span>
 <span class="co">##  [55] Rcpp_1.0.8.3                  fansi_1.0.3                  </span>
 <span class="co">##  [57] lifecycle_1.0.1               stringi_1.7.6                </span>
-<span class="co">##  [59] yaml_2.3.5                    edgeR_3.37.4                 </span>
-<span class="co">##  [61] SummarizedExperiment_1.25.3   zlibbioc_1.41.0              </span>
+<span class="co">##  [59] yaml_2.3.5                    edgeR_3.38.0                 </span>
+<span class="co">##  [61] SummarizedExperiment_1.26.0   zlibbioc_1.42.0              </span>
 <span class="co">##  [63] grid_4.2.0                    blob_1.2.3                   </span>
 <span class="co">##  [65] parallel_4.2.0                promises_1.2.0.1             </span>
 <span class="co">##  [67] crayon_1.5.1                  lattice_0.20-45              </span>
-<span class="co">##  [69] Biostrings_2.63.3             splines_4.2.0                </span>
-<span class="co">##  [71] KEGGREST_1.35.0               locfit_1.5-9.5               </span>
-<span class="co">##  [73] knitr_1.38                    pillar_1.7.0                 </span>
+<span class="co">##  [69] Biostrings_2.64.0             splines_4.2.0                </span>
+<span class="co">##  [71] KEGGREST_1.36.0               locfit_1.5-9.5               </span>
+<span class="co">##  [73] knitr_1.39                    pillar_1.7.0                 </span>
 <span class="co">##  [75] codetools_0.2-18              glue_1.6.2                   </span>
 <span class="co">##  [77] BiocVersion_3.15.2            evaluate_0.15                </span>
-<span class="co">##  [79] BiocManager_1.30.17           MultiAssayExperiment_1.21.7  </span>
+<span class="co">##  [79] BiocManager_1.30.17           MultiAssayExperiment_1.22.0  </span>
 <span class="co">##  [81] png_0.1-7                     vctrs_0.4.1                  </span>
 <span class="co">##  [83] httpuv_1.6.5                  foreach_1.5.2                </span>
 <span class="co">##  [85] gtable_0.3.0                  purrr_0.3.4                  </span>
@@ -479,8 +479,8 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">##  [91] xtable_1.8-4                  later_1.3.0                  </span>
 <span class="co">##  [93] ragg_1.2.2                    survival_3.3-1               </span>
 <span class="co">##  [95] tibble_3.1.6                  iterators_1.0.14             </span>
-<span class="co">##  [97] AnnotationDbi_1.57.1          memoise_2.0.1                </span>
-<span class="co">##  [99] ellipsis_0.3.2                interactiveDisplayBase_1.33.0</span></code></pre>
+<span class="co">##  [97] AnnotationDbi_1.58.0          memoise_2.0.1                </span>
+<span class="co">##  [99] ellipsis_0.3.2                interactiveDisplayBase_1.34.0</span></code></pre>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>
