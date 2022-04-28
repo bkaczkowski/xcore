@@ -41,7 +41,6 @@ jobs:
       - name: Install dependencies
         run: |
           install.packages(c("devtools", "BiocManager"))
-          BiocManager::install(version='devel')
           BiocManager::install(c("AnnotationHub", "BiocCheck", "BiocStyle", "ExperimentHub", "DelayedArray", "edgeR", "GenomicRanges", "IRanges", "MultiAssayExperiment", "S4Vectors", "BiocGenerics", "ExperimentHub", "rtracklayer"))
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
