@@ -9,17 +9,10 @@ available ChiP-seq experiments.
 We refer interested users to our [bioRxiv preprint](https://www.biorxiv.org/content/10.1101/2022.02.23.481130v1).
 
 ## Installation
-xcore and xcoredata are currently being submitted for mid-April release of the Bioconductor and thus they require `R` 4.2 version (currently R-devel).
-When using `R` 4.2 , the packages can be installed with:
+xcore and xcoredata can be installed from Bioconductor:
 ``` r
 devtools::install_github("bkaczkowski/xcore")
 devtools::install_github("mcjmigdal/xcoredata")
-```
-
-However, you can also install xcore for `R` 4.1 from [github](https://github.com/bkaczkowski/xcore) with:
-``` r
-devtools::install_github("bkaczkowski/xcore@r4_1")
-devtools::install_gitlab("mcjmigdal/xcoredata@r4_1")
 ```
 
 ## Usage
