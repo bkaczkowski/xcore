@@ -26,7 +26,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">xcore</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.8</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.1</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,6 +43,9 @@
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="../articles/xcore_vignette.html">xcore vignette</a>
   </div>
+</li>
+<li class="nav-item">
+  <a class="nav-link" href="../news/index.html">Changelog</a>
 </li>
       </ul>
 <form class="form-inline my-2 my-lg-0" role="search">
@@ -175,7 +178,7 @@
 <span class="va">eh</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/ExperimentHub/man/ExperimentHub-class.html" class="external-link">ExperimentHub</a></span><span class="op">(</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/AnnotationHub/man/AnnotationHub-class.html" class="external-link">query</a></span><span class="op">(</span><span class="va">eh</span>, <span class="st">"xcoredata"</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">## ExperimentHub with 6 records</span>
-<span class="co">## # snapshotDate(): 2022-04-19</span>
+<span class="co">## # snapshotDate(): 2022-04-26</span>
 <span class="co">## # $dataprovider: ReMap, RIKEN, ChIP-Atlas</span>
 <span class="co">## # $species: Homo sapiens, NA</span>
 <span class="co">## # $rdataclass: dgCMatrix, data.table, GRanges</span>
@@ -305,12 +308,12 @@
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">##                                 name        12hr        24hr  z_score</span>
-<span class="co">## 17            MYC.NCI-H2171.GSE36354 -0.12128025 -0.20259601 30.15259</span>
-<span class="co">## 51      E2F4.lymphoblastoid.GSE21488  0.04569192  0.20313521 23.40526</span>
-<span class="co">## 10            ATF3.K-562.ENCSR632DCH  0.03145784  0.18682048 20.04449</span>
-<span class="co">## 28 NELFA.HeLa_Flavo-0-H2O2.GSE100742 -0.03884256 -0.14786837 13.94045</span>
-<span class="co">## 31           MXD4.Hep-G2.ENCSR441KFW -0.07125066 -0.07559764 10.72018</span>
-<span class="co">## 59              MYC.HFF_OHT.GSE65544  0.03294708 -0.06886239 10.27738</span></code></pre>
+<span class="co">## 17            MYC.NCI-H2171.GSE36354 -0.12112827 -0.19852330 29.82838</span>
+<span class="co">## 51      E2F4.lymphoblastoid.GSE21488  0.04560295  0.19978277 23.11099</span>
+<span class="co">## 10            ATF3.K-562.ENCSR632DCH  0.03130156  0.18342315 19.73745</span>
+<span class="co">## 28 NELFA.HeLa_Flavo-0-H2O2.GSE100742 -0.03864746 -0.14366652 13.64270</span>
+<span class="co">## 31           MXD4.Hep-G2.ENCSR441KFW -0.07188691 -0.07288766 10.62764</span>
+<span class="co">## 59              MYC.HFF_OHT.GSE65544  0.03282737 -0.06789231 10.17991</span></code></pre>
 <p>To visualize the result we can plot a heatmap of molecular signatures activities for the top identified molecular signatures.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">top_signatures</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span>, <span class="fl">10</span><span class="op">)</span>
@@ -426,9 +429,9 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">## other attached packages:</span>
 <span class="co">##  [1] GenomicRanges_1.48.0 GenomeInfoDb_1.32.0  IRanges_2.30.0      </span>
 <span class="co">##  [4] S4Vectors_0.34.0     pheatmap_1.0.12      glmnet_4.1-4        </span>
-<span class="co">##  [7] Matrix_1.4-1         xcoredata_0.99.2     ExperimentHub_2.4.0 </span>
+<span class="co">##  [7] Matrix_1.4-1         xcoredata_1.0.0      ExperimentHub_2.4.0 </span>
 <span class="co">## [10] AnnotationHub_3.4.0  BiocFileCache_2.4.0  dbplyr_2.1.1        </span>
-<span class="co">## [13] BiocGenerics_0.42.0  xcore_0.99.8         BiocStyle_2.24.0    </span>
+<span class="co">## [13] BiocGenerics_0.42.0  xcore_1.1.1          BiocStyle_2.24.0    </span>
 <span class="co">## </span>
 <span class="co">## loaded via a namespace (and not attached):</span>
 <span class="co">##   [1] bitops_1.0-7                  matrixStats_0.62.0           </span>
@@ -455,7 +458,7 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">##  [43] RSQLite_2.2.12                shiny_1.7.1                  </span>
 <span class="co">##  [45] shape_1.4.6                   jquerylib_0.1.4              </span>
 <span class="co">##  [47] generics_0.1.2                jsonlite_1.8.0               </span>
-<span class="co">##  [49] BiocParallel_1.30.0           dplyr_1.0.8                  </span>
+<span class="co">##  [49] BiocParallel_1.30.0           dplyr_1.0.9                  </span>
 <span class="co">##  [51] RCurl_1.98-1.6                magrittr_2.0.3               </span>
 <span class="co">##  [53] GenomeInfoDbData_1.2.8        munsell_0.5.0                </span>
 <span class="co">##  [55] Rcpp_1.0.8.3                  fansi_1.0.3                  </span>
