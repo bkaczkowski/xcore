@@ -26,7 +26,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">xcore</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.2</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -85,21 +85,18 @@
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>Currently, you can install <code>xcore</code> package for <code>R</code> 4.1 from <a href="https://github.com/bkaczkowski/xcore" class="external-link">github</a> using:</p>
+<p>You can install <code>xcore</code> package from Bioconductor:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/remote-reexports.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"bkaczkowski/xcore@r4_1"</span><span class="op">)</span></code></pre></div>
-<p><code>xcore</code> package is currently being submitted for mid April release of the Bioconductor. After mid April, it will be possible to install it as Bioconductor package.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"xcore"</span><span class="op">)</span> <span class="co"># after mid April</span></code></pre></div>
+<code class="sourceCode R"><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"xcore"</span><span class="op">)</span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="gene-expression-modeling-in-context-of-rinderpest-infection">Gene expression modeling in context of rinderpest infection<a class="anchor" aria-label="anchor" href="#gene-expression-modeling-in-context-of-rinderpest-infection"></a>
 </h2>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"xcore"</span><span class="op">)</span></code></pre></div>
 <p>Here we will use a subset of 293SLAM rinderpest infection dataset from <a href="https://fantom.gsc.riken.jp/5/sstar/Rinderpest_infection_series" class="external-link">FANTOM5</a>. This subset contains expression counts for 0, 12 and 24 hours post infection samples and only for a subset of FANTOM5 promoters. We can find this example data shipped together with <code>xcore</code> package.</p>
 <p>This is a simple count matrix, with columns corresponding to samples and rows corresponding to FANTOM5 promoters.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"rinderpest_mini"</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">rinderpest_mini</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">##                                              00hr_rep1 00hr_rep2 00hr_rep3</span>
@@ -124,7 +121,7 @@
 <span class="co">## hg19::chr1:100315613..100315691,+;hg_4187.1         43        74        89</span>
 <span class="co">## hg19::chr1:100435545..100435597,+;hg_4201.1         84       100       121</span></code></pre>
 <p>First we need to construct a design matrix describing our experiment design.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">design</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span>
   data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>,
            <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>,
@@ -166,14 +163,14 @@
 <span class="co">## 24hr_rep2    0    0    1</span>
 <span class="co">## 24hr_rep3    0    0    1</span></code></pre>
 <p>Next, we need to preprocess the counts using <code>prepareCountsForRegression</code> function. Here, CAGE expression tags for each sample are filtered for lowly expressed promoters, normalized for the library size and transformed into counts per million (CPM). Finally, CPM are log2 transformed with addition of pseudo count 1. Moreover, we designate the base level samples, 0 hours after treatment in our example, from which basal expression level is calculated. This basal level will be used as a reference when modeling the expression changes.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">mae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepareCountsForRegression.html">prepareCountsForRegression</a></span><span class="op">(</span>counts <span class="op">=</span> <span class="va">rinderpest_mini</span>,
                                   design <span class="op">=</span> <span class="va">design</span>,
                                   base_lvl <span class="op">=</span> <span class="st">"00hr"</span><span class="op">)</span></code></pre></div>
 <p><code>xcore</code> models the expression as a function of molecular signatures. Such signatures can be constructed eg. from the known transcription factor binding sites (see <a href="#constructing-molecular-signatures">Constructing molecular signatures</a> section). Here, we will take advantage of pre-computed molecular signatures found in the <code>xcoredata</code> package. Particularly, molecular signatures constructed from ReMap2020 against FANTOM5 annotation.</p>
-<p>Molecular signatures can be conveniently accessed using the <em>ExperimentHub</em> interface. This functionality will be available after mid April.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"ExperimentHub"</span><span class="op">)</span> <span class="co"># after mid April</span>
+<p>Molecular signatures can be conveniently accessed using the <em>ExperimentHub</em> interface.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"ExperimentHub"</span><span class="op">)</span>
 
 <span class="va">eh</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/ExperimentHub/man/ExperimentHub-class.html" class="external-link">ExperimentHub</a></span><span class="op">(</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/pkg/AnnotationHub/man/AnnotationHub-class.html" class="external-link">query</a></span><span class="op">(</span><span class="va">eh</span>, <span class="st">"xcoredata"</span><span class="op">)</span></code></pre></div>
@@ -194,15 +191,10 @@
 <span class="co">##   EH7301 | remap_promoters_f5     </span>
 <span class="co">##   EH7302 | promoters_f5           </span>
 <span class="co">##   EH7303 | promoters_f5_core</span></code></pre>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">remap_promoters_f5</span> <span class="op">&lt;-</span> <span class="va">eh</span><span class="op">[[</span><span class="st">"EH7301"</span><span class="op">]</span><span class="op">]</span> <span class="co"># after mid April</span></code></pre></div>
-<p>Currently, molecular signatures can be accessed directly from <a href="https://gitlab.com/mcjmigdal/xcoredata" class="external-link">xcoredata package</a>.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/remote-reexports.html" class="external-link">install_gitlab</a></span><span class="op">(</span><span class="st">"mcjmigdal/xcoredata@r4_1"</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"remap_promoters_f5"</span>, package <span class="op">=</span> <span class="st">"xcoredata"</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">remap_promoters_f5</span> <span class="op">&lt;-</span> <span class="va">eh</span><span class="op">[[</span><span class="st">"EH7301"</span><span class="op">]</span><span class="op">]</span></code></pre></div>
 <p>Molecular signature is a simple binary matrix indicating if a transcription factor binding site was found or not found in promoter vicinity.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">remap_promoters_f5</span><span class="op">[</span><span class="fl">3</span><span class="op">:</span><span class="fl">6</span>, <span class="fl">3</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">## 4 x 4 sparse Matrix of class "dgCMatrix"</span>
 <span class="co">##                                             MLLT1.GM12878.ENCSR552XSN</span>
@@ -229,7 +221,7 @@
 <h4 id="computational-resources-consideration">Computational resources consideration<a class="anchor" aria-label="anchor" href="#computational-resources-consideration"></a>
 </h4>
 <p>Running <code>xcore</code> using extensive ReMap2020 or ChIP-Atlas molecular signatures, can be quite time and memory consuming. As an example, modeling the example 293SLAM rinderpest infection dataset with ReMap2020 signatures matrix took around 10 minutes to compute and used up to 8 GB RAM on Intel(R) Xeon(R) CPU E5-2680 v3 using 2 cores. This unfortunately exceeds the resources available for Bioconductor vignettes. This being said, we will further proceed by taking only a subset of ReMap2020 signatures such that we fit into the time limits. However, for running <code>xcore</code> in a normal setting the whole molecular signatures matrix should be used!</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># here we subset ReMap2020 molecular signatures matrix for the purpose of the</span>
 <span class="co"># vignette only! In a normal setting the whole molecular signatures matrix should</span>
 <span class="co"># be used!</span>
@@ -237,18 +229,18 @@
 <span class="va">i</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/BiocGenerics/man/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">remap_promoters_f5</span><span class="op">)</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">100</span>, replace <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>
 <span class="va">remap_promoters_f5</span> <span class="op">&lt;-</span> <span class="va">remap_promoters_f5</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span></code></pre></div>
 <p>To add signatures to our <code>MultiAssayExperiment</code> object we can use <code>addSignatures</code> function. As you add your signatures remember to give them unique names.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">mae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/addSignatures.html">addSignatures</a></span><span class="op">(</span><span class="va">mae</span>, remap <span class="op">=</span> <span class="va">remap_promoters_f5</span><span class="op">)</span></code></pre></div>
 <p>When we examine newly added signatures, we can see that some of them does not overlap any of the promoters. On the other side, depending on the signatures quality, we could expect to see signatures that overlap all of the promoters.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/BiocGenerics/man/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">mae</span><span class="op">[[</span><span class="st">"remap"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span>
 <span class="co">##     1.0    99.5  1300.5  2499.3  4148.0  9561.0</span></code></pre>
 <p>While, we do not provide detailed guidelines to signatures filtering, filtering out at least signatures overlapping no or all promoters is mandatory. Here, we filter signatures that overlap less than 5% or more than 95% of promoters using <code>filterSignatures</code> function.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">mae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/filterSignatures.html">filterSignatures</a></span><span class="op">(</span><span class="va">mae</span>, min <span class="op">=</span> <span class="fl">0.05</span>, max <span class="op">=</span> <span class="fl">0.95</span><span class="op">)</span></code></pre></div>
 <p>At this stage we can investigate <code>mae</code> to see how many signatures are available after intersecting with counts and filtering. number of columns in signatures corresponds to number of molecular signatures which will be used to build a model.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mae</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">## A MultiAssayExperiment object of 3 listed</span>
 <span class="co">##  experiments with user-defined names and respective classes.</span>
@@ -271,7 +263,7 @@
 </h4>
 <p>While there are many parallel backends to choose from, internally <code>xcore</code> uses <a href="https://cran.r-project.org/web/packages/foreach" class="external-link"><code>foreach</code></a> to implement parallel computing. Having this in mind we should use a backend supported by <code>foreach</code>.</p>
 <p>Here we are using <a href="https://cran.r-project.org/package=doParallel" class="external-link"><code>doParallel</code></a> backend, together with <a href="https://bioconductor.org/packages/release/bioc/html/BiocParallel.html" class="external-link"><code>BiocParallel</code></a> package providing unified interface across different OS. Those packages can be installed with:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>
     <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span>
 
@@ -279,7 +271,7 @@
 <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"doParallel"</span><span class="op">)</span></code></pre></div>
 <p>Our modeling will inherently contain some level of randomness due to using cross validation, here we set the seed so that our results can be replicated.</p>
 <p>This step is time consuming as we need to train a separate model for each of our samples. To speed up the calculations we will lower number of folds used in cross-validation procedure from 10 to 5 using <code>nfolds</code> argument, which is internally passed to <code>cv.glmnet</code> function. Moreover here we only use a subset of the ReMap2020 molecular signatures matrix.</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># register parallel backend</span>
 <span class="fu">doParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/doParallel/man/registerDoParallel.html" class="external-link">registerDoParallel</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span>
 <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/register.html" class="external-link">register</a></span><span class="op">(</span><span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/DoparParam-class.html" class="external-link">DoparParam</a></span><span class="op">(</span><span class="op">)</span>, default <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
@@ -305,17 +297,17 @@
 <code>results</code> - a <code>data.frame</code> holding replicate average molecular signatures and overall molecular signatures Z-score calculated over all groups in the design.</li>
 </ul>
 <p><code>results</code> is likely of most interest. As you can see below this <code>data.frame</code> holds replicate averaged molecular signatures activities, as well as overall Z-score which can be used to rank signatures.</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">##                                 name        12hr        24hr  z_score</span>
-<span class="co">## 17            MYC.NCI-H2171.GSE36354 -0.12112827 -0.19852330 29.82838</span>
-<span class="co">## 51      E2F4.lymphoblastoid.GSE21488  0.04560295  0.19978277 23.11099</span>
-<span class="co">## 10            ATF3.K-562.ENCSR632DCH  0.03130156  0.18342315 19.73745</span>
-<span class="co">## 28 NELFA.HeLa_Flavo-0-H2O2.GSE100742 -0.03864746 -0.14366652 13.64270</span>
-<span class="co">## 31           MXD4.Hep-G2.ENCSR441KFW -0.07188691 -0.07288766 10.62764</span>
-<span class="co">## 59              MYC.HFF_OHT.GSE65544  0.03282737 -0.06789231 10.17991</span></code></pre>
+<span class="co">## 17            MYC.NCI-H2171.GSE36354 -0.12149432 -0.19852330 29.87351</span>
+<span class="co">## 51      E2F4.lymphoblastoid.GSE21488  0.04581494  0.19978277 23.14030</span>
+<span class="co">## 10            ATF3.K-562.ENCSR632DCH  0.03140540  0.18342315 19.75179</span>
+<span class="co">## 28 NELFA.HeLa_Flavo-0-H2O2.GSE100742 -0.03923707 -0.14366652 13.70651</span>
+<span class="co">## 31           MXD4.Hep-G2.ENCSR441KFW -0.07216715 -0.07288766 10.65325</span>
+<span class="co">## 59              MYC.HFF_OHT.GSE65544  0.03311815 -0.06789231 10.21984</span></code></pre>
 <p>To visualize the result we can plot a heatmap of molecular signatures activities for the top identified molecular signatures.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">top_signatures</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span>, <span class="fl">10</span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">pheatmap</span><span class="op">)</span>
 <span class="fu">pheatmap</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pheatmap/man/pheatmap.html" class="external-link">pheatmap</a></span><span class="op">(</span>
@@ -328,7 +320,7 @@
   main <span class="op">=</span> <span class="st">"SLAM293 molecular signatures activities"</span>
 <span class="op">)</span></code></pre></div>
 <div class="figure">
-<img src="xcore_vignette_files/figure-html/unnamed-chunk-20-1.png" alt="Predicted activities for the top-scoring molecular signatures" width="700"><p class="caption">
+<img src="xcore_vignette_files/figure-html/unnamed-chunk-17-1.png" alt="Predicted activities for the top-scoring molecular signatures" width="700"><p class="caption">
 Predicted activities for the top-scoring molecular signatures
 </p>
 </div>
@@ -340,7 +332,7 @@ Predicted activities for the top-scoring molecular signatures
 </h2>
 <p>Constructing molecular signatures is as simple as intersecting promoters annotation with transcription factors binding sites (TFBS). For example, here we use FANTOM5’ promoters annotation found in the <code>xcoredata</code> package and predicted CTCF binding sites available in <a href="https://bioconductor.org/packages/release/data/annotation/html/CTCF.html" class="external-link">CTCF</a> <code>AnnotationHub</code>’s resource.</p>
 <p>Promoter annotations and TFBS should be stored as a <code>GRanges</code> object. Moreover, it is required that the promoter/TF name is held under the <code>name</code> column. Next we can construct a molecular signatures matrix using <code>getInteractionMatrix</code> function, where we can specify the <code>ext</code> parameter that will control how much the promoters are extended in both directions before intersecting with TFBS.</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># obtain promoters annotation; *promoter name must be stored under column 'name'</span>
 <span class="va">promoters_f5</span> <span class="op">&lt;-</span> <span class="va">eh</span><span class="op">[[</span><span class="st">"EH7303"</span><span class="op">]</span><span class="op">]</span>
 <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">promoters_f5</span><span class="op">)</span></code></pre></div>
@@ -363,7 +355,7 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">##   [6]    protein_coding       23443     SLC35A3</span>
 <span class="co">##   -------</span>
 <span class="co">##   seqinfo: 25 sequences (1 circular) from hg38 genome</span></code></pre>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># obtain predicted CTCF binding for hg38;</span>
 <span class="co"># *TF/motif name must be stored under column 'name'</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"AnnotationHub"</span><span class="op">)</span>
@@ -390,7 +382,7 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">##   [6] GCACCAGAAGGTGGCAGGA    MA0139.1</span>
 <span class="co">##   -------</span>
 <span class="co">##   seqinfo: 24 sequences from hg38 genome</span></code></pre>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># construct molecular signatures matrix</span>
 <span class="va">molecular_signature</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/getInteractionMatrix.html">getInteractionMatrix</a></span><span class="op">(</span>
   a <span class="op">=</span> <span class="va">promoters_f5</span>,
@@ -406,7 +398,7 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">## hg19::chr1:100232177..100232198,-;hg_13495.1        .</span>
 <span class="co">## hg19::chr1:100315613..100315691,+;hg_4187.1         .</span>
 <span class="co">## hg19::chr1:100435545..100435597,+;hg_4201.1         .</span></code></pre>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">## R version 4.2.0 (2022-04-22)</span>
 <span class="co">## Platform: x86_64-pc-linux-gnu (64-bit)</span>
@@ -427,17 +419,17 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">## [8] base     </span>
 <span class="co">## </span>
 <span class="co">## other attached packages:</span>
-<span class="co">##  [1] GenomicRanges_1.48.0 GenomeInfoDb_1.32.0  IRanges_2.30.0      </span>
+<span class="co">##  [1] GenomicRanges_1.48.0 GenomeInfoDb_1.32.1  IRanges_2.30.0      </span>
 <span class="co">##  [4] S4Vectors_0.34.0     pheatmap_1.0.12      glmnet_4.1-4        </span>
 <span class="co">##  [7] Matrix_1.4-1         xcoredata_1.0.0      ExperimentHub_2.4.0 </span>
 <span class="co">## [10] AnnotationHub_3.4.0  BiocFileCache_2.4.0  dbplyr_2.1.1        </span>
-<span class="co">## [13] BiocGenerics_0.42.0  xcore_1.1.1          BiocStyle_2.24.0    </span>
+<span class="co">## [13] BiocGenerics_0.42.0  xcore_1.1.2          BiocStyle_2.24.0    </span>
 <span class="co">## </span>
 <span class="co">## loaded via a namespace (and not attached):</span>
 <span class="co">##   [1] bitops_1.0-7                  matrixStats_0.62.0           </span>
 <span class="co">##   [3] fs_1.5.2                      bit64_4.0.5                  </span>
 <span class="co">##   [5] RColorBrewer_1.1-3            doParallel_1.0.17            </span>
-<span class="co">##   [7] filelock_1.0.2                httr_1.4.2                   </span>
+<span class="co">##   [7] filelock_1.0.2                httr_1.4.3                   </span>
 <span class="co">##   [9] rprojroot_2.0.3               tools_4.2.0                  </span>
 <span class="co">##  [11] bslib_0.3.1                   utf8_1.2.2                   </span>
 <span class="co">##  [13] R6_2.5.1                      colorspace_2.0-3             </span>
@@ -455,7 +447,7 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">##  [37] htmltools_0.5.2               MatrixGenerics_1.8.0         </span>
 <span class="co">##  [39] highr_0.9                     fastmap_1.1.0                </span>
 <span class="co">##  [41] limma_3.52.0                  rlang_1.0.2                  </span>
-<span class="co">##  [43] RSQLite_2.2.12                shiny_1.7.1                  </span>
+<span class="co">##  [43] RSQLite_2.2.13                shiny_1.7.1                  </span>
 <span class="co">##  [45] shape_1.4.6                   jquerylib_0.1.4              </span>
 <span class="co">##  [47] generics_0.1.2                jsonlite_1.8.0               </span>
 <span class="co">##  [49] BiocParallel_1.30.0           dplyr_1.0.9                  </span>
@@ -464,7 +456,7 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">##  [55] Rcpp_1.0.8.3                  fansi_1.0.3                  </span>
 <span class="co">##  [57] lifecycle_1.0.1               stringi_1.7.6                </span>
 <span class="co">##  [59] yaml_2.3.5                    edgeR_3.38.0                 </span>
-<span class="co">##  [61] SummarizedExperiment_1.26.0   zlibbioc_1.42.0              </span>
+<span class="co">##  [61] SummarizedExperiment_1.26.1   zlibbioc_1.42.0              </span>
 <span class="co">##  [63] grid_4.2.0                    blob_1.2.3                   </span>
 <span class="co">##  [65] parallel_4.2.0                promises_1.2.0.1             </span>
 <span class="co">##  [67] crayon_1.5.1                  lattice_0.20-45              </span>
@@ -481,7 +473,7 @@ Predicted activities for the top-scoring molecular signatures
 <span class="co">##  [89] xfun_0.30                     mime_0.12                    </span>
 <span class="co">##  [91] xtable_1.8-4                  later_1.3.0                  </span>
 <span class="co">##  [93] ragg_1.2.2                    survival_3.3-1               </span>
-<span class="co">##  [95] tibble_3.1.6                  iterators_1.0.14             </span>
+<span class="co">##  [95] tibble_3.1.7                  iterators_1.0.14             </span>
 <span class="co">##  [97] AnnotationDbi_1.58.0          memoise_2.0.1                </span>
 <span class="co">##  [99] ellipsis_0.3.2                interactiveDisplayBase_1.34.0</span></code></pre>
 </div>
