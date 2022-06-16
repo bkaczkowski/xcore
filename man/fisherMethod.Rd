@@ -11,8 +11,6 @@ fisherMethod(p.value, lower.tail = FALSE, log.p = TRUE)
 
 \item{lower.tail}{logical; if TRUE (default), probabilities are
     \eqn{P[X \le x]}, otherwise, \eqn{P[X > x]}.}
-
-\item{log.p}{logical; if TRUE, probabilities p are given as log(p).}
 }
 \value{
 a number giving combined p-value.
