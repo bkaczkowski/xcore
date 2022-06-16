@@ -126,8 +126,53 @@ save(results, file = "results_x_y.rda")
 # metadata
 
 ```{r}
-rvest::read_html("inst/extdata/knockTF/KnockTF-Download.html") %>% 
+TF <- rvest::read_html("KnockTF-Download_3.html") %>% 
   rvest::html_nodes("table")  %>% 
   rvest::html_table() %>% 
-  `[[`(2)
+  `[[`(2) %>%
+  dplyr::pull(TF)
+TF <- TF[! TF == ""]
+
+dataset <- rvest::read_html("KnockTF-Download_3.html") %>% 
+  rvest::html_nodes("table")  %>%
+  rvest::html_elements("a") %>% 
+  as.character() %>%
+  sub(pattern = ".*KnockTF/Download_profile/", replacement = "") %>%
+  sub(pattern = ".txt.*", replacement = "")
+dataset <- dataset[! grepl("<a href", dataset)]
+
+metadata_3 <- data.frame(tf = TF, id = dataset)
+```
+
+# R2
+
+```{r}
+j <- grepl("24h", colnames(dataA_dpi[["Y"]]))
+xnames <- setdiff(names(dataA_dpi), c("U", "Y"))
+rsqA <- list(symbol = list(), dpi = list())
+for (nm in xnames) {
+  # symbol
+  stat <-
+    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+    estimateStat(
+      x = dataA_symbol[[nm]],
+      y = dataA_symbol[["Y"]][, j][, i],
+      u = dataA_symbol[["U"]],
+      s = regression[["A_549"]][["SYMBOL"]][["regression_models"]][[nm]][j][[i]]$lambda.min,
+      statistic = rsq)
+  rsqA[["symbol"]][[nm]] <- stat
+
+  # dpi
+  stat <-
+    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+    estimateStat(
+      x = dataA_dpi[[nm]],
+      y = dataA_dpi[["Y"]][, j][, i],
+      u = dataA_dpi[["U"]],
+      s = regression[["A_549"]][["DPI"]][["regression_models"]][[nm]][j][[i]]$lambda.min,
+      statistic = rsq)
+  rsqA[["dpi"]][[nm]] <- stat
+}
+
+save(rsqA, file = "rsqA.rda")
 ```
