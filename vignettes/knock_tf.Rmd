@@ -143,3 +143,36 @@ dataset <- dataset[! grepl("<a href", dataset)]
 
 metadata_3 <- data.frame(tf = TF, id = dataset)
 ```
+
+# R2
+
+```{r}
+j <- grepl("24h", colnames(dataA_dpi[["Y"]]))
+xnames <- setdiff(names(dataA_dpi), c("U", "Y"))
+rsqA <- list(symbol = list(), dpi = list())
+for (nm in xnames) {
+  # symbol
+  stat <-
+    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+    estimateStat(
+      x = dataA_symbol[[nm]],
+      y = dataA_symbol[["Y"]][, j][, i],
+      u = dataA_symbol[["U"]],
+      s = regression[["A_549"]][["SYMBOL"]][["regression_models"]][[nm]][j][[i]]$lambda.min,
+      statistic = rsq)
+  rsqA[["symbol"]][[nm]] <- stat
+
+  # dpi
+  stat <-
+    foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+    estimateStat(
+      x = dataA_dpi[[nm]],
+      y = dataA_dpi[["Y"]][, j][, i],
+      u = dataA_dpi[["U"]],
+      s = regression[["A_549"]][["DPI"]][["regression_models"]][[nm]][j][[i]]$lambda.min,
+      statistic = rsq)
+  rsqA[["dpi"]][[nm]] <- stat
+}
+
+save(rsqA, file = "rsqA.rda")
+```
