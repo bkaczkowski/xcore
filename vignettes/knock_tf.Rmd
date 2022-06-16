@@ -147,7 +147,43 @@ metadata_3 <- data.frame(tf = TF, id = dataset)
 # R2
 
 ```{r}
-j <- grepl("24h", colnames(dataA_dpi[["Y"]]))
+path_to_files <- system.file("inst", "extdata", "knockTF", package = "xcore")
+dump_isilon <- "/mnt/restricted/isihome/mmigdal/projects/knockTF/"
+
+rsq_list <- list()
+in_files <-
+  list.files(
+    path = path_to_files,
+    pattern = "DataSet_02.*.txt",
+    full.names = TRUE
+  )
+samples <- baseName(in_files, ".txt")
+
+doMC::registerDoMC(2L)
+for (i in seq_along(in_files)) {
+  set.seed(314159265)
+  in_counts <- read.table(file = in_files[i], header = TRUE)
+  counts_symbol <- processCounts(in_counts)
+  ex_design <- makeDesign(counts_symbol)
+  mae <- makeMAE(counts_symbol, ex_design)
+  
+  mae <- addSignatures(mae, remap = remap_promoters_f5)
+  mae <- filterSignatures(mae, min = 0.05, max = 0.95)
+  load(paste0(dump_isilon, samples[i], ".rda")) # gives res
+  cols <- colnames(mae[["Y"]])
+  stat <- foreach(i = seq_along(cols), .combine = c) %dopar%
+    estimateStat(
+      x = mae[["remap"]],
+      y = mae[["Y"]][, i],
+      u = mae[["U"]],
+      s = res$regression_models$remap[[i]]$lambda.min,
+      statistic = rsq)
+  rsq_list[[samples[i]]] <- stat
+}
+```
+
+```{r}
+samples <- colnames(dataA_dpi[["Y"]]))
 xnames <- setdiff(names(dataA_dpi), c("U", "Y"))
 rsqA <- list(symbol = list(), dpi = list())
 for (nm in xnames) {
