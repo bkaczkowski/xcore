@@ -126,8 +126,20 @@ save(results, file = "results_x_y.rda")
 # metadata
 
 ```{r}
-rvest::read_html("inst/extdata/knockTF/KnockTF-Download.html") %>% 
+TF <- rvest::read_html("KnockTF-Download_3.html") %>% 
   rvest::html_nodes("table")  %>% 
   rvest::html_table() %>% 
-  `[[`(2)
+  `[[`(2) %>%
+  dplyr::pull(TF)
+TF <- TF[! TF == ""]
+
+dataset <- rvest::read_html("KnockTF-Download_3.html") %>% 
+  rvest::html_nodes("table")  %>%
+  rvest::html_elements("a") %>% 
+  as.character() %>%
+  sub(pattern = ".*KnockTF/Download_profile/", replacement = "") %>%
+  sub(pattern = ".txt.*", replacement = "")
+dataset <- dataset[! grepl("<a href", dataset)]
+
+metadata_3 <- data.frame(tf = TF, id = dataset)
 ```
