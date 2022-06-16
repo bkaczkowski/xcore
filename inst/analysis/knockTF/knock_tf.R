@@ -55,11 +55,11 @@ makeMAE <- function(counts_symbol, ex_design) {
   mae <- MultiAssayExperiment(
     experiments = MultiAssayExperiment::ExperimentList(
       U = matrix(
-        data = rowMeans(counts_symbol[, ex_design[, "control"] == 1]),
+        data = rowMeans(counts_symbol[, ex_design[, "control"] == 1, drop = FALSE]),
         ncol = 1,
         dimnames = list(rownames(counts_symbol), "u")
       ),
-      Y = counts_symbol[, ex_design[, "control"] == 0]
+      Y = counts_symbol[, ex_design[, "control"] == 0, drop = FALSE]
     ),
     metadata = list(design = design_wo_base)
   )
