@@ -164,7 +164,7 @@ estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = rsq,
         px <- x[part == p_, ]
         poffset <- u[part == p_, ]
         yhat <- stats::predict(mod, newx = px, newoffset = poffset, s = s)
-        stat <- statistic(py, yhat, px, poffset)
+        stat <- statistic(py, yhat, poffset)
         out <- c(out, stat)
       }
   }
