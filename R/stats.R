@@ -490,7 +490,7 @@ repAvgZscore <- function(pvalues, groups) {
 
 #' Pool Standard Error / Standard Deviation
 #'
-#' Pooled standard erro is calculated following (Cohen 1977) formulation for
+#' Pooled standard error is calculated following (Cohen 1977) formulation for
 #' pooled standard deviation.
 #' TODO check out https://www.statisticshowto.com/find-pooled-sample-standard-error/, https://www.statisticshowto.com/pooled-standard-deviation/
 #'
