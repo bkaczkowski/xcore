@@ -273,7 +273,8 @@ modelGeneExpression <- function(mae,
       groups = groups,
       standardize = standardize,
       regression_models = regression_models)
-    zscore_avg <- lapply(pvalues, repAvgZscore, groups = groups)
+    # zscore_avg <- lapply(pvalues, repAvgZscore, groups = groups)
+    zscore_avg <- lapply(pvalues, repVarianceWeightedAvgZscore, groups = groups)
     message("##------ modelGeneExpression: finished significance testing  ", timestamp(prefix = "", quiet = TRUE))
   } else {
     pvalues <- NULL
@@ -282,7 +283,8 @@ modelGeneExpression <- function(mae,
 
   # gather results
   coef_avg <- lapply(X = xnames, function(xnm_) {
-    getAvgCoeff(models = regression_models[[xnm_]], group = groups, drop_intercept = TRUE)
+    # getAvgCoeff(models = regression_models[[xnm_]], group = groups, drop_intercept = TRUE)
+    getVarianceWeightedAvgCoeff(pvalues[[xnm_]], groups)
   })
   names(coef_avg) <- xnames
   results <- lapply(
@@ -488,6 +490,51 @@ repAvgZscore <- function(pvalues, groups) {
   return(zscore)
 }
 
+#' Calculate replicate variance weighted averaged Z-scores
+#'
+#' Replicate averaged Z-scores is calculated by dividing replicate average
+#' coefficient by replicate pooled standard error.
+#'
+#' @param pvalues Data frame with \code{'se'} (standard error) and \code{'coef'}
+#'   (coefficient) columns. Such as in \code{pvalues} output of
+#'   \code{modelGeneExpression} .
+#' @param groups Factor giving group membership for samples in  \code{pvalues}.
+#'
+#' @return Numeric matrix of averaged Z-scores. Columns correspond to groups and
+#'   rows to predictors.
+#'
+repVarianceWeightedAvgZscore <- function(pvalues, groups) {
+  stopifnot("pvalues elements must be instances of class data.frame" = all(vapply(pvalues, function(x) is(x, "data.frame"), logical(1L))))
+  stopifnot("pavalues must have 'se' and 'coef' columns" = all(vapply(pvalues, function(p) all(c("se", "coef") %in% colnames(p)), logical(1L))))
+  stopifnot("groups must be a factor" = is.factor(groups))
+  stopifnot("groups length must equal pvalues length" = length(groups) == length(pvalues))
+  stopifnot("groups must not have unused levels" = setdiff(levels(groups), groups) == character(0))
+
+  samples <- factor(names(groups))
+  names(samples) <- names(groups)
+  estimate <- applyOverDFList(list_of_df = pvalues, col_name = "coef", fun = function(x) x, groups = samples)
+  variance_weights <- applyOverDFList(list_of_df = pvalues, col_name = "se", fun = function(x) 1 / x^2, groups = samples)
+  weighted_mean <- foreach::foreach(gr_ = levels(groups), .combine = cbind) %dopar%
+    {
+      i <- groups == gr_
+      wm <- rowSums(estimate[, i, drop = FALSE] * variance_weights[, i, drop = FALSE]) / rowSums(variance_weights[, i, drop = FALSE])
+      matrix(
+        data = wm, ncol = 1L, dimnames = list(names(wm), gr_)
+      )
+    }
+  weighted_mean_se <- foreach::foreach(gr_ = levels(groups), .combine = cbind) %dopar%
+    {
+      i <- groups == gr_
+      wmse <- sqrt(1 / rowSums(variance_weights[, i, drop = FALSE]))
+      matrix(
+        data = wmse, ncol = 1L, dimnames = list(names(wmse), gr_)
+      )
+    }
+  weighted_z <- weighted_mean / weighted_mean_se
+
+  return(weighted_z)
+}
+
 #' Pool Standard Error / Standard Deviation
 #'
 #' Pooled standard error is calculated following (Cohen 1977) formulation for
@@ -554,3 +601,32 @@ getAvgCoeff <- function(models, group = NULL, lambda = "lambda.min", drop_interc
 
   return(coefs_avg)
 }
+
+#' Calculate variance weighted average coefficients matrix
+#'
+#' @param models list of \code{cv.glmnet} objects.
+#' @param group optional factor giving the grouping.
+#' @param lambda string indicating which lambda to use.
+#' @param drop_intercept logical indicating if intercept should be dropped from
+#'   the output.
+#'
+#' @return variance weighted average coefficients matrix
+#'
+getVarianceWeightedAvgCoeff <-
+  function(pvalues,
+           groups = NULL) {
+    samples <- factor(names(groups))
+    names(samples) <- names(groups)
+    estimate <- applyOverDFList(list_of_df = pvalues, col_name = "coef", fun = function(x) x, groups = samples)
+    variance_weights <- applyOverDFList(list_of_df = pvalues, col_name = "se", fun = function(x) 1 / x^2, groups = samples)
+    weighted_mean <- foreach::foreach(gr_ = levels(groups), .combine = cbind) %dopar%
+      {
+        i <- groups == gr_
+        wm <- rowSums(estimate[, i, drop = FALSE] * variance_weights[, i, drop = FALSE]) / rowSums(variance_weights[, i, drop = FALSE])
+        matrix(
+          data = wm, ncol = 1L, dimnames = list(names(wm), gr_)
+        )
+      }
+
+    return(weighted_mean)
+  }
