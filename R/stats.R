@@ -261,7 +261,7 @@ modelGeneExpression <- function(mae,
       parallel = parallel,
       precalcmodels = precalcmodels,
       ...)
-  message("##------ modelGeneExpression: finished begining ridge  ", timestamp(prefix = "", quiet = TRUE))
+  message("##------ modelGeneExpression: finished ridge regression", timestamp(prefix = "", quiet = TRUE))
 
   if (pvalues) {
     message("##------ modelGeneExpression: started significance testing  ", timestamp(prefix = "", quiet = TRUE))
