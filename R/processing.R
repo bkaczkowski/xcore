@@ -1,3 +1,84 @@
+#' Create MultiAssayExperiment object for expression modeling
+#'
+#' \code{regressionData} orgnize expression data and experiment design into
+#' MultiAssayExperiment object that can be further used in \code{xcore}
+#' framework. Additionally, function calculate basal expression level, for
+#' latter use in expression modeling, by averaging \code{base_lvl} samples
+#' expression values.
+#'
+#' Note that \code{regressionData} does not apply any normalization or
+#' transformation to the input data! Use \code{prepareCountsForRegression}
+#' if you want to start with raw expression counts.
+#'
+#' @param expr_mat matrix of expression values.
+#' @param design matrix giving the design matrix for the samples. Columns
+#'   corresponds to samples groups and rows to samples names.
+#' @param base_lvl string indicating group in \code{design} corresponding to
+#'   basal expression level. The reference samples to which expression change
+#'   will be compared.
+#' @param drop_base_lvl logical flag indicating if \code{base_lvl} samples
+#'   should be dropped from resulting MultiAssayExperiment object.
+#'
+#' @return MultiAssayExperiment object with two experiments:
+#'   \describe{
+#'     \item{U}{matrix giving expression values averaged over basal level samples}
+#'     \item{Y}{matrix of expression values}
+#'   }
+#'   design with \code{base_lvl} dropped is stored in metadata and directly
+#'   available for \code{modelGeneExpression}.
+#'
+#' @examples
+#' data("rinderpest_mini")
+#' base_lvl <- "00hr"
+#' design <- matrix(
+#'   data = c(1, 0, 0,
+#'            1, 0, 0,
+#'            1, 0, 0,
+#'            0, 1, 0,
+#'            0, 1, 0,
+#'            0, 1, 0,
+#'            0, 0, 1,
+#'            0, 0, 1,
+#'            0, 0, 1),
+#'   ncol = 3,
+#'   nrow = 9,
+#'   byrow = TRUE,
+#'   dimnames = list(colnames(rinderpest_mini), c("00hr", "12hr", "24hr")))
+#' mae <- regressionData(
+#'   counts = rinderpest_mini,
+#'   design = design,
+#'   base_lvl = base_lvl)
+#'
+#' @importFrom MultiAssayExperiment ExperimentList MultiAssayExperiment
+#'
+#' @export
+regressionData <- function(expr_mat,
+                           design,
+                           base_lvl,
+                           drop_base_lvl = TRUE) {
+  stopifnot("expr_mat must be a numeric matrix" = is.matrix(expr_mat) && (typeof(expr_mat) == "integer" || typeof(expr_mat) == "double"))
+  stopifnot("design must be a matrix" = is.matrix(design))
+  stopifnot("number of rows in design must equal to number of columns in expr_mat" = nrow(design) == ncol(expr_mat))
+  stopifnot("design rownames must be the same as expr_mat colnames" = all(rownames(design) == colnames(expr_mat)))
+  stopifnot("base_lvl must match to one of design colnames" = sum(colnames(design) == base_lvl) == 1L)
+  stopifnot("drop_base_lvl must be TRUE or FALSE" = isTRUEorFALSE(drop_base_lvl))
+
+  groups <- design2factor(design)
+
+  U <- matrix(
+    data = rowMeans(expr_mat[, groups == base_lvl, drop = FALSE]),
+    ncol = 1L,
+    dimnames = list(rownames(expr_mat), "u"))
+
+  ymask <- if (drop_base_lvl) { groups != base_lvl } else { rep(TRUE, length(groups)) }
+  design[, base_lvl] <- 0 # design without base_lvl
+  MultiAssayExperiment::MultiAssayExperiment(
+    experiments = MultiAssayExperiment::ExperimentList(
+      U = U,
+      Y = expr_mat[, ymask, drop = FALSE]),
+    metadata = list(design = design))
+}
+
 #' Process count matrix for expression modeling
 #'
 #' Expression counts are processed using \link[edgeR]{edgeR} following
@@ -61,7 +142,7 @@ prepareCountsForRegression <- function(counts,
                                        pseudo_count = 1L,
                                        drop_base_lvl = TRUE) {
   stopifnot("counts must be an integer matrix" = is.matrix(counts) && (typeof(counts) == "integer"))
-  stopifnot("design must be a matrix" = is.matrix(design)) # && (typeof(design) == "integer"))
+  stopifnot("design must be a matrix" = is.matrix(design))
   stopifnot("number of rows in design must equal to number of columns in counts" = nrow(design) == ncol(counts))
   stopifnot("design rownames must be the same as counts colnames" = all(rownames(design) == colnames(counts)))
   stopifnot("base_lvl must match to one of design colnames" = sum(colnames(design) == base_lvl) == 1L)
@@ -80,18 +161,10 @@ prepareCountsForRegression <- function(counts,
     cpm <- log2(cpm + pseudo_count)
   }
 
-  U <- matrix(
-    data = rowMeans(cpm[, groups == base_lvl, drop = FALSE]),
-    ncol = 1L,
-    dimnames = list(rownames(cpm), "u"))
-
-  ymask <- if (drop_base_lvl) { groups != base_lvl } else { rep(TRUE, length(groups)) }
-  design[, base_lvl] <- 0 # design without base_lvl
-  MultiAssayExperiment::MultiAssayExperiment(
-    experiments = MultiAssayExperiment::ExperimentList(
-      U = U,
-      Y = cpm[, ymask, drop = FALSE]),
-    metadata = list(design = design))
+  regressionData(cpm,
+                 design,
+                 base_lvl,
+                 drop_base_lvl)
 }
 
 #' Add molecular signatures to MultiAssayExperiment
