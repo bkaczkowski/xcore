@@ -61,3 +61,59 @@ test_that("applyOverDFList", {
     matrix(data = c(cars$speed + 0.5, cars$speed + 2), ncol = 2, dimnames = list(NULL, c("group1", "group2")))
   )
 })
+
+test_that("translateCounts", {
+  counts <- matrix(data = 1:8,
+                   nrow = 4,
+                   ncol = 2,
+                   dimnames = list(c(paste0("gene", 1:4)), c("gr1", "gr2")))
+  dict <- c(gene1 = "foo", gene2 = "bar", gene3 = "foo", gene4 = "zzz")
+
+  testthat::expect_error(
+    translateCounts("foo"),
+    "counts must be an instance of class 'matrix'"
+  )
+
+  testthat::expect_error(
+    translateCounts(matrix()),
+    "counts must have its rownames defined"
+  )
+
+  bad_counts <- counts
+  rownames(bad_counts)[2] <- rownames(bad_counts)[1]
+  testthat::expect_error(
+    translateCounts(bad_counts),
+    "counts rownames must be unique"
+  )
+
+  testthat::expect_error(
+    translateCounts(counts, 1:6),
+    "dict must be an instance of class 'character'"
+  )
+
+  testthat::expect_error(
+    translateCounts(counts, letters),
+    "dict must be a named character vector"
+  )
+
+  bad_dict <- dict
+  names(bad_dict)[2] <- names(bad_dict)[1]
+  testthat::expect_error(
+    translateCounts(counts, bad_dict),
+    "dict names must be unique"
+  )
+
+  bad_dict <- dict
+  names(bad_dict) <- letters[1:4]
+  testthat::expect_error(
+    translateCounts(counts, bad_dict),
+    "counts rownames must correspond to dict names"
+  )
+
+  testthat::expect_equal(
+    translateCounts(counts, dict),
+    structure(c(2L, 4L, 4L, 6L, 12L, 8L),
+              dim = 3:2,
+              dimnames = list(c("bar", "foo", "zzz"), c("gr1", "gr2")))
+  )
+})

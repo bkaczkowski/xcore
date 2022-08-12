@@ -317,3 +317,36 @@ subsetWithMissing <- function(mat, rows) {
 maeSummary <- function(mae) {
   lapply(MultiAssayExperiment::experiments(mae), function(x) c(dim(x), Matrix::mean(x), sd(x)))
 }
+
+
+#' Translate counts matrix rownames
+#'
+#' \code{translateCounts} renames counts matrix rownames according to supplied
+#' \code{dict}ionary. Function can handle many to one assignments by summing
+#' over \code{counts} rows. Other types of ambiguous assignments are not
+#' supported.
+#'
+#' @param counts matrix of expression values.
+#' @param dict named character vector mapping \code{counts} rownames to new
+#'   values.
+#'
+#' @return matrix of expression values with new rownames.
+#'
+#' @examples
+#' #TODO also add tests
+#'
+#' @export
+translateCounts <- function(counts, dict) {
+  stopifnot("counts must be an instance of class 'matrix'" = is(counts, "matrix"))
+  stopifnot("counts must have its rownames defined" = ! is.null(rownames(counts)))
+  stopifnot("counts rownames must be unique" = ! anyDuplicated(rownames(counts)))
+  stopifnot("dict must be an instance of class 'character'" = is(dict, "character"))
+  stopifnot("dict must be a named character vector" = ! is.null(names(dict)))
+  stopifnot("dict names must be unique" = ! anyDuplicated(names(dict)))
+  stopifnot("counts rownames must correspond to dict names" = any(rownames(counts) %in% names(dict)))
+
+  new_counts <- counts[rownames(counts) %in% names(dict), ]
+  new_counts <- rowsum(x = new_counts, group = dict[rownames(new_counts)])
+
+  return(new_counts)
+}
