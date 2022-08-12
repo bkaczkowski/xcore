@@ -26,7 +26,7 @@ test_that("design2factor", {
                    ncol = 2,
                    dimnames = list(c(paste("sample", 1:4)), c("gr1", "gr2")))
   testthat::expect_equal(
-    design2factor(design), 
+    design2factor(design),
     factor(x = setNames(c("gr1", "gr1", "gr2", "gr2"), rownames(design)))
   )
 })
@@ -42,18 +42,18 @@ test_that("applyOverDFList", {
   # works on one element list
   list_of_df <- list(cars = cars)
   col_name <- "speed"
-  fun <- mean 
+  fun <- mean
   groups <- factor("group1")
   names(groups) <- "cars"
   testthat::expect_equal(
     applyOverDFList(list_of_df, col_name, fun, groups),
     matrix(data = cars$speed, ncol = 1, dimnames = list(NULL, "group1"))
   )
-  
+
   # works on multiple element list
   list_of_df <- list(a = cars, b = cars + 1, c = cars + 2)
   col_name <- "speed"
-  fun <- mean 
+  fun <- mean
   groups <- factor(c("group1", "group1", "group2"))
   names(groups) <- c("a", "b", "c")
   testthat::expect_equal(
