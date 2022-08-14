@@ -7,3 +7,4 @@
 ^pkgdown$
 ^_pkgdown\.yml$
 ^\.nojekyll$
+^vignettes/web_only/gene_level_analysis.Rmd$
