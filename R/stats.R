@@ -375,9 +375,8 @@ modelGeneExpression_ridge_regression_wraper <- function(mae,
       if (yn_ %in% iter_to_pass[[xn_]]) {
         res <- "precalc"
       } else {
-        args[["x"]] <- x_
-        args[["y"]] <- y_
-        rm(x_, y_); gc()
+        args[["x"]] <- quote(x_)
+        args[["y"]] <- quote(y_)
         res <- do.call(glmnet::cv.glmnet, args)
       }
 
