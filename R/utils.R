@@ -346,7 +346,7 @@ translateCounts <- function(counts, dict) {
   stopifnot("counts rownames must correspond to dict names" = any(rownames(counts) %in% names(dict)))
 
   new_counts <- counts[rownames(counts) %in% names(dict), ]
-  new_counts <- rowsum(x = new_counts, group = dict[rownames(new_counts)])
+  new_counts <- rowsum(x = new_counts, group = dict[rownames(new_counts)]) # TODO a simple and useful extension would be to implement option to take an average instead of sum, this could be easly done by dividing by the groups size
 
   return(new_counts)
 }
