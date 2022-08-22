@@ -273,45 +273,48 @@ modelGeneExpression <- function(mae,
       groups = groups,
       standardize = standardize,
       regression_models = regression_models)
-    # zscore_avg <- lapply(pvalues, repAvgZscore, groups = groups)
-    zscore_avg <- lapply(pvalues, repVarianceWeightedAvgZscore, groups = groups)
     message("##------ modelGeneExpression: finished significance testing  ", timestamp(prefix = "", quiet = TRUE))
-  } else {
-    pvalues <- NULL
-    zscore_avg <- NULL
   }
 
   # gather results
-  coef_avg <- lapply(X = xnames, function(xnm_) {
-    # getAvgCoeff(models = regression_models[[xnm_]], group = groups, drop_intercept = TRUE)
-    getVarianceWeightedAvgCoeff(pvalues[[xnm_]], groups)
-  })
-  names(coef_avg) <- xnames
-  results <- lapply(
-    X = names(coef_avg),
-    FUN = function(xnm_) {
-      coef <- coef_avg[[xnm_]]
-      x <- split(coef, col(coef, as.factor = TRUE))
-      x <- c(list(name = rownames(coef)), x)
-
-      has_zscore <- ! is.null(zscore_avg)
-      if (has_zscore && ncol(zscore_avg[[xnm_]]) > 1) {
-        x[["z_score"]] <- apply(zscore_avg[[xnm_]], 1, stoufferZMethod)
-      } else if (has_zscore && ncol(zscore_avg[[xnm_]]) == 1) {
-        x[["z_score"]] <- zscore_avg[[xnm_]][, 1L, drop = TRUE]
-      } else {
-        x[["z_score"]] <- NA
-      }
-
-      class(x) <- "data.frame"
-      attr(x, "row.names") <- seq_len(nrow(coef))
-      if (length(zscore_avg)) {
-        ord <- order(abs(x[["z_score"]]), decreasing = TRUE)
-        x <- x[ord, ]
-      }
-      x
+  if (is.list(pvalues)) {
+    zscore_avg <- lapply(pvalues, repVarianceWeightedAvgZscore, groups = groups)
+    coef_avg <- lapply(X = xnames, function(xnm_) {
+      getVarianceWeightedAvgCoeff(pvalues[[xnm_]], groups)
     })
-  names(results) <- names(coef_avg)
+    names(coef_avg) <- xnames
+    results <- lapply(
+      X = names(coef_avg),
+      FUN = function(xnm_) {
+        coef <- coef_avg[[xnm_]]
+        x <- split(coef, col(coef, as.factor = TRUE))
+        x <- c(list(name = rownames(coef)), x)
+
+        # this block originate from older logic that generated results when pvalues == FALSE
+        has_zscore <- ! is.null(zscore_avg)
+        if (has_zscore && ncol(zscore_avg[[xnm_]]) > 1) {
+          x[["z_score"]] <- apply(zscore_avg[[xnm_]], 1, stoufferZMethod)
+        } else if (has_zscore && ncol(zscore_avg[[xnm_]]) == 1) {
+          x[["z_score"]] <- zscore_avg[[xnm_]][, 1L, drop = TRUE]
+        } else {
+          x[["z_score"]] <- NA
+        }
+
+        class(x) <- "data.frame"
+        attr(x, "row.names") <- seq_len(nrow(coef))
+        if (length(zscore_avg)) {
+          ord <- order(abs(x[["z_score"]]), decreasing = TRUE)
+          x <- x[ord, ]
+        }
+        x
+      })
+    names(results) <- names(coef_avg)
+  } else {
+    pvalues <- NULL
+    zscore_avg <- NULL
+    coef_avg <- NULL
+    results <- NULL
+  }
 
   return(list(
     regression_models = regression_models,
