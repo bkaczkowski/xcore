@@ -10,18 +10,20 @@ translateCounts(counts, dict)
 \item{counts}{matrix of expression values.}
 
 \item{dict}{named character vector mapping \code{counts} rownames to new
-values.}
+values. Values of vector should correspond to new desired rownames, and its
+names to current rownames.}
 }
 \value{
 matrix of expression values with new rownames.
 }
 \description{
 \code{translateCounts} renames counts matrix rownames according to supplied
-\code{dict}ionary. Function can handle many to one assignments by summing
-over \code{counts} rows. Other types of ambiguous assignments are not
-supported.
+\code{dict}ionary. Function can handle many to one assignments by taking a
+sum or an average over \code{counts} rows. Other types of ambiguous
+assignments are not supported.
 }
 \examples{
-#TODO also add tests
+dict <- c(ENSG00000130700 = "GATA5", ENSG00000089225 = "TBX5")
+translateCounts(counts, dict)
 
 }
