@@ -45,7 +45,7 @@
 #'   byrow = TRUE,
 #'   dimnames = list(colnames(rinderpest_mini), c("00hr", "12hr", "24hr")))
 #' mae <- regressionData(
-#'   counts = rinderpest_mini,
+#'   expr_mat = rinderpest_mini,
 #'   design = design,
 #'   base_lvl = base_lvl)
 #'

@@ -606,17 +606,14 @@ stoufferZMethod <- function(z) {
 
 #' Calculate variance weighted average coefficients matrix
 #'
-#' @param models list of \code{cv.glmnet} objects.
-#' @param group optional factor giving the grouping.
-#' @param lambda string indicating which lambda to use.
-#' @param drop_intercept logical indicating if intercept should be dropped from
-#'   the output.
+#' @param pvalues list of \code{data.frame}s outputs from \code{ridgePvals}.
+#' @param groups factor giving the grouping.
 #'
 #' @return variance weighted average coefficients matrix
 #'
 getVarianceWeightedAvgCoeff <-
   function(pvalues,
-           groups = NULL) {
+           groups) {
     samples <- factor(names(groups))
     names(samples) <- names(groups)
     estimate <- applyOverDFList(list_of_df = pvalues, col_name = "coef", fun = function(x) x, groups = samples)
