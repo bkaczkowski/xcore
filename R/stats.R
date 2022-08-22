@@ -305,6 +305,7 @@ modelGeneExpression <- function(mae,
         if (length(zscore_avg)) {
           ord <- order(abs(x[["z_score"]]), decreasing = TRUE)
           x <- x[ord, ]
+          rownames(x) <- NULL
         }
         x
       })
