@@ -322,18 +322,28 @@ maeSummary <- function(mae) {
 #' Translate counts matrix rownames
 #'
 #' \code{translateCounts} renames counts matrix rownames according to supplied
-#' \code{dict}ionary. Function can handle many to one assignments by summing
-#' over \code{counts} rows. Other types of ambiguous assignments are not
-#' supported.
+#' \code{dict}ionary. Function can handle many to one assignments by taking a
+#' sum or an average over \code{counts} rows. Other types of ambiguous
+#' assignments are not supported.
 #'
 #' @param counts matrix of expression values.
 #' @param dict named character vector mapping \code{counts} rownames to new
-#'   values.
+#'   values. Values of vector should correspond to new desired rownames, and its
+#'   names to current rownames.
 #'
 #' @return matrix of expression values with new rownames.
 #'
 #' @examples
-#' #TODO also add tests
+# counts <- matrix(
+# data = c(5, 4, 3, 2),
+# nrow = 2,
+#    dimnames = list(
+#      c("ENSG00000130700", "ENSG00000089225"),
+#      c("treatment", "control")
+#    )
+#  )
+#' dict <- c(ENSG00000130700 = "GATA5", ENSG00000089225 = "TBX5")
+#' translateCounts(counts, dict)
 #'
 #' @export
 translateCounts <- function(counts, dict) {
