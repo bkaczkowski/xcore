@@ -465,32 +465,32 @@ modelGeneExpression_significance_testing_wraper <- function(mae,
   return(pvalues)
 }
 
-#' Calculate replicate averaged Z-scores
-#'
-#' Replicate averaged Z-scores is calculated by dividing replicate average
-#' coefficient by replicate pooled standard error.
-#'
-#' @param pvalues Data frame with \code{'se'} (standard error) and \code{'coef'}
-#'   (coefficient) columns. Such as in \code{pvalues} output of
-#'   \code{modelGeneExpression} .
-#' @param groups Factor giving group membership for samples in  \code{pvalues}.
-#'
-#' @return Numeric matrix of averaged Z-scores. Columns correspond to groups and
-#'   rows to predictors.
-#'
-repAvgZscore <- function(pvalues, groups) {
-  stopifnot("pvalues elements must be instances of class data.frame" = all(vapply(pvalues, function(x) is(x, "data.frame"), logical(1L))))
-  stopifnot("pavalues must have 'se' and 'coef' columns" = all(vapply(pvalues, function(p) all(c("se", "coef") %in% colnames(p)), logical(1L))))
-  stopifnot("groups must be a factor" = is.factor(groups))
-  stopifnot("groups length must equal pvalues length" = length(groups) == length(pvalues))
-  stopifnot("groups must not have unused levels" = setdiff(levels(groups), groups) == character(0))
-
-  se <- applyOverDFList(list_of_df = pvalues, col_name = "se", fun = poolSE, groups = groups)
-  estimate <- applyOverDFList(list_of_df = pvalues, col_name = "coef", fun = mean, groups = groups)
-  zscore <- estimate / se
-
-  return(zscore)
-}
+# #' Calculate replicate averaged Z-scores
+# #'
+# #' Replicate averaged Z-scores is calculated by dividing replicate average
+# #' coefficient by replicate pooled standard error.
+# #'
+# #' @param pvalues Data frame with \code{'se'} (standard error) and \code{'coef'}
+# #'   (coefficient) columns. Such as in \code{pvalues} output of
+# #'   \code{modelGeneExpression} .
+# #' @param groups Factor giving group membership for samples in  \code{pvalues}.
+# #'
+# #' @return Numeric matrix of averaged Z-scores. Columns correspond to groups and
+# #'   rows to predictors.
+# #'
+# repAvgZscore <- function(pvalues, groups) {
+#   stopifnot("pvalues elements must be instances of class data.frame" = all(vapply(pvalues, function(x) is(x, "data.frame"), logical(1L))))
+#   stopifnot("pavalues must have 'se' and 'coef' columns" = all(vapply(pvalues, function(p) all(c("se", "coef") %in% colnames(p)), logical(1L))))
+#   stopifnot("groups must be a factor" = is.factor(groups))
+#   stopifnot("groups length must equal pvalues length" = length(groups) == length(pvalues))
+#   stopifnot("groups must not have unused levels" = setdiff(levels(groups), groups) == character(0))
+#
+#   se <- applyOverDFList(list_of_df = pvalues, col_name = "se", fun = poolSE, groups = groups)
+#   estimate <- applyOverDFList(list_of_df = pvalues, col_name = "coef", fun = mean, groups = groups)
+#   zscore <- estimate / se
+#
+#   return(zscore)
+# }
 
 #' Calculate replicate variance weighted averaged Z-scores
 #'
@@ -537,19 +537,19 @@ repVarianceWeightedAvgZscore <- function(pvalues, groups) {
   return(weighted_z)
 }
 
-#' Pool Standard Error / Standard Deviation
-#'
-#' Pooled standard error is calculated following (Cohen 1977) formulation for
-#' pooled standard deviation.
-#' TODO check out https://www.statisticshowto.com/find-pooled-sample-standard-error/, https://www.statisticshowto.com/pooled-standard-deviation/
-#'
-#' @param x Numeric vector of standard errors to pool.
-#'
-#' @return Number giving pooled standard error.
-#'
-poolSE <- function(x) {
-  sqrt(sum(x * x) / length(x))
-}
+# #' Pool Standard Error / Standard Deviation
+# #'
+# #' Pooled standard error is calculated following (Cohen 1977) formulation for
+# #' pooled standard deviation.
+# #' TODO check out https://www.statisticshowto.com/find-pooled-sample-standard-error/, https://www.statisticshowto.com/pooled-standard-deviation/
+# #'
+# #' @param x Numeric vector of standard errors to pool.
+# #'
+# #' @return Number giving pooled standard error.
+# #'
+# poolSE <- function(x) {
+#   sqrt(sum(x * x) / length(x))
+# }
 
 #' Combine Z-scores using Stouffer's method
 #'
@@ -572,37 +572,37 @@ stoufferZMethod <- function(z) {
   return(z_cmb)
 }
 
-#' Calculate average coefficients matrix
-#'
-#' @param models list of \code{cv.glmnet} objects.
-#' @param group optional factor giving the grouping.
-#' @param lambda string indicating which lambda to use.
-#' @param drop_intercept logical indicating if intercept should be dropped from
-#'   the output.
-#'
-#' @return average coefficients matrix
-#'
-getAvgCoeff <- function(models, group = NULL, lambda = "lambda.min", drop_intercept = TRUE) {
-  coefs <- lapply(models, function(m) coef(m, s = m[[lambda]]))
-  if (drop_intercept) {
-    coefs <- lapply(coefs, function(m) {
-      keep <- grep(pattern = "(Intercept)", x = rownames(m), invert = TRUE)
-      m[keep, ]
-    })
-  }
-  coefs_avg <- lapply(X = levels(group), function(gr) {
-    mat <- do.call(cbind, coefs[group == gr])
-    if (ncol(mat) > 1) {
-      rowMeans(mat)
-    } else {
-      mat
-    }
-  })
-  coefs_avg <- do.call(cbind, coefs_avg)
-  colnames(coefs_avg) <- levels(group)
-
-  return(coefs_avg)
-}
+# #' Calculate average coefficients matrix
+# #'
+# #' @param models list of \code{cv.glmnet} objects.
+# #' @param group optional factor giving the grouping.
+# #' @param lambda string indicating which lambda to use.
+# #' @param drop_intercept logical indicating if intercept should be dropped from
+# #'   the output.
+# #'
+# #' @return average coefficients matrix
+# #'
+# getAvgCoeff <- function(models, group = NULL, lambda = "lambda.min", drop_intercept = TRUE) {
+#   coefs <- lapply(models, function(m) coef(m, s = m[[lambda]]))
+#   if (drop_intercept) {
+#     coefs <- lapply(coefs, function(m) {
+#       keep <- grep(pattern = "(Intercept)", x = rownames(m), invert = TRUE)
+#       m[keep, ]
+#     })
+#   }
+#   coefs_avg <- lapply(X = levels(group), function(gr) {
+#     mat <- do.call(cbind, coefs[group == gr])
+#     if (ncol(mat) > 1) {
+#       rowMeans(mat)
+#     } else {
+#       mat
+#     }
+#   })
+#   coefs_avg <- do.call(cbind, coefs_avg)
+#   colnames(coefs_avg) <- levels(group)
+#
+#   return(coefs_avg)
+# }
 
 #' Calculate variance weighted average coefficients matrix
 #'
