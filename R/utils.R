@@ -334,14 +334,14 @@ maeSummary <- function(mae) {
 #' @return matrix of expression values with new rownames.
 #'
 #' @examples
-# counts <- matrix(
-# data = c(5, 4, 3, 2),
-# nrow = 2,
-#    dimnames = list(
-#      c("ENSG00000130700", "ENSG00000089225"),
-#      c("treatment", "control")
-#    )
-#  )
+#' counts <- matrix(
+#' data = c(5, 4, 3, 2),
+#' nrow = 2,
+#'    dimnames = list(
+#'      c("ENSG00000130700", "ENSG00000089225"),
+#'      c("treatment", "control")
+#'    )
+#'  )
 #' dict <- c(ENSG00000130700 = "GATA5", ENSG00000089225 = "TBX5")
 #' translateCounts(counts, dict)
 #'
