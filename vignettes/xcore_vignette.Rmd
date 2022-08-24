@@ -310,8 +310,8 @@ head(promoters_f5)
 # *TF/motif name must be stored under column 'name'
 library("AnnotationHub")
 ah <- AnnotationHub()
-CTCF_hg38 <- ah[["AH95566"]]
-CTCF_hg38$name <- CTCF_hg38$motif
+CTCF_hg38 <- ah[["AH104724"]]
+CTCF_hg38$name <- "CTCF"
 head(CTCF_hg38)
 ```
 
