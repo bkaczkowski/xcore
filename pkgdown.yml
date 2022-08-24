@@ -1,7 +1,8 @@
-pandoc: 2.7.3
-pkgdown: 2.0.3
+pandoc: 2.17.1.1
+pkgdown: 2.0.6
 pkgdown_sha: ~
 articles:
+  gene_level_analysis: web_only/gene_level_analysis.html
   xcore_vignette: xcore_vignette.html
-last_built: 2022-05-04T08:07Z
+last_built: 2022-08-24T11:01Z
 

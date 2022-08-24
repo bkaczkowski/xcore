@@ -8,8 +8,8 @@
 <meta name="description" content="xcore">
 <title>xcore vignette • xcore</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.1.0/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.1.0/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
+<link href="../deps/bootstrap-5.1.3/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.1.3/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- bootstrap-toc --><script src="https://cdn.rawgit.com/afeld/bootstrap-toc/v1.0.1/dist/bootstrap-toc.min.js"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="xcore vignette">
 <meta property="og:description" content="xcore">
@@ -26,7 +26,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">xcore</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,7 @@
 <li class="active nav-item dropdown">
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
+    <a class="dropdown-item" href="../articles/web_only/gene_level_analysis.html">Modeling expression changes at gene level</a>
     <a class="dropdown-item" href="../articles/xcore_vignette.html">xcore vignette</a>
   </div>
 </li>
@@ -61,8 +62,9 @@
 
 
 
-<script src="xcore_vignette_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
-  <main id="main"><div class="page-header">
+
+<div class="row">
+  <main id="main" class="col-md-9"><div class="page-header">
       <img src="" class="logo" alt=""><h1>xcore vignette</h1>
                         <h4 data-toc-skip class="author">migdal</h4>
             
@@ -76,406 +78,502 @@
 <div class="section level2">
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<p><code>xcore</code> package provides a framework for transcription factor (TF) activity modeling based on their molecular signatures and user’s gene expression data. Additionally, <code>xcoredata</code> package provides a collection of pre-processed TF molecular signatures constructed from ChiP-seq experiments available in <a href="www.remap2020.univ-amu.fr">ReMap2020</a> or <a href="www.chip-atlas.org">ChIP-Atlas</a> databases.</p>
+<p><code>xcore</code> package provides a framework for transcription
+factor (TF) activity modeling based on their molecular signatures and
+user’s gene expression data. Additionally, <code>xcoredata</code>
+package provides a collection of pre-processed TF molecular signatures
+constructed from ChiP-seq experiments available in <a href="www.remap2020.univ-amu.fr">ReMap2020</a> or <a href="www.chip-atlas.org">ChIP-Atlas</a> databases.</p>
 <div class="figure">
 <img src="flowchart.png" alt=""><p class="caption">xcore flow chart</p>
 </div>
-<p><code>xcore</code> use ridge regression to model changes in expression as a linear combination of molecular signatures and find their unknown activities. Obtained, estimates can be further tested for significance to select molecular signatures with the highest predicted effect on the observed expression changes.</p>
+<p><code>xcore</code> use ridge regression to model changes in
+expression as a linear combination of molecular signatures and find
+their unknown activities. Obtained, estimates can be further tested for
+significance to select molecular signatures with the highest predicted
+effect on the observed expression changes.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <p>You can install <code>xcore</code> package from Bioconductor:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"xcore"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"xcore"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="gene-expression-modeling-in-context-of-rinderpest-infection">Gene expression modeling in context of rinderpest infection<a class="anchor" aria-label="anchor" href="#gene-expression-modeling-in-context-of-rinderpest-infection"></a>
 </h2>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"xcore"</span><span class="op">)</span></code></pre></div>
-<p>Here we will use a subset of 293SLAM rinderpest infection dataset from <a href="https://fantom.gsc.riken.jp/5/sstar/Rinderpest_infection_series" class="external-link">FANTOM5</a>. This subset contains expression counts for 0, 12 and 24 hours post infection samples and only for a subset of FANTOM5 promoters. We can find this example data shipped together with <code>xcore</code> package.</p>
-<p>This is a simple count matrix, with columns corresponding to samples and rows corresponding to FANTOM5 promoters.</p>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"xcore"</span><span class="op">)</span></span></code></pre></div>
+<p>Here we will use a subset of 293SLAM rinderpest infection dataset
+from <a href="https://fantom.gsc.riken.jp/5/sstar/Rinderpest_infection_series" class="external-link">FANTOM5</a>.
+This subset contains expression counts for 0, 12 and 24 hours post
+infection samples and only for a subset of FANTOM5 promoters. We can
+find this example data shipped together with <code>xcore</code>
+package.</p>
+<p>This is a simple count matrix, with columns corresponding to samples
+and rows corresponding to FANTOM5 promoters.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"rinderpest_mini"</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">rinderpest_mini</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">##                                              00hr_rep1 00hr_rep2 00hr_rep3</span>
-<span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1          52        46        57</span>
-<span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1            39        42        27</span>
-<span class="co">## hg19::chr1:100111580..100111773,+;hg_4181.1          1         0         2</span>
-<span class="co">## hg19::chr1:100232177..100232198,-;hg_13495.1        15         9        26</span>
-<span class="co">## hg19::chr1:100315613..100315691,+;hg_4187.1         95       109       110</span>
-<span class="co">## hg19::chr1:100435545..100435597,+;hg_4201.1        141       129       101</span>
-<span class="co">##                                              12hr_rep1 12hr_rep2 12hr_rep3</span>
-<span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1          54        50        53</span>
-<span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1            35        30        40</span>
-<span class="co">## hg19::chr1:100111580..100111773,+;hg_4181.1          1         2         3</span>
-<span class="co">## hg19::chr1:100232177..100232198,-;hg_13495.1        20        16        13</span>
-<span class="co">## hg19::chr1:100315613..100315691,+;hg_4187.1        112        94       103</span>
-<span class="co">## hg19::chr1:100435545..100435597,+;hg_4201.1        132       106       125</span>
-<span class="co">##                                              24hr_rep1 24hr_rep2 24hr_rep3</span>
-<span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1          11        12        12</span>
-<span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1            22        34        50</span>
-<span class="co">## hg19::chr1:100111580..100111773,+;hg_4181.1          0         1         1</span>
-<span class="co">## hg19::chr1:100232177..100232198,-;hg_13495.1         7        13        10</span>
-<span class="co">## hg19::chr1:100315613..100315691,+;hg_4187.1         43        74        89</span>
-<span class="co">## hg19::chr1:100435545..100435597,+;hg_4201.1         84       100       121</span></code></pre>
-<p>First we need to construct a design matrix describing our experiment design.</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"rinderpest_mini"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">rinderpest_mini</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##                                              00hr_rep1 00hr_rep2 00hr_rep3</span></span>
+<span><span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1          52        46        57</span></span>
+<span><span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1            39        42        27</span></span>
+<span><span class="co">## hg19::chr1:100111580..100111773,+;hg_4181.1          1         0         2</span></span>
+<span><span class="co">## hg19::chr1:100232177..100232198,-;hg_13495.1        15         9        26</span></span>
+<span><span class="co">## hg19::chr1:100315613..100315691,+;hg_4187.1         95       109       110</span></span>
+<span><span class="co">## hg19::chr1:100435545..100435597,+;hg_4201.1        141       129       101</span></span>
+<span><span class="co">##                                              12hr_rep1 12hr_rep2 12hr_rep3</span></span>
+<span><span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1          54        50        53</span></span>
+<span><span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1            35        30        40</span></span>
+<span><span class="co">## hg19::chr1:100111580..100111773,+;hg_4181.1          1         2         3</span></span>
+<span><span class="co">## hg19::chr1:100232177..100232198,-;hg_13495.1        20        16        13</span></span>
+<span><span class="co">## hg19::chr1:100315613..100315691,+;hg_4187.1        112        94       103</span></span>
+<span><span class="co">## hg19::chr1:100435545..100435597,+;hg_4201.1        132       106       125</span></span>
+<span><span class="co">##                                              24hr_rep1 24hr_rep2 24hr_rep3</span></span>
+<span><span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1          11        12        12</span></span>
+<span><span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1            22        34        50</span></span>
+<span><span class="co">## hg19::chr1:100111580..100111773,+;hg_4181.1          0         1         1</span></span>
+<span><span class="co">## hg19::chr1:100232177..100232198,-;hg_13495.1         7        13        10</span></span>
+<span><span class="co">## hg19::chr1:100315613..100315691,+;hg_4187.1         43        74        89</span></span>
+<span><span class="co">## hg19::chr1:100435545..100435597,+;hg_4201.1         84       100       121</span></span></code></pre>
+<p>First we need to construct a design matrix describing our experiment
+design.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">design</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span>
-  data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>,
-           <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>,
-           <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>,
-           <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>,
-           <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>,
-           <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>,
-           <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span>,
-           <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span>,
-           <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>,
-  ncol <span class="op">=</span> <span class="fl">3</span>,
-  nrow <span class="op">=</span> <span class="fl">9</span>,
-  byrow <span class="op">=</span> <span class="cn">TRUE</span>,
-  dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>
-      <span class="st">"00hr_rep1"</span>,
-      <span class="st">"00hr_rep2"</span>,
-      <span class="st">"00hr_rep3"</span>,
-      <span class="st">"12hr_rep1"</span>,
-      <span class="st">"12hr_rep2"</span>,
-      <span class="st">"12hr_rep3"</span>,
-      <span class="st">"24hr_rep1"</span>,
-      <span class="st">"24hr_rep2"</span>,
-      <span class="st">"24hr_rep3"</span>
-    <span class="op">)</span>,
-    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"00hr"</span>, <span class="st">"12hr"</span>, <span class="st">"24hr"</span><span class="op">)</span>
-  <span class="op">)</span>
-<span class="op">)</span>
-
-<span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">design</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">##           00hr 12hr 24hr</span>
-<span class="co">## 00hr_rep1    1    0    0</span>
-<span class="co">## 00hr_rep2    1    0    0</span>
-<span class="co">## 00hr_rep3    1    0    0</span>
-<span class="co">## 12hr_rep1    0    1    0</span>
-<span class="co">## 12hr_rep2    0    1    0</span>
-<span class="co">## 12hr_rep3    0    1    0</span>
-<span class="co">## 24hr_rep1    0    0    1</span>
-<span class="co">## 24hr_rep2    0    0    1</span>
-<span class="co">## 24hr_rep3    0    0    1</span></code></pre>
-<p>Next, we need to preprocess the counts using <code>prepareCountsForRegression</code> function. Here, CAGE expression tags for each sample are filtered for lowly expressed promoters, normalized for the library size and transformed into counts per million (CPM). Finally, CPM are log2 transformed with addition of pseudo count 1. Moreover, we designate the base level samples, 0 hours after treatment in our example, from which basal expression level is calculated. This basal level will be used as a reference when modeling the expression changes.</p>
+<code class="sourceCode R"><span><span class="va">design</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span></span>
+<span>  data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>,</span>
+<span>           <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>,</span>
+<span>           <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>,</span>
+<span>           <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>,</span>
+<span>           <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>,</span>
+<span>           <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>,</span>
+<span>           <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span>,</span>
+<span>           <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span>,</span>
+<span>           <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  ncol <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  nrow <span class="op">=</span> <span class="fl">9</span>,</span>
+<span>  byrow <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>      <span class="st">"00hr_rep1"</span>,</span>
+<span>      <span class="st">"00hr_rep2"</span>,</span>
+<span>      <span class="st">"00hr_rep3"</span>,</span>
+<span>      <span class="st">"12hr_rep1"</span>,</span>
+<span>      <span class="st">"12hr_rep2"</span>,</span>
+<span>      <span class="st">"12hr_rep3"</span>,</span>
+<span>      <span class="st">"24hr_rep1"</span>,</span>
+<span>      <span class="st">"24hr_rep2"</span>,</span>
+<span>      <span class="st">"24hr_rep3"</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"00hr"</span>, <span class="st">"12hr"</span>, <span class="st">"24hr"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">design</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##           00hr 12hr 24hr</span></span>
+<span><span class="co">## 00hr_rep1    1    0    0</span></span>
+<span><span class="co">## 00hr_rep2    1    0    0</span></span>
+<span><span class="co">## 00hr_rep3    1    0    0</span></span>
+<span><span class="co">## 12hr_rep1    0    1    0</span></span>
+<span><span class="co">## 12hr_rep2    0    1    0</span></span>
+<span><span class="co">## 12hr_rep3    0    1    0</span></span>
+<span><span class="co">## 24hr_rep1    0    0    1</span></span>
+<span><span class="co">## 24hr_rep2    0    0    1</span></span>
+<span><span class="co">## 24hr_rep3    0    0    1</span></span></code></pre>
+<p>Next, we need to preprocess the counts using
+<code>prepareCountsForRegression</code> function. Here, CAGE expression
+tags for each sample are filtered for lowly expressed promoters,
+normalized for the library size and transformed into counts per million
+(CPM). Finally, CPM are log2 transformed with addition of pseudo count
+1. Moreover, we designate the base level samples, 0 hours after
+treatment in our example, from which basal expression level is
+calculated. This basal level will be used as a reference when modeling
+the expression changes.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">mae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepareCountsForRegression.html">prepareCountsForRegression</a></span><span class="op">(</span>counts <span class="op">=</span> <span class="va">rinderpest_mini</span>,
-                                  design <span class="op">=</span> <span class="va">design</span>,
-                                  base_lvl <span class="op">=</span> <span class="st">"00hr"</span><span class="op">)</span></code></pre></div>
-<p><code>xcore</code> models the expression as a function of molecular signatures. Such signatures can be constructed eg. from the known transcription factor binding sites (see <a href="#constructing-molecular-signatures">Constructing molecular signatures</a> section). Here, we will take advantage of pre-computed molecular signatures found in the <code>xcoredata</code> package. Particularly, molecular signatures constructed from ReMap2020 against FANTOM5 annotation.</p>
-<p>Molecular signatures can be conveniently accessed using the <em>ExperimentHub</em> interface.</p>
+<code class="sourceCode R"><span><span class="va">mae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepareCountsForRegression.html">prepareCountsForRegression</a></span><span class="op">(</span>counts <span class="op">=</span> <span class="va">rinderpest_mini</span>,</span>
+<span>                                  design <span class="op">=</span> <span class="va">design</span>,</span>
+<span>                                  base_lvl <span class="op">=</span> <span class="st">"00hr"</span><span class="op">)</span></span></code></pre></div>
+<p><code>xcore</code> models the expression as a function of molecular
+signatures. Such signatures can be constructed eg. from the known
+transcription factor binding sites (see <a href="#constructing-molecular-signatures">Constructing molecular
+signatures</a> section). Here, we will take advantage of pre-computed
+molecular signatures found in the <code>xcoredata</code> package.
+Particularly, molecular signatures constructed from ReMap2020 against
+FANTOM5 annotation.</p>
+<p>Molecular signatures can be conveniently accessed using the
+<em>ExperimentHub</em> interface.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"ExperimentHub"</span><span class="op">)</span>
-
-<span class="va">eh</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/ExperimentHub/man/ExperimentHub-class.html" class="external-link">ExperimentHub</a></span><span class="op">(</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/pkg/AnnotationHub/man/AnnotationHub-class.html" class="external-link">query</a></span><span class="op">(</span><span class="va">eh</span>, <span class="st">"xcoredata"</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## ExperimentHub with 6 records</span>
-<span class="co">## # snapshotDate(): 2022-04-26</span>
-<span class="co">## # $dataprovider: ReMap, RIKEN, ChIP-Atlas</span>
-<span class="co">## # $species: Homo sapiens, NA</span>
-<span class="co">## # $rdataclass: dgCMatrix, data.table, GRanges</span>
-<span class="co">## # additional mcols(): taxonomyid, genome, description,</span>
-<span class="co">## #   coordinate_1_based, maintainer, rdatadateadded, preparerclass, tags,</span>
-<span class="co">## #   rdatapath, sourceurl, sourcetype </span>
-<span class="co">## # retrieve records with, e.g., 'object[["EH7298"]]' </span>
-<span class="co">## </span>
-<span class="co">##            title                  </span>
-<span class="co">##   EH7298 | chip_atlas_meta        </span>
-<span class="co">##   EH7299 | remap_meta             </span>
-<span class="co">##   EH7300 | chip_atlas_promoters_f5</span>
-<span class="co">##   EH7301 | remap_promoters_f5     </span>
-<span class="co">##   EH7302 | promoters_f5           </span>
-<span class="co">##   EH7303 | promoters_f5_core</span></code></pre>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"ExperimentHub"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">eh</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/ExperimentHub/man/ExperimentHub-class.html" class="external-link">ExperimentHub</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/AnnotationHub/man/AnnotationHub-class.html" class="external-link">query</a></span><span class="op">(</span><span class="va">eh</span>, <span class="st">"xcoredata"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## ExperimentHub with 8 records</span></span>
+<span><span class="co">## # snapshotDate(): 2022-08-23</span></span>
+<span><span class="co">## # $dataprovider: ReMap, RIKEN, NA, ChIP-Atlas</span></span>
+<span><span class="co">## # $species: Homo sapiens, NA</span></span>
+<span><span class="co">## # $rdataclass: dgCMatrix, data.table, character, GRanges</span></span>
+<span><span class="co">## # additional mcols(): taxonomyid, genome, description,</span></span>
+<span><span class="co">## #   coordinate_1_based, maintainer, rdatadateadded, preparerclass, tags,</span></span>
+<span><span class="co">## #   rdatapath, sourceurl, sourcetype </span></span>
+<span><span class="co">## # retrieve records with, e.g., 'object[["EH7298"]]' </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">##            title                  </span></span>
+<span><span class="co">##   EH7298 | chip_atlas_meta        </span></span>
+<span><span class="co">##   EH7299 | remap_meta             </span></span>
+<span><span class="co">##   EH7300 | chip_atlas_promoters_f5</span></span>
+<span><span class="co">##   EH7301 | remap_promoters_f5     </span></span>
+<span><span class="co">##   EH7302 | promoters_f5           </span></span>
+<span><span class="co">##   EH7303 | promoters_f5_core      </span></span>
+<span><span class="co">##   EH7699 | entrez2fantom          </span></span>
+<span><span class="co">##   EH7700 | symbol2fantom</span></span></code></pre>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">remap_promoters_f5</span> <span class="op">&lt;-</span> <span class="va">eh</span><span class="op">[[</span><span class="st">"EH7301"</span><span class="op">]</span><span class="op">]</span></code></pre></div>
-<p>Molecular signature is a simple binary matrix indicating if a transcription factor binding site was found or not found in promoter vicinity.</p>
+<code class="sourceCode R"><span><span class="va">remap_promoters_f5</span> <span class="op">&lt;-</span> <span class="va">eh</span><span class="op">[[</span><span class="st">"EH7301"</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
+<p>Molecular signature is a simple binary matrix indicating if a
+transcription factor binding site was found or not found in promoter
+vicinity.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">remap_promoters_f5</span><span class="op">[</span><span class="fl">3</span><span class="op">:</span><span class="fl">6</span>, <span class="fl">3</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## 4 x 4 sparse Matrix of class "dgCMatrix"</span>
-<span class="co">##                                             MLLT1.GM12878.ENCSR552XSN</span>
-<span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1                          1</span>
-<span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1                            1</span>
-<span class="co">## hg19::chr1:100110807..100110818,+;hg_4172.1                         1</span>
-<span class="co">## hg19::chr1:100110851..100110860,+;hg_4173.1                         1</span>
-<span class="co">##                                             ZBTB10.HEK293.ENCSR004PLU</span>
-<span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1                          1</span>
-<span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1                            1</span>
-<span class="co">## hg19::chr1:100110807..100110818,+;hg_4172.1                         .</span>
-<span class="co">## hg19::chr1:100110851..100110860,+;hg_4173.1                         .</span>
-<span class="co">##                                             ZFP3.HEK293.ENCSR134QIE</span>
-<span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1                        .</span>
-<span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1                          .</span>
-<span class="co">## hg19::chr1:100110807..100110818,+;hg_4172.1                       .</span>
-<span class="co">## hg19::chr1:100110851..100110860,+;hg_4173.1                       .</span>
-<span class="co">##                                             ZNF2.HEK293.ENCSR011CKE</span>
-<span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1                        1</span>
-<span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1                          1</span>
-<span class="co">## hg19::chr1:100110807..100110818,+;hg_4172.1                       .</span>
-<span class="co">## hg19::chr1:100110851..100110860,+;hg_4173.1                       .</span></code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">remap_promoters_f5</span><span class="op">[</span><span class="fl">3</span><span class="op">:</span><span class="fl">6</span>, <span class="fl">3</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## 4 x 4 sparse Matrix of class "dgCMatrix"</span></span>
+<span><span class="co">##                                             MLLT1.GM12878.ENCSR552XSN</span></span>
+<span><span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1                          1</span></span>
+<span><span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1                            1</span></span>
+<span><span class="co">## hg19::chr1:100110807..100110818,+;hg_4172.1                         1</span></span>
+<span><span class="co">## hg19::chr1:100110851..100110860,+;hg_4173.1                         1</span></span>
+<span><span class="co">##                                             ZBTB10.HEK293.ENCSR004PLU</span></span>
+<span><span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1                          1</span></span>
+<span><span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1                            1</span></span>
+<span><span class="co">## hg19::chr1:100110807..100110818,+;hg_4172.1                         .</span></span>
+<span><span class="co">## hg19::chr1:100110851..100110860,+;hg_4173.1                         .</span></span>
+<span><span class="co">##                                             ZFP3.HEK293.ENCSR134QIE</span></span>
+<span><span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1                        .</span></span>
+<span><span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1                          .</span></span>
+<span><span class="co">## hg19::chr1:100110807..100110818,+;hg_4172.1                       .</span></span>
+<span><span class="co">## hg19::chr1:100110851..100110860,+;hg_4173.1                       .</span></span>
+<span><span class="co">##                                             ZNF2.HEK293.ENCSR011CKE</span></span>
+<span><span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1                        1</span></span>
+<span><span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1                          1</span></span>
+<span><span class="co">## hg19::chr1:100110807..100110818,+;hg_4172.1                       .</span></span>
+<span><span class="co">## hg19::chr1:100110851..100110860,+;hg_4173.1                       .</span></span></code></pre>
 <div class="section level4">
 <h4 id="computational-resources-consideration">Computational resources consideration<a class="anchor" aria-label="anchor" href="#computational-resources-consideration"></a>
 </h4>
-<p>Running <code>xcore</code> using extensive ReMap2020 or ChIP-Atlas molecular signatures, can be quite time and memory consuming. As an example, modeling the example 293SLAM rinderpest infection dataset with ReMap2020 signatures matrix took around 10 minutes to compute and used up to 8 GB RAM on Intel(R) Xeon(R) CPU E5-2680 v3 using 2 cores. This unfortunately exceeds the resources available for Bioconductor vignettes. This being said, we will further proceed by taking only a subset of ReMap2020 signatures such that we fit into the time limits. However, for running <code>xcore</code> in a normal setting the whole molecular signatures matrix should be used!</p>
+<p>Running <code>xcore</code> using extensive ReMap2020 or ChIP-Atlas
+molecular signatures, can be quite time and memory consuming. As an
+example, modeling the example 293SLAM rinderpest infection dataset with
+ReMap2020 signatures matrix took around 10 minutes to compute and used
+up to 8 GB RAM on Intel(R) Xeon(R) CPU E5-2680 v3 using 2 cores. This
+unfortunately exceeds the resources available for Bioconductor
+vignettes. This being said, we will further proceed by taking only a
+subset of ReMap2020 signatures such that we fit into the time limits.
+However, for running <code>xcore</code> in a normal setting the whole
+molecular signatures matrix should be used!</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># here we subset ReMap2020 molecular signatures matrix for the purpose of the</span>
-<span class="co"># vignette only! In a normal setting the whole molecular signatures matrix should</span>
-<span class="co"># be used!</span>
-<span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">432123</span><span class="op">)</span>
-<span class="va">i</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/BiocGenerics/man/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">remap_promoters_f5</span><span class="op">)</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">100</span>, replace <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>
-<span class="va">remap_promoters_f5</span> <span class="op">&lt;-</span> <span class="va">remap_promoters_f5</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span></code></pre></div>
-<p>To add signatures to our <code>MultiAssayExperiment</code> object we can use <code>addSignatures</code> function. As you add your signatures remember to give them unique names.</p>
+<code class="sourceCode R"><span><span class="co"># here we subset ReMap2020 molecular signatures matrix for the purpose of the</span></span>
+<span><span class="co"># vignette only! In a normal setting the whole molecular signatures matrix should</span></span>
+<span><span class="co"># be used!</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">432123</span><span class="op">)</span></span>
+<span><span class="va">i</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/BiocGenerics/man/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">remap_promoters_f5</span><span class="op">)</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">100</span>, replace <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">remap_promoters_f5</span> <span class="op">&lt;-</span> <span class="va">remap_promoters_f5</span><span class="op">[</span>, <span class="va">i</span><span class="op">]</span></span></code></pre></div>
+<p>To add signatures to our <code>MultiAssayExperiment</code> object we
+can use <code>addSignatures</code> function. As you add your signatures
+remember to give them unique names.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">mae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/addSignatures.html">addSignatures</a></span><span class="op">(</span><span class="va">mae</span>, remap <span class="op">=</span> <span class="va">remap_promoters_f5</span><span class="op">)</span></code></pre></div>
-<p>When we examine newly added signatures, we can see that some of them does not overlap any of the promoters. On the other side, depending on the signatures quality, we could expect to see signatures that overlap all of the promoters.</p>
+<code class="sourceCode R"><span><span class="va">mae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/addSignatures.html">addSignatures</a></span><span class="op">(</span><span class="va">mae</span>, remap <span class="op">=</span> <span class="va">remap_promoters_f5</span><span class="op">)</span></span></code></pre></div>
+<p>When we examine newly added signatures, we can see that some of them
+does not overlap any of the promoters. On the other side, depending on
+the signatures quality, we could expect to see signatures that overlap
+all of the promoters.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/BiocGenerics/man/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">mae</span><span class="op">[[</span><span class="st">"remap"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span>
-<span class="co">##     1.0    99.5  1300.5  2499.3  4148.0  9561.0</span></code></pre>
-<p>While, we do not provide detailed guidelines to signatures filtering, filtering out at least signatures overlapping no or all promoters is mandatory. Here, we filter signatures that overlap less than 5% or more than 95% of promoters using <code>filterSignatures</code> function.</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/BiocGenerics/man/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">mae</span><span class="op">[[</span><span class="st">"remap"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
+<span><span class="co">##     1.0    99.5  1300.5  2499.3  4148.0  9561.0</span></span></code></pre>
+<p>While, we do not provide detailed guidelines to signatures filtering,
+filtering out at least signatures overlapping no or all promoters is
+mandatory. Here, we filter signatures that overlap less than 5% or more
+than 95% of promoters using <code>filterSignatures</code> function.</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">mae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/filterSignatures.html">filterSignatures</a></span><span class="op">(</span><span class="va">mae</span>, min <span class="op">=</span> <span class="fl">0.05</span>, max <span class="op">=</span> <span class="fl">0.95</span><span class="op">)</span></code></pre></div>
-<p>At this stage we can investigate <code>mae</code> to see how many signatures are available after intersecting with counts and filtering. number of columns in signatures corresponds to number of molecular signatures which will be used to build a model.</p>
+<code class="sourceCode R"><span><span class="va">mae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/filterSignatures.html">filterSignatures</a></span><span class="op">(</span><span class="va">mae</span>, min <span class="op">=</span> <span class="fl">0.05</span>, max <span class="op">=</span> <span class="fl">0.95</span><span class="op">)</span></span></code></pre></div>
+<p>At this stage we can investigate <code>mae</code> to see how many
+signatures are available after intersecting with counts and filtering.
+number of columns in signatures corresponds to number of molecular
+signatures which will be used to build a model.</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mae</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## A MultiAssayExperiment object of 3 listed</span>
-<span class="co">##  experiments with user-defined names and respective classes.</span>
-<span class="co">##  Containing an ExperimentList class object of length 3:</span>
-<span class="co">##  [1] U: matrix with 10388 rows and 1 columns</span>
-<span class="co">##  [2] Y: matrix with 10388 rows and 6 columns</span>
-<span class="co">##  [3] remap: dgCMatrix with 10388 rows and 63 columns</span>
-<span class="co">## Functionality:</span>
-<span class="co">##  experiments() - obtain the ExperimentList instance</span>
-<span class="co">##  colData() - the primary/phenotype DataFrame</span>
-<span class="co">##  sampleMap() - the sample coordination DataFrame</span>
-<span class="co">##  `$`, `[`, `[[` - extract colData columns, subset, or experiment</span>
-<span class="co">##  *Format() - convert into a long or wide DataFrame</span>
-<span class="co">##  assays() - convert ExperimentList to a SimpleList of matrices</span>
-<span class="co">##  exportClass() - save data to flat files</span></code></pre>
-<p>Finally, we can run our expression modeling using <code>modelGeneExpression</code> function. <code>modelGeneExpression</code> can take advantage of parallelization to speed up the calculations. To use it we need to register a parallel backend.</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mae</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## A MultiAssayExperiment object of 3 listed</span></span>
+<span><span class="co">##  experiments with user-defined names and respective classes.</span></span>
+<span><span class="co">##  Containing an ExperimentList class object of length 3:</span></span>
+<span><span class="co">##  [1] U: matrix with 10388 rows and 1 columns</span></span>
+<span><span class="co">##  [2] Y: matrix with 10388 rows and 6 columns</span></span>
+<span><span class="co">##  [3] remap: dgCMatrix with 10388 rows and 63 columns</span></span>
+<span><span class="co">## Functionality:</span></span>
+<span><span class="co">##  experiments() - obtain the ExperimentList instance</span></span>
+<span><span class="co">##  colData() - the primary/phenotype DataFrame</span></span>
+<span><span class="co">##  sampleMap() - the sample coordination DataFrame</span></span>
+<span><span class="co">##  `$`, `[`, `[[` - extract colData columns, subset, or experiment</span></span>
+<span><span class="co">##  *Format() - convert into a long or wide DataFrame</span></span>
+<span><span class="co">##  assays() - convert ExperimentList to a SimpleList of matrices</span></span>
+<span><span class="co">##  exportClass() - save data to flat files</span></span></code></pre>
+<p>Finally, we can run our expression modeling using
+<code>modelGeneExpression</code> function.
+<code>modelGeneExpression</code> can take advantage of parallelization
+to speed up the calculations. To use it we need to register a parallel
+backend.</p>
 </div>
 <div class="section level4">
 <h4 id="parallel-computing">Parallel computing<a class="anchor" aria-label="anchor" href="#parallel-computing"></a>
 </h4>
-<p>While there are many parallel backends to choose from, internally <code>xcore</code> uses <a href="https://cran.r-project.org/web/packages/foreach" class="external-link"><code>foreach</code></a> to implement parallel computing. Having this in mind we should use a backend supported by <code>foreach</code>.</p>
-<p>Here we are using <a href="https://cran.r-project.org/package=doParallel" class="external-link"><code>doParallel</code></a> backend, together with <a href="https://bioconductor.org/packages/release/bioc/html/BiocParallel.html" class="external-link"><code>BiocParallel</code></a> package providing unified interface across different OS. Those packages can be installed with:</p>
+<p>While there are many parallel backends to choose from, internally
+<code>xcore</code> uses <a href="https://cran.r-project.org/web/packages/foreach" class="external-link"><code>foreach</code></a>
+to implement parallel computing. Having this in mind we should use a
+backend supported by <code>foreach</code>.</p>
+<p>Here we are using <a href="https://cran.r-project.org/package=doParallel" class="external-link"><code>doParallel</code></a>
+backend, together with <a href="https://bioconductor.org/packages/release/bioc/html/BiocParallel.html" class="external-link"><code>BiocParallel</code></a>
+package providing unified interface across different OS. Those packages
+can be installed with:</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>
-    <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span>
-
-<span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"BiocParallel"</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"doParallel"</span><span class="op">)</span></code></pre></div>
-<p>Our modeling will inherently contain some level of randomness due to using cross validation, here we set the seed so that our results can be replicated.</p>
-<p>This step is time consuming as we need to train a separate model for each of our samples. To speed up the calculations we will lower number of folds used in cross-validation procedure from 10 to 5 using <code>nfolds</code> argument, which is internally passed to <code>cv.glmnet</code> function. Moreover here we only use a subset of the ReMap2020 molecular signatures matrix.</p>
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"BiocParallel"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"doParallel"</span><span class="op">)</span></span></code></pre></div>
+<p>Our modeling will inherently contain some level of randomness due to
+using cross validation, here we set the seed so that our results can be
+replicated.</p>
+<p>This step is time consuming as we need to train a separate model for
+each of our samples. To speed up the calculations we will lower number
+of folds used in cross-validation procedure from 10 to 5 using
+<code>nfolds</code> argument, which is internally passed to
+<code>cv.glmnet</code> function. Moreover here we only use a subset of
+the ReMap2020 molecular signatures matrix.</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># register parallel backend</span>
-<span class="fu">doParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/doParallel/man/registerDoParallel.html" class="external-link">registerDoParallel</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span>
-<span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/register.html" class="external-link">register</a></span><span class="op">(</span><span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/DoparParam-class.html" class="external-link">DoparParam</a></span><span class="op">(</span><span class="op">)</span>, default <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
-
-<span class="co"># set seed</span>
-<span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">314159265</span><span class="op">)</span>
-
-<span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/modelGeneExpression.html">modelGeneExpression</a></span><span class="op">(</span>
-  mae <span class="op">=</span> <span class="va">mae</span>,
-  xnames <span class="op">=</span> <span class="st">"remap"</span>,
-  nfolds <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></code></pre></div>
-<p>Output returned by <code>modelGeneExpression</code> is a list with following elements:</p>
+<code class="sourceCode R"><span><span class="co"># register parallel backend</span></span>
+<span><span class="fu">doParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/doParallel/man/registerDoParallel.html" class="external-link">registerDoParallel</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span></span>
+<span><span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/register.html" class="external-link">register</a></span><span class="op">(</span><span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/DoparParam-class.html" class="external-link">DoparParam</a></span><span class="op">(</span><span class="op">)</span>, default <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># set seed</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">314159265</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/modelGeneExpression.html">modelGeneExpression</a></span><span class="op">(</span></span>
+<span>  mae <span class="op">=</span> <span class="va">mae</span>,</span>
+<span>  xnames <span class="op">=</span> <span class="st">"remap"</span>,</span>
+<span>  nfolds <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
+<p>Output returned by <code>modelGeneExpression</code> is a list with
+following elements:</p>
 <ul>
 <li>
-<code>regression_models</code> - a list holding <code>cv.glmnet</code> objects for each sample.</li>
+<code>regression_models</code> - a list holding
+<code>cv.glmnet</code> objects for each sample.</li>
 <li>
-<code>pvalues</code> - list of <code>data.frame</code>s for each sample, each holding signatures estimates, their estimated standard errors and p-values.</li>
+<code>pvalues</code> - list of <code>data.frame</code>s for each
+sample, each holding signatures estimates, their estimated standard
+errors and p-values.</li>
 <li>
-<code>zscore_avg</code> - a <code>matrix</code> holding replicate average molecular signatures Z-scores with columns corresponding to groups in the design.</li>
+<code>zscore_avg</code> - a <code>matrix</code> holding replicate
+average molecular signatures Z-scores with columns corresponding to
+groups in the design.</li>
 <li>
-<code>coef_avg</code> - a <code>matrix</code> holding replicate average molecular signatures activities with columns corresponding to groups in the design.</li>
+<code>coef_avg</code> - a <code>matrix</code> holding replicate
+average molecular signatures activities with columns corresponding to
+groups in the design.</li>
 <li>
-<code>results</code> - a <code>data.frame</code> holding replicate average molecular signatures and overall molecular signatures Z-score calculated over all groups in the design.</li>
+<code>results</code> - a <code>data.frame</code> holding replicate
+average molecular signatures and overall molecular signatures Z-score
+calculated over all groups in the design.</li>
 </ul>
-<p><code>results</code> is likely of most interest. As you can see below this <code>data.frame</code> holds replicate averaged molecular signatures activities, as well as overall Z-score which can be used to rank signatures.</p>
+<p><code>results</code> is likely of most interest. As you can see below
+this <code>data.frame</code> holds replicate averaged molecular
+signatures activities, as well as overall Z-score which can be used to
+rank signatures.</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">##                                 name        12hr        24hr  z_score</span>
-<span class="co">## 17            MYC.NCI-H2171.GSE36354 -0.12149432 -0.19852330 29.87351</span>
-<span class="co">## 51      E2F4.lymphoblastoid.GSE21488  0.04581494  0.19978277 23.14030</span>
-<span class="co">## 10            ATF3.K-562.ENCSR632DCH  0.03140540  0.18342315 19.75179</span>
-<span class="co">## 28 NELFA.HeLa_Flavo-0-H2O2.GSE100742 -0.03923707 -0.14366652 13.70651</span>
-<span class="co">## 31           MXD4.Hep-G2.ENCSR441KFW -0.07216715 -0.07288766 10.65325</span>
-<span class="co">## 59              MYC.HFF_OHT.GSE65544  0.03311815 -0.06789231 10.21984</span></code></pre>
-<p>To visualize the result we can plot a heatmap of molecular signatures activities for the top identified molecular signatures.</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##                                 name        12hr        24hr  z_score</span></span>
+<span><span class="co">## 17            MYC.NCI-H2171.GSE36354 -0.11897984 -0.19750261 29.48691</span></span>
+<span><span class="co">## 51      E2F4.lymphoblastoid.GSE21488  0.04509719  0.19889688 22.96655</span></span>
+<span><span class="co">## 10            ATF3.K-562.ENCSR632DCH  0.03089756  0.18244372 19.59935</span></span>
+<span><span class="co">## 28 NELFA.HeLa_Flavo-0-H2O2.GSE100742 -0.03791097 -0.14245189 13.48302</span></span>
+<span><span class="co">## 31           MXD4.Hep-G2.ENCSR441KFW -0.06988189 -0.07252283 10.42403</span></span>
+<span><span class="co">## 59              MYC.HFF_OHT.GSE65544  0.03256862 -0.06759297 10.11938</span></span></code></pre>
+<p>To visualize the result we can plot a heatmap of molecular signatures
+activities for the top identified molecular signatures.</p>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">top_signatures</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span>, <span class="fl">10</span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">pheatmap</span><span class="op">)</span>
-<span class="fu">pheatmap</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pheatmap/man/pheatmap.html" class="external-link">pheatmap</a></span><span class="op">(</span>
-  mat <span class="op">=</span> <span class="va">top_signatures</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"12hr"</span>, <span class="st">"24hr"</span><span class="op">)</span><span class="op">]</span>,
-  scale <span class="op">=</span> <span class="st">"none"</span>,
-  labels_row <span class="op">=</span> <span class="va">top_signatures</span><span class="op">$</span><span class="va">name</span>,
-  cluster_cols <span class="op">=</span> <span class="cn">FALSE</span>,
-  color <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/colorRamp.html" class="external-link">colorRampPalette</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"blue"</span>, <span class="st">"white"</span>, <span class="st">"red"</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="fl">15</span><span class="op">)</span>,
-  breaks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span>from <span class="op">=</span> <span class="op">-</span><span class="fl">0.1</span>, to <span class="op">=</span> <span class="fl">0.1</span>, length.out <span class="op">=</span> <span class="fl">16</span><span class="op">)</span>,
-  main <span class="op">=</span> <span class="st">"SLAM293 molecular signatures activities"</span>
-<span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">top_signatures</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">pheatmap</span><span class="op">)</span></span>
+<span><span class="fu">pheatmap</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pheatmap/man/pheatmap.html" class="external-link">pheatmap</a></span><span class="op">(</span></span>
+<span>  mat <span class="op">=</span> <span class="va">top_signatures</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"12hr"</span>, <span class="st">"24hr"</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>  scale <span class="op">=</span> <span class="st">"none"</span>,</span>
+<span>  labels_row <span class="op">=</span> <span class="va">top_signatures</span><span class="op">$</span><span class="va">name</span>,</span>
+<span>  cluster_cols <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  color <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/colorRamp.html" class="external-link">colorRampPalette</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"blue"</span>, <span class="st">"white"</span>, <span class="st">"red"</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="fl">15</span><span class="op">)</span>,</span>
+<span>  breaks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span>from <span class="op">=</span> <span class="op">-</span><span class="fl">0.1</span>, to <span class="op">=</span> <span class="fl">0.1</span>, length.out <span class="op">=</span> <span class="fl">16</span><span class="op">)</span>,</span>
+<span>  main <span class="op">=</span> <span class="st">"SLAM293 molecular signatures activities"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
 <img src="xcore_vignette_files/figure-html/unnamed-chunk-17-1.png" alt="Predicted activities for the top-scoring molecular signatures" width="700"><p class="caption">
 Predicted activities for the top-scoring molecular signatures
 </p>
 </div>
-<p>As we only used a random subset of ReMap2020 molecular signatures the obtained result most likely has no biological meaning. Nonetheless, some general comment on results interpretation can be made. The top-scoring transcription factors can be hypothesized to be associated with observed changes in gene expression. Moreover, the predicted activities indicate if promoters targeted by a specific signature tend to be downregulated or upregulated.</p>
+<p>As we only used a random subset of ReMap2020 molecular signatures the
+obtained result most likely has no biological meaning. Nonetheless, some
+general comment on results interpretation can be made. The top-scoring
+transcription factors can be hypothesized to be associated with observed
+changes in gene expression. Moreover, the predicted activities indicate
+if promoters targeted by a specific signature tend to be downregulated
+or upregulated.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="constructing-molecular-signatures">Constructing molecular signatures<a class="anchor" aria-label="anchor" href="#constructing-molecular-signatures"></a>
 </h2>
-<p>Constructing molecular signatures is as simple as intersecting promoters annotation with transcription factors binding sites (TFBS). For example, here we use FANTOM5’ promoters annotation found in the <code>xcoredata</code> package and predicted CTCF binding sites available in <a href="https://bioconductor.org/packages/release/data/annotation/html/CTCF.html" class="external-link">CTCF</a> <code>AnnotationHub</code>’s resource.</p>
-<p>Promoter annotations and TFBS should be stored as a <code>GRanges</code> object. Moreover, it is required that the promoter/TF name is held under the <code>name</code> column. Next we can construct a molecular signatures matrix using <code>getInteractionMatrix</code> function, where we can specify the <code>ext</code> parameter that will control how much the promoters are extended in both directions before intersecting with TFBS.</p>
+<p>Constructing molecular signatures is as simple as intersecting
+promoters annotation with transcription factors binding sites (TFBS).
+For example, here we use FANTOM5’ promoters annotation found in the
+<code>xcoredata</code> package and predicted CTCF binding sites
+available in <a href="https://bioconductor.org/packages/release/data/annotation/html/CTCF.html" class="external-link">CTCF</a>
+<code>AnnotationHub</code>’s resource.</p>
+<p>Promoter annotations and TFBS should be stored as a
+<code>GRanges</code> object. Moreover, it is required that the
+promoter/TF name is held under the <code>name</code> column. Next we can
+construct a molecular signatures matrix using
+<code>getInteractionMatrix</code> function, where we can specify the
+<code>ext</code> parameter that will control how much the promoters are
+extended in both directions before intersecting with TFBS.</p>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># obtain promoters annotation; *promoter name must be stored under column 'name'</span>
-<span class="va">promoters_f5</span> <span class="op">&lt;-</span> <span class="va">eh</span><span class="op">[[</span><span class="st">"EH7303"</span><span class="op">]</span><span class="op">]</span>
-<span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">promoters_f5</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## GRanges object with 6 ranges and 5 metadata columns:</span>
-<span class="co">##       seqnames            ranges strand |                   name     score</span>
-<span class="co">##          &lt;Rle&gt;         &lt;IRanges&gt;  &lt;Rle&gt; |            &lt;character&gt; &lt;numeric&gt;</span>
-<span class="co">##   [1]     chr1   9943315-9943407      - | hg19::chr1:10003372...    102331</span>
-<span class="co">##   [2]     chr1   9943429-9943493      + | hg19::chr1:10003486...     69018</span>
-<span class="co">##   [3]     chr1 99646025-99646217      + | hg19::chr1:100111580..     87706</span>
-<span class="co">##   [4]     chr1 99766622-99766642      - | hg19::chr1:100232177..     25838</span>
-<span class="co">##   [5]     chr1 99850058-99850135      + | hg19::chr1:100315613..     92180</span>
-<span class="co">##   [6]     chr1 99969990-99970041      + | hg19::chr1:100435545..    180010</span>
-<span class="co">##       gene_type_gencode    ENTREZID      SYMBOL</span>
-<span class="co">##                &lt;factor&gt; &lt;character&gt; &lt;character&gt;</span>
-<span class="co">##   [1]    protein_coding       84328        LZIC</span>
-<span class="co">##   [2]    protein_coding       64802      NMNAT1</span>
-<span class="co">##   [3]    protein_coding       54873       PALMD</span>
-<span class="co">##   [4]    protein_coding      391059       FRRS1</span>
-<span class="co">##   [5]    protein_coding         178         AGL</span>
-<span class="co">##   [6]    protein_coding       23443     SLC35A3</span>
-<span class="co">##   -------</span>
-<span class="co">##   seqinfo: 25 sequences (1 circular) from hg38 genome</span></code></pre>
+<code class="sourceCode R"><span><span class="co"># obtain promoters annotation; *promoter name must be stored under column 'name'</span></span>
+<span><span class="va">promoters_f5</span> <span class="op">&lt;-</span> <span class="va">eh</span><span class="op">[[</span><span class="st">"EH7303"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">promoters_f5</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## GRanges object with 6 ranges and 5 metadata columns:</span></span>
+<span><span class="co">##       seqnames            ranges strand |                   name     score</span></span>
+<span><span class="co">##          &lt;Rle&gt;         &lt;IRanges&gt;  &lt;Rle&gt; |            &lt;character&gt; &lt;numeric&gt;</span></span>
+<span><span class="co">##   [1]     chr1   9943315-9943407      - | hg19::chr1:10003372...    102331</span></span>
+<span><span class="co">##   [2]     chr1   9943429-9943493      + | hg19::chr1:10003486...     69018</span></span>
+<span><span class="co">##   [3]     chr1 99646025-99646217      + | hg19::chr1:100111580..     87706</span></span>
+<span><span class="co">##   [4]     chr1 99766622-99766642      - | hg19::chr1:100232177..     25838</span></span>
+<span><span class="co">##   [5]     chr1 99850058-99850135      + | hg19::chr1:100315613..     92180</span></span>
+<span><span class="co">##   [6]     chr1 99969990-99970041      + | hg19::chr1:100435545..    180010</span></span>
+<span><span class="co">##       gene_type_gencode    ENTREZID      SYMBOL</span></span>
+<span><span class="co">##                &lt;factor&gt; &lt;character&gt; &lt;character&gt;</span></span>
+<span><span class="co">##   [1]    protein_coding       84328        LZIC</span></span>
+<span><span class="co">##   [2]    protein_coding       64802      NMNAT1</span></span>
+<span><span class="co">##   [3]    protein_coding       54873       PALMD</span></span>
+<span><span class="co">##   [4]    protein_coding      391059       FRRS1</span></span>
+<span><span class="co">##   [5]    protein_coding         178         AGL</span></span>
+<span><span class="co">##   [6]    protein_coding       23443     SLC35A3</span></span>
+<span><span class="co">##   -------</span></span>
+<span><span class="co">##   seqinfo: 25 sequences (1 circular) from hg38 genome</span></span></code></pre>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># obtain predicted CTCF binding for hg38;</span>
-<span class="co"># *TF/motif name must be stored under column 'name'</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"AnnotationHub"</span><span class="op">)</span>
-<span class="va">ah</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/AnnotationHub/man/AnnotationHub-class.html" class="external-link">AnnotationHub</a></span><span class="op">(</span><span class="op">)</span>
-<span class="va">CTCF_hg38</span> <span class="op">&lt;-</span> <span class="va">ah</span><span class="op">[[</span><span class="st">"AH95566"</span><span class="op">]</span><span class="op">]</span>
-<span class="va">CTCF_hg38</span><span class="op">$</span><span class="va">name</span> <span class="op">&lt;-</span> <span class="va">CTCF_hg38</span><span class="op">$</span><span class="va">motif</span>
-<span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">CTCF_hg38</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## GRanges object with 6 ranges and 6 metadata columns:</span>
-<span class="co">##       seqnames        ranges strand |       motif     score   p.value   q.value</span>
-<span class="co">##          &lt;Rle&gt;     &lt;IRanges&gt;  &lt;Rle&gt; | &lt;character&gt; &lt;numeric&gt; &lt;numeric&gt; &lt;numeric&gt;</span>
-<span class="co">##   [1]     chr1   11223-11241      - |    MA0139.1   24.4754  1.34e-09    0.0216</span>
-<span class="co">##   [2]     chr1   11281-11299      - |    MA0139.1   22.7377  1.01e-08    0.0398</span>
-<span class="co">##   [3]     chr1   24782-24800      - |    MA0139.1   17.3770  7.11e-07    0.2350</span>
-<span class="co">##   [4]     chr1   91420-91438      + |    MA0139.1   16.2951  1.41e-06    0.3080</span>
-<span class="co">##   [5]     chr1 104985-105003      - |    MA0139.1   16.7869  1.04e-06    0.2750</span>
-<span class="co">##   [6]     chr1 132815-132833      - |    MA0139.1   15.3770  2.44e-06    0.3510</span>
-<span class="co">##                  sequence        name</span>
-<span class="co">##               &lt;character&gt; &lt;character&gt;</span>
-<span class="co">##   [1] TCGCCAGCAGGGGGCGCCC    MA0139.1</span>
-<span class="co">##   [2] GCGCCAGCAGGGGGCGCTG    MA0139.1</span>
-<span class="co">##   [3] CGTCCAGCAGATGGCGGAT    MA0139.1</span>
-<span class="co">##   [4] GTGGCACCAGGTGGCAGCA    MA0139.1</span>
-<span class="co">##   [5] CCAACAGCAGGTGGCAGCC    MA0139.1</span>
-<span class="co">##   [6] GCACCAGAAGGTGGCAGGA    MA0139.1</span>
-<span class="co">##   -------</span>
-<span class="co">##   seqinfo: 24 sequences from hg38 genome</span></code></pre>
+<code class="sourceCode R"><span><span class="co"># obtain predicted CTCF binding for hg38;</span></span>
+<span><span class="co"># *TF/motif name must be stored under column 'name'</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"AnnotationHub"</span><span class="op">)</span></span>
+<span><span class="va">ah</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/AnnotationHub/man/AnnotationHub-class.html" class="external-link">AnnotationHub</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">CTCF_hg38</span> <span class="op">&lt;-</span> <span class="va">ah</span><span class="op">[[</span><span class="st">"AH104724"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">CTCF_hg38</span><span class="op">$</span><span class="va">name</span> <span class="op">&lt;-</span> <span class="st">"CTCF"</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">CTCF_hg38</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## GRanges object with 6 ranges and 3 metadata columns:</span></span>
+<span><span class="co">##       seqnames              ranges strand |  5PrimeGene  3PrimeGene        name</span></span>
+<span><span class="co">##          &lt;Rle&gt;           &lt;IRanges&gt;  &lt;Rle&gt; | &lt;character&gt; &lt;character&gt; &lt;character&gt;</span></span>
+<span><span class="co">##   [1]     chr1 100038106-100038125      * |     SLC35A3       HIAT1        CTCF</span></span>
+<span><span class="co">##   [2]     chr1 100868553-100868572      * |           -       EXTL2        CTCF</span></span>
+<span><span class="co">##   [3]     chr1 100921277-100921296      * |       EXTL2     SLC30A7        CTCF</span></span>
+<span><span class="co">##   [4]     chr1 101204233-101204252      * |           -        EDG1        CTCF</span></span>
+<span><span class="co">##   [5]     chr1 101288599-101288618      * |        EDG1           -        CTCF</span></span>
+<span><span class="co">##   [6]     chr1 101357558-101357577      * |           -           -        CTCF</span></span>
+<span><span class="co">##   -------</span></span>
+<span><span class="co">##   seqinfo: 24 sequences from hg38 genome</span></span></code></pre>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># construct molecular signatures matrix</span>
-<span class="va">molecular_signature</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/getInteractionMatrix.html">getInteractionMatrix</a></span><span class="op">(</span>
-  a <span class="op">=</span> <span class="va">promoters_f5</span>,
-  b <span class="op">=</span> <span class="va">CTCF_hg38</span>,
-  ext <span class="op">=</span> <span class="fl">500</span>
-<span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">molecular_signature</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## 6 x 1 sparse Matrix of class "dgCMatrix"</span>
-<span class="co">##                                              MA0139.1</span>
-<span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1          .</span>
-<span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1            1</span>
-<span class="co">## hg19::chr1:100111580..100111773,+;hg_4181.1         .</span>
-<span class="co">## hg19::chr1:100232177..100232198,-;hg_13495.1        .</span>
-<span class="co">## hg19::chr1:100315613..100315691,+;hg_4187.1         .</span>
-<span class="co">## hg19::chr1:100435545..100435597,+;hg_4201.1         .</span></code></pre>
+<code class="sourceCode R"><span><span class="co"># construct molecular signatures matrix</span></span>
+<span><span class="va">molecular_signature</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/getInteractionMatrix.html">getInteractionMatrix</a></span><span class="op">(</span></span>
+<span>  a <span class="op">=</span> <span class="va">promoters_f5</span>,</span>
+<span>  b <span class="op">=</span> <span class="va">CTCF_hg38</span>,</span>
+<span>  ext <span class="op">=</span> <span class="fl">500</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">molecular_signature</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## 6 x 1 sparse Matrix of class "dgCMatrix"</span></span>
+<span><span class="co">##                                              CTCF</span></span>
+<span><span class="co">## hg19::chr1:10003372..10003465,-;hg_10258.1      .</span></span>
+<span><span class="co">## hg19::chr1:10003486..10003551,+;hg_541.1        .</span></span>
+<span><span class="co">## hg19::chr1:100111580..100111773,+;hg_4181.1     .</span></span>
+<span><span class="co">## hg19::chr1:100232177..100232198,-;hg_13495.1    .</span></span>
+<span><span class="co">## hg19::chr1:100315613..100315691,+;hg_4187.1     .</span></span>
+<span><span class="co">## hg19::chr1:100435545..100435597,+;hg_4201.1     .</span></span></code></pre>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## R version 4.2.0 (2022-04-22)</span>
-<span class="co">## Platform: x86_64-pc-linux-gnu (64-bit)</span>
-<span class="co">## Running under: Ubuntu 20.04.4 LTS</span>
-<span class="co">## </span>
-<span class="co">## Matrix products: default</span>
-<span class="co">## BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.9.0</span>
-<span class="co">## LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.9.0</span>
-<span class="co">## </span>
-<span class="co">## locale:</span>
-<span class="co">##  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       </span>
-<span class="co">##  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   </span>
-<span class="co">##  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          </span>
-<span class="co">## [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   </span>
-<span class="co">## </span>
-<span class="co">## attached base packages:</span>
-<span class="co">## [1] stats4    stats     graphics  grDevices utils     datasets  methods  </span>
-<span class="co">## [8] base     </span>
-<span class="co">## </span>
-<span class="co">## other attached packages:</span>
-<span class="co">##  [1] GenomicRanges_1.48.0 GenomeInfoDb_1.32.1  IRanges_2.30.0      </span>
-<span class="co">##  [4] S4Vectors_0.34.0     pheatmap_1.0.12      glmnet_4.1-4        </span>
-<span class="co">##  [7] Matrix_1.4-1         xcoredata_1.0.0      ExperimentHub_2.4.0 </span>
-<span class="co">## [10] AnnotationHub_3.4.0  BiocFileCache_2.4.0  dbplyr_2.1.1        </span>
-<span class="co">## [13] BiocGenerics_0.42.0  xcore_1.1.2          BiocStyle_2.24.0    </span>
-<span class="co">## </span>
-<span class="co">## loaded via a namespace (and not attached):</span>
-<span class="co">##   [1] bitops_1.0-7                  matrixStats_0.62.0           </span>
-<span class="co">##   [3] fs_1.5.2                      bit64_4.0.5                  </span>
-<span class="co">##   [5] RColorBrewer_1.1-3            doParallel_1.0.17            </span>
-<span class="co">##   [7] filelock_1.0.2                httr_1.4.3                   </span>
-<span class="co">##   [9] rprojroot_2.0.3               tools_4.2.0                  </span>
-<span class="co">##  [11] bslib_0.3.1                   utf8_1.2.2                   </span>
-<span class="co">##  [13] R6_2.5.1                      colorspace_2.0-3             </span>
-<span class="co">##  [15] DBI_1.1.2                     withr_2.5.0                  </span>
-<span class="co">##  [17] tidyselect_1.1.2              bit_4.0.4                    </span>
-<span class="co">##  [19] curl_4.3.2                    compiler_4.2.0               </span>
-<span class="co">##  [21] textshaping_0.3.6             cli_3.3.0                    </span>
-<span class="co">##  [23] Biobase_2.56.0                desc_1.4.1                   </span>
-<span class="co">##  [25] DelayedArray_0.22.0           bookdown_0.26                </span>
-<span class="co">##  [27] sass_0.4.1                    scales_1.2.0                 </span>
-<span class="co">##  [29] rappdirs_0.3.3                pkgdown_2.0.3                </span>
-<span class="co">##  [31] systemfonts_1.0.4             stringr_1.4.0                </span>
-<span class="co">##  [33] digest_0.6.29                 rmarkdown_2.14               </span>
-<span class="co">##  [35] XVector_0.36.0                pkgconfig_2.0.3              </span>
-<span class="co">##  [37] htmltools_0.5.2               MatrixGenerics_1.8.0         </span>
-<span class="co">##  [39] highr_0.9                     fastmap_1.1.0                </span>
-<span class="co">##  [41] limma_3.52.0                  rlang_1.0.2                  </span>
-<span class="co">##  [43] RSQLite_2.2.13                shiny_1.7.1                  </span>
-<span class="co">##  [45] shape_1.4.6                   jquerylib_0.1.4              </span>
-<span class="co">##  [47] generics_0.1.2                jsonlite_1.8.0               </span>
-<span class="co">##  [49] BiocParallel_1.30.0           dplyr_1.0.9                  </span>
-<span class="co">##  [51] RCurl_1.98-1.6                magrittr_2.0.3               </span>
-<span class="co">##  [53] GenomeInfoDbData_1.2.8        munsell_0.5.0                </span>
-<span class="co">##  [55] Rcpp_1.0.8.3                  fansi_1.0.3                  </span>
-<span class="co">##  [57] lifecycle_1.0.1               stringi_1.7.6                </span>
-<span class="co">##  [59] yaml_2.3.5                    edgeR_3.38.0                 </span>
-<span class="co">##  [61] SummarizedExperiment_1.26.1   zlibbioc_1.42.0              </span>
-<span class="co">##  [63] grid_4.2.0                    blob_1.2.3                   </span>
-<span class="co">##  [65] parallel_4.2.0                promises_1.2.0.1             </span>
-<span class="co">##  [67] crayon_1.5.1                  lattice_0.20-45              </span>
-<span class="co">##  [69] Biostrings_2.64.0             splines_4.2.0                </span>
-<span class="co">##  [71] KEGGREST_1.36.0               locfit_1.5-9.5               </span>
-<span class="co">##  [73] knitr_1.39                    pillar_1.7.0                 </span>
-<span class="co">##  [75] codetools_0.2-18              glue_1.6.2                   </span>
-<span class="co">##  [77] BiocVersion_3.15.2            evaluate_0.15                </span>
-<span class="co">##  [79] BiocManager_1.30.17           MultiAssayExperiment_1.22.0  </span>
-<span class="co">##  [81] png_0.1-7                     vctrs_0.4.1                  </span>
-<span class="co">##  [83] httpuv_1.6.5                  foreach_1.5.2                </span>
-<span class="co">##  [85] gtable_0.3.0                  purrr_0.3.4                  </span>
-<span class="co">##  [87] assertthat_0.2.1              cachem_1.0.6                 </span>
-<span class="co">##  [89] xfun_0.30                     mime_0.12                    </span>
-<span class="co">##  [91] xtable_1.8-4                  later_1.3.0                  </span>
-<span class="co">##  [93] ragg_1.2.2                    survival_3.3-1               </span>
-<span class="co">##  [95] tibble_3.1.7                  iterators_1.0.14             </span>
-<span class="co">##  [97] AnnotationDbi_1.58.0          memoise_2.0.1                </span>
-<span class="co">##  [99] ellipsis_0.3.2                interactiveDisplayBase_1.34.0</span></code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## R version 4.2.0 (2022-04-22)</span></span>
+<span><span class="co">## Platform: x86_64-pc-linux-gnu (64-bit)</span></span>
+<span><span class="co">## Running under: Arch Linux</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Matrix products: default</span></span>
+<span><span class="co">## BLAS:   /usr/lib/libblas.so.3.10.1</span></span>
+<span><span class="co">## LAPACK: /usr/lib/liblapack.so.3.10.1</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## locale:</span></span>
+<span><span class="co">##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              </span></span>
+<span><span class="co">##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    </span></span>
+<span><span class="co">##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   </span></span>
+<span><span class="co">##  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 </span></span>
+<span><span class="co">##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            </span></span>
+<span><span class="co">## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## attached base packages:</span></span>
+<span><span class="co">## [1] stats4    stats     graphics  grDevices utils     datasets  methods  </span></span>
+<span><span class="co">## [8] base     </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## other attached packages:</span></span>
+<span><span class="co">##  [1] GenomicRanges_1.49.1 GenomeInfoDb_1.33.5  IRanges_2.31.2      </span></span>
+<span><span class="co">##  [4] S4Vectors_0.35.1     pheatmap_1.0.12      glmnet_4.1-4        </span></span>
+<span><span class="co">##  [7] Matrix_1.4-1         xcoredata_1.1.2      ExperimentHub_2.5.0 </span></span>
+<span><span class="co">## [10] AnnotationHub_3.5.0  BiocFileCache_2.5.0  dbplyr_2.2.1        </span></span>
+<span><span class="co">## [13] BiocGenerics_0.43.1  xcore_1.1.2          BiocStyle_2.25.0    </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## loaded via a namespace (and not attached):</span></span>
+<span><span class="co">##  [1] bitops_1.0-7                  matrixStats_0.62.0           </span></span>
+<span><span class="co">##  [3] fs_1.5.2                      bit64_4.0.5                  </span></span>
+<span><span class="co">##  [5] RColorBrewer_1.1-3            doParallel_1.0.17            </span></span>
+<span><span class="co">##  [7] filelock_1.0.2                httr_1.4.4                   </span></span>
+<span><span class="co">##  [9] rprojroot_2.0.3               tools_4.2.0                  </span></span>
+<span><span class="co">## [11] bslib_0.4.0                   utf8_1.2.2                   </span></span>
+<span><span class="co">## [13] R6_2.5.1                      colorspace_2.0-3             </span></span>
+<span><span class="co">## [15] DBI_1.1.3                     tidyselect_1.1.2             </span></span>
+<span><span class="co">## [17] bit_4.0.4                     curl_4.3.2                   </span></span>
+<span><span class="co">## [19] compiler_4.2.0                textshaping_0.3.6            </span></span>
+<span><span class="co">## [21] cli_3.3.0                     Biobase_2.57.1               </span></span>
+<span><span class="co">## [23] desc_1.4.1                    DelayedArray_0.23.1          </span></span>
+<span><span class="co">## [25] bookdown_0.28                 sass_0.4.2                   </span></span>
+<span><span class="co">## [27] scales_1.2.1                  rappdirs_0.3.3               </span></span>
+<span><span class="co">## [29] pkgdown_2.0.6                 systemfonts_1.0.4            </span></span>
+<span><span class="co">## [31] stringr_1.4.1                 digest_0.6.29                </span></span>
+<span><span class="co">## [33] rmarkdown_2.15                XVector_0.37.0               </span></span>
+<span><span class="co">## [35] pkgconfig_2.0.3               htmltools_0.5.3              </span></span>
+<span><span class="co">## [37] MatrixGenerics_1.9.1          highr_0.9                    </span></span>
+<span><span class="co">## [39] fastmap_1.1.0                 limma_3.53.5                 </span></span>
+<span><span class="co">## [41] rlang_1.0.4                   RSQLite_2.2.16               </span></span>
+<span><span class="co">## [43] shiny_1.7.2                   shape_1.4.6                  </span></span>
+<span><span class="co">## [45] jquerylib_0.1.4               generics_0.1.3               </span></span>
+<span><span class="co">## [47] jsonlite_1.8.0                BiocParallel_1.31.12         </span></span>
+<span><span class="co">## [49] dplyr_1.0.9                   RCurl_1.98-1.8               </span></span>
+<span><span class="co">## [51] magrittr_2.0.3                GenomeInfoDbData_1.2.8       </span></span>
+<span><span class="co">## [53] munsell_0.5.0                 Rcpp_1.0.9                   </span></span>
+<span><span class="co">## [55] fansi_1.0.3                   lifecycle_1.0.1              </span></span>
+<span><span class="co">## [57] stringi_1.7.8                 yaml_2.3.5                   </span></span>
+<span><span class="co">## [59] edgeR_3.39.6                  SummarizedExperiment_1.27.1  </span></span>
+<span><span class="co">## [61] zlibbioc_1.43.0               grid_4.2.0                   </span></span>
+<span><span class="co">## [63] blob_1.2.3                    parallel_4.2.0               </span></span>
+<span><span class="co">## [65] promises_1.2.0.1              crayon_1.5.1                 </span></span>
+<span><span class="co">## [67] lattice_0.20-45               Biostrings_2.65.2            </span></span>
+<span><span class="co">## [69] splines_4.2.0                 KEGGREST_1.37.3              </span></span>
+<span><span class="co">## [71] locfit_1.5-9.6                knitr_1.39                   </span></span>
+<span><span class="co">## [73] pillar_1.8.1                  codetools_0.2-18             </span></span>
+<span><span class="co">## [75] glue_1.6.2                    BiocVersion_3.16.0           </span></span>
+<span><span class="co">## [77] evaluate_0.16                 BiocManager_1.30.18          </span></span>
+<span><span class="co">## [79] MultiAssayExperiment_1.23.4   png_0.1-7                    </span></span>
+<span><span class="co">## [81] vctrs_0.4.1                   httpuv_1.6.5                 </span></span>
+<span><span class="co">## [83] foreach_1.5.2                 gtable_0.3.0                 </span></span>
+<span><span class="co">## [85] purrr_0.3.4                   assertthat_0.2.1             </span></span>
+<span><span class="co">## [87] cachem_1.0.6                  xfun_0.32                    </span></span>
+<span><span class="co">## [89] mime_0.12                     xtable_1.8-4                 </span></span>
+<span><span class="co">## [91] later_1.3.0                   ragg_1.2.2                   </span></span>
+<span><span class="co">## [93] survival_3.4-0                tibble_3.1.8                 </span></span>
+<span><span class="co">## [95] iterators_1.0.14              AnnotationDbi_1.59.1         </span></span>
+<span><span class="co">## [97] memoise_2.0.1                 ellipsis_0.3.2               </span></span>
+<span><span class="co">## [99] interactiveDisplayBase_1.35.0</span></span></code></pre>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>
@@ -490,7 +588,7 @@ Predicted activities for the top-scoring molecular signatures
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
     </footer>

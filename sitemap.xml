@@ -7,6 +7,9 @@
     <loc>/articles/index.html</loc>
   </url>
   <url>
+    <loc>/articles/web_only/gene_level_analysis.html</loc>
+  </url>
+  <url>
     <loc>/articles/xcore_vignette.html</loc>
   </url>
   <url>
@@ -40,13 +43,13 @@
     <loc>/reference/fisherMethod.html</loc>
   </url>
   <url>
-    <loc>/reference/getAvgCoeff.html</loc>
-  </url>
-  <url>
     <loc>/reference/getCoverage.html</loc>
   </url>
   <url>
     <loc>/reference/getInteractionMatrix.html</loc>
+  </url>
+  <url>
+    <loc>/reference/getVarianceWeightedAvgCoeff.html</loc>
   </url>
   <url>
     <loc>/reference/index.html</loc>
@@ -76,16 +79,16 @@
     <loc>/reference/pipe.html</loc>
   </url>
   <url>
-    <loc>/reference/poolSE.html</loc>
+    <loc>/reference/prepareCountsForRegression.html</loc>
   </url>
   <url>
-    <loc>/reference/prepareCountsForRegression.html</loc>
+    <loc>/reference/regressionData.html</loc>
   </url>
   <url>
     <loc>/reference/remap_mini.html</loc>
   </url>
   <url>
-    <loc>/reference/repAvgZscore.html</loc>
+    <loc>/reference/repVarianceWeightedAvgZscore.html</loc>
   </url>
   <url>
     <loc>/reference/ridgePvals.html</loc>
@@ -104,5 +107,8 @@
   </url>
   <url>
     <loc>/reference/subsetWithMissing.html</loc>
+  </url>
+  <url>
+    <loc>/reference/translateCounts.html</loc>
   </url>
 </urlset>
