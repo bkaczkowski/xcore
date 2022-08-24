@@ -297,8 +297,7 @@ test_that("modelGeneExpression", {
           `ENCSR854MCV.IRF1.K-562` = 12.1721353732934
         )
       ),
-      row.names = c(123L,
-                    52L, 318L, 62L, 101L),
+      row.names = c(1L, 2L, 3L, 4L, 5L),
       class = "data.frame"
     )
   )
@@ -346,8 +345,7 @@ test_that("modelGeneExpression", {
           `ENCSR000BJR.NR3C1.A-549` = -7.29921519345464
         )
       ),
-      row.names = c(123L,
-                    52L, 62L, 318L, 345L),
+      row.names = c(1L, 2L, 3L, 4L, 5L),
       class = "data.frame"
     )
   )
