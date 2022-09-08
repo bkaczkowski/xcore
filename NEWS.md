@@ -1,8 +1,5 @@
-# 4/29/22
-1.1.1 xcore is now released on Bioconductor
-
 # 8/24/22
-1.2.0 the following changes and additions has been made:
+1.3.0 the following changes and additions has been made:
 + using the replicate average and replicate pooled standard errors has been
   changed to using weighted average with variance defined weights and the 
   standard error of weighted average. The use of latter has better theoretical
@@ -15,3 +12,6 @@
 + `regressionData` function has been added allowing to construct analyses using
   customly pre-processed data.
 + new vignette has been added showing how to conduct a gene level analysis.
+
+# 4/29/22
+1.1.1 xcore is now released on Bioconductor
