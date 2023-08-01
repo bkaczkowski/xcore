@@ -6,7 +6,7 @@ Accompanying [xcoredata](https://github.com/mcjmigdal/xcoredata/) package
 provides a collection of molecular signatures, constructed from publicly
 available ChiP-seq experiments.
 
-We refer interested users to our [bioRxiv preprint](https://www.biorxiv.org/content/10.1101/2022.02.23.481130v1).
+We refer interested users to our publication in [BMC Bioinformatics](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-022-05084-0).
 
 ## Installation
 xcore and xcoredata can be installed from Bioconductor:
