@@ -15,7 +15,7 @@ jobs:
         with:
           r-version: '4.2.0'
           
-      - uses: r-lib/actions/setup-pandoc@v1
+      - uses: r-lib/actions/setup-pandoc@v2
 
       - name: Print R version
         run: version

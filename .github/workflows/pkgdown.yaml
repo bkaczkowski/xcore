@@ -19,7 +19,7 @@ jobs:
         with:
           r-version: '4.2.0'
 
-      - uses: r-lib/actions/setup-pandoc@v1
+      - uses: r-lib/actions/setup-pandoc@v2
 
       - name: Install libs
         run: sudo apt-get install libcurl4-openssl-dev libgit2-dev libnlopt-dev libharfbuzz-dev libfribidi-dev
