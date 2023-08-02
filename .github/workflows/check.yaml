@@ -22,7 +22,7 @@ jobs:
         shell: Rscript {0}
       
       - name: Install libs
-        run: sudo apt-get install libcurl4-openssl-dev libgit2-dev libnlopt-dev
+        run: sudo apt-get install libcurl4-openssl-dev libgit2-dev libnlopt-dev libharfbuzz-dev libfribidi-dev
         
       - name: Query dependencies
         run: |
@@ -40,7 +40,7 @@ jobs:
           
       - name: Install dependencies
         run: |
-          install.packages(c("pkgdown", "devtools", "BiocManager"), dependencies = TRUE)
+          install.packages(c("devtools", "BiocManager"), dependencies = TRUE)
           BiocManager::install(c("AnnotationHub", "BiocCheck", "BiocStyle", "ExperimentHub", "DelayedArray", "edgeR", "GenomicRanges", "IRanges", "MultiAssayExperiment", "S4Vectors", "BiocGenerics", "ExperimentHub", "rtracklayer"))
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
