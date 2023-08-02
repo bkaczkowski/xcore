@@ -8,10 +8,10 @@
 <meta name="description" content="xcore">
 <title>Modeling expression changes at gene level • xcore</title>
 <script src="../../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../../deps/bootstrap-5.1.3/bootstrap.min.css" rel="stylesheet">
-<script src="../../deps/bootstrap-5.1.3/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
+<link href="../../deps/bootstrap-5.2.2/bootstrap.min.css" rel="stylesheet">
+<script src="../../deps/bootstrap-5.2.2/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
-<!-- bootstrap-toc --><script src="https://cdn.rawgit.com/afeld/bootstrap-toc/v1.0.1/dist/bootstrap-toc.min.js"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../../pkgdown.js"></script><meta property="og:title" content="Modeling expression changes at gene level">
+<!-- bootstrap-toc --><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="sha256-4veVQbu7//Lk5TSmc7YV48MxtMy98e26cf5MrgZYnwo=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../../pkgdown.js"></script><meta property="og:title" content="Modeling expression changes at gene level">
 <meta property="og:description" content="xcore">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
@@ -26,7 +26,7 @@
     
     <a class="navbar-brand me-2" href="../../index.html">xcore</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.5</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -81,17 +81,6 @@ body {
 text-align: justify}
 </style>
 <div class="section level2">
-<h2 id="version-notice">VERSION NOTICE<a class="anchor" aria-label="anchor" href="#version-notice"></a>
-</h2>
-<p>This vignette uses xcore version 1.2.0, which is still in devel
-branch of Biocondutor and to be realeased in mid-Octorber. To use it
-please install xcore and xcoredata from the devel branch.</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span>version <span class="op">=</span> <span class="st">"devel"</span><span class="op">)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"xcore"</span><span class="op">)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"xcoredata"</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
 <p>This vignette extends the <a href="https://bkaczkowski.github.io/xcore/articles/xcore_vignette.html" class="external-link">xcore
@@ -125,9 +114,11 @@ The other example uses microarray time-series dataset also from TGFꞵ
 induced epithelial-to-mesenchymal transition experiment conducted in
 A-549 cell line (<a href="https://pubmed.ncbi.nlm.nih.gov/20007254/" class="external-link">Sartor MA, et
 al. Bioinformatics. 2010.</a>, <a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE17708" class="external-link">GSE17708</a>).</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"xcore"</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"xcore"</span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"xcoredata"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st">"xcoredata"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## snapshotDate(): 2022-10-31</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="rna-seq-data">RNA-seq data<a class="anchor" aria-label="anchor" href="#rna-seq-data"></a>
@@ -144,7 +135,7 @@ framework, downloaded metadata needs to be combined with raw counts.</p>
 source file of this vignette.</p>
 <p>Here we recommend that ready to use counts matrix can be downloaded
 from our server.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file</a></span><span class="op">(</span>url <span class="op">=</span> <span class="st">"https://zdglab.iimcb.gov.pl/mmigdal/GSE69667.rda"</span>, </span>
 <span>              destfile <span class="op">=</span> <span class="st">"GSE69667.rda"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="st">"GSE69667.rda"</span><span class="op">)</span></span></code></pre></div>
@@ -154,7 +145,7 @@ from our server.</p>
 </h3>
 <p>The code below shows how to construct design matrix, by taking
 advantage of the patterns present in the sample names.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">counts_rna_seq</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <colgroup>
@@ -312,7 +303,7 @@ advantage of the patterns present in the sample names.</p>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cond</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">sub</a></span><span class="op">(</span>pattern <span class="op">=</span> <span class="st">"_.*"</span>, replacement <span class="op">=</span> <span class="st">""</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">counts_rna_seq</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">ncond</span> <span class="op">&lt;-</span> <span class="va">cond</span> <span class="op"><a href="../../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">design</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">ncond</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">ncond</span><span class="op">)</span>, times <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">cond</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">cond</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>, <span class="op">]</span></span>
@@ -515,7 +506,7 @@ advantage of the patterns present in the sample names.</p>
 <div class="section level3">
 <h3 id="obtaining-core-promoters-annotation-and-molecular-signatures">Obtaining core promoters annotation and molecular signatures<a class="anchor" aria-label="anchor" href="#obtaining-core-promoters-annotation-and-molecular-signatures"></a>
 </h3>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">promoters_f5_core</span> <span class="op">&lt;-</span> <span class="fu">xcoredata</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcoredata/man/promoters_f5_core.html" class="external-link">promoters_f5_core</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">remap_promoters_f5</span> <span class="op">&lt;-</span> <span class="fu">xcoredata</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/xcoredata/man/remap_promoters_f5.html" class="external-link">remap_promoters_f5</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -526,26 +517,44 @@ advantage of the patterns present in the sample names.</p>
 character vector mapping gene symbols to FANTOM5 core promoters. Then we
 can use it to translate our counts matrix using
 <code>translateCounts</code> function.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">eh</span> <span class="op">&lt;-</span> <span class="fu">ExperimentHub</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/ExperimentHub/man/ExperimentHub-class.html" class="external-link">ExperimentHub</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## snapshotDate(): 2022-08-23</span></span></code></pre>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<pre><code><span><span class="co">## snapshotDate(): 2022-10-31</span></span></code></pre>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">symbol2fantom</span> <span class="op">&lt;-</span> <span class="va">eh</span><span class="op">[[</span><span class="st">"EH7700"</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## see ?xcoredata and browseVignettes('xcoredata') for documentation</span></span></code></pre>
+<pre><code><span><span class="co">## downloading 1 resources</span></span></code></pre>
+<pre><code><span><span class="co">## retrieving 1 resource</span></span></code></pre>
 <pre><code><span><span class="co">## loading from cache</span></span></code></pre>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">counts_rna_seq_fantom</span> <span class="op">&lt;-</span> <span class="fu"><a href="../../reference/translateCounts.html">translateCounts</a></span><span class="op">(</span><span class="va">counts_rna_seq</span>, dict <span class="op">=</span> <span class="va">symbol2fantom</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="processing-the-counts-and-molecular-signatures">Processing the counts and molecular signatures<a class="anchor" aria-label="anchor" href="#processing-the-counts-and-molecular-signatures"></a>
 </h3>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<p>For the purpose of making this vignette compile in a reasonable time
+we are using only a small selection of signatures
+(<code>selected_signatures</code>). Outside the scope of this vignette
+one would rather use the whole set of <code>remap_promoters_f5</code>
+signatures.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mae_rna_seq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../../reference/prepareCountsForRegression.html">prepareCountsForRegression</a></span><span class="op">(</span></span>
 <span>  counts <span class="op">=</span> <span class="va">counts_rna_seq_fantom</span>,</span>
 <span>  design <span class="op">=</span> <span class="va">design</span>,</span>
 <span>  base_lvl <span class="op">=</span> <span class="st">"0h"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">mae_rna_seq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../../reference/addSignatures.html">addSignatures</a></span><span class="op">(</span><span class="va">mae_rna_seq</span>, remap <span class="op">=</span> <span class="va">remap_promoters_f5</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">selected_signatures</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="st">"SSRP1.hiF-T.GSE98758"</span>, <span class="st">"BRD3.A-549.GSE119863"</span>, <span class="st">"RELA.HDF_NUTLIN.GSE77225"</span>, </span>
+<span>  <span class="st">"SMAD2.hESC_YAP-_activinA_15h.GSE99202"</span>, <span class="st">"TET2.Jurkat.GSE85524"</span>, <span class="st">"SUPT16H.hiF-T.GSE98758"</span>, </span>
+<span>  <span class="st">"E2F4.MCF-7_ICI.GSE41561"</span>, <span class="st">"HNF1B.PDAC.GSE64557"</span>, <span class="st">"TP53.IMR-90_SENE.GSE53491"</span>, </span>
+<span>  <span class="st">"MBD2.HeLa.GSE41006"</span>, <span class="st">"E2F4.GM12878.ENCSR000DYY"</span>, <span class="st">"TEAD4.SK-N-SH.ENCSR000BUQ"</span>, </span>
+<span>  <span class="st">"BRD4.HUVEC-C_TNF.GSE53998"</span>, <span class="st">"NIPBL.Hep-G2.GSE76893"</span>, <span class="st">"BRD4.HUVEC-C_TNF_JQ1.GSE53998"</span>, </span>
+<span>  <span class="st">"BRD4.HUVEC-C_modGFP.GSE93030"</span>, <span class="st">"RELA.SGBS.GSE64233"</span>, <span class="st">"MYBL2.K-562.ENCSR162IEM"</span>, </span>
+<span>  <span class="st">"RBPJ.GSC8-11.GSE74557"</span>, <span class="st">"ZNF334.HEK293T.GSE78099"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mae_rna_seq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../../reference/addSignatures.html">addSignatures</a></span><span class="op">(</span><span class="va">mae_rna_seq</span>, </span>
+<span>                             remap <span class="op">=</span> <span class="va">remap_promoters_f5</span><span class="op">[</span>, <span class="va">selected_signatures</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">mae_rna_seq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../../reference/filterSignatures.html">filterSignatures</a></span><span class="op">(</span><span class="va">mae_rna_seq</span>, min <span class="op">=</span> <span class="fl">0.05</span>, max <span class="op">=</span> <span class="fl">0.95</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -553,7 +562,7 @@ can use it to translate our counts matrix using
 </h3>
 <p>As always, depending on infrastructure you are using this step can be
 time consuming.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># register parallel backend</span></span>
 <span><span class="fu">doMC</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/doMC/man/registerDoMC.html" class="external-link">registerDoMC</a></span><span class="op">(</span>cores <span class="op">=</span> <span class="fl">5L</span><span class="op">)</span></span>
 <span></span>
@@ -568,7 +577,7 @@ time consuming.</p>
 <div class="section level3">
 <h3 id="exploring-results">Exploring results<a class="anchor" aria-label="anchor" href="#exploring-results"></a>
 </h3>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">top_signatures</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res_rna_seq</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span>, <span class="fl">15</span><span class="op">)</span></span>
 <span><span class="fu">pheatmap</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pheatmap/man/pheatmap.html" class="external-link">pheatmap</a></span><span class="op">(</span></span>
 <span>  mat <span class="op">=</span> <span class="va">top_signatures</span><span class="op">[</span>, <span class="fl">2</span><span class="op">:</span><span class="fl">8</span><span class="op">]</span>,</span>
@@ -593,11 +602,11 @@ supplementary file is an xls file that needs to be loaded to R and
 converted into matrix before we can use it.</p>
 <p>Ready to use “counts” matrix (these are not raw counts) can be
 downloaded from our server.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file</a></span><span class="op">(</span>url <span class="op">=</span> <span class="st">"https://zdglab.iimcb.gov.pl/mmigdal/GSE17708.rda"</span>, </span>
 <span>              destfile <span class="op">=</span> <span class="st">"GSE17708.rda"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="st">"GSE17708.rda"</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">counts_microarray</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <table style="width:100%;" class="table">
 <colgroup>
@@ -841,7 +850,7 @@ downloaded from our server.</p>
 </h3>
 <p>Again we construct design matrix, by taking advantage of the patterns
 present in the sample names.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cond</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">sub</a></span><span class="op">(</span>pattern <span class="op">=</span> <span class="st">"_.*"</span>, replacement <span class="op">=</span> <span class="st">""</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">counts_microarray</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">ncond</span> <span class="op">&lt;-</span> <span class="va">cond</span> <span class="op"><a href="../../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">design</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">ncond</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">ncond</span><span class="op">)</span>, times <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">cond</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">cond</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>, <span class="op">]</span></span>
@@ -1184,14 +1193,16 @@ present in the sample names.</p>
 <p>Next, we need to translate expression matrix’s row IDs to FANTOM5
 core promoters. The only difference is that this time we map ENTREZ IDs
 to FANTOM5 promoters.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">eh</span> <span class="op">&lt;-</span> <span class="fu">ExperimentHub</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/ExperimentHub/man/ExperimentHub-class.html" class="external-link">ExperimentHub</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## snapshotDate(): 2022-08-23</span></span></code></pre>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<pre><code><span><span class="co">## snapshotDate(): 2022-10-31</span></span></code></pre>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">entrez2fantom</span> <span class="op">&lt;-</span> <span class="va">eh</span><span class="op">[[</span><span class="st">"EH7699"</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## see ?xcoredata and browseVignettes('xcoredata') for documentation</span></span></code></pre>
+<pre><code><span><span class="co">## downloading 1 resources</span></span></code></pre>
+<pre><code><span><span class="co">## retrieving 1 resource</span></span></code></pre>
 <pre><code><span><span class="co">## loading from cache</span></span></code></pre>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">counts_fantom</span> <span class="op">&lt;-</span> <span class="fu"><a href="../../reference/translateCounts.html">translateCounts</a></span><span class="op">(</span><span class="va">counts_microarray</span>, dict <span class="op">=</span> <span class="va">entrez2fantom</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -1200,19 +1211,34 @@ to FANTOM5 promoters.</p>
 <p>Here, our workflow deviates from the previous example. Because, we
 use the pre-processed expression data we don’t really want to normalize
 it. Instead we will use the data as is.</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<p>For the purpose of making this vignette compile in a reasonable time
+we are using only a small selection of signatures
+(<code>selected_signatures</code>). Outside the scope of this vignette
+one would rather use the whole set of <code>remap_promoters_f5</code>
+signatures.</p>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mae_microarray</span> <span class="op">&lt;-</span> <span class="fu"><a href="../../reference/regressionData.html">regressionData</a></span><span class="op">(</span></span>
 <span>  expr_mat <span class="op">=</span> <span class="va">counts_fantom</span>,</span>
 <span>  design <span class="op">=</span> <span class="va">design</span>,</span>
 <span>  base_lvl <span class="op">=</span> <span class="st">"0hr"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">mae_microarray</span> <span class="op">&lt;-</span> <span class="fu"><a href="../../reference/addSignatures.html">addSignatures</a></span><span class="op">(</span><span class="va">mae_microarray</span>, remap <span class="op">=</span> <span class="va">remap_promoters_f5</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">selected_signatures</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="st">"SSRP1.hiF-T.GSE98758"</span>, <span class="st">"BRD3.A-549.GSE119863"</span>, <span class="st">"RELA.HDF_NUTLIN.GSE77225"</span>, </span>
+<span>  <span class="st">"SMAD2.hESC_YAP-_activinA_15h.GSE99202"</span>, <span class="st">"TET2.Jurkat.GSE85524"</span>, <span class="st">"SUPT16H.hiF-T.GSE98758"</span>, </span>
+<span>  <span class="st">"E2F4.MCF-7_ICI.GSE41561"</span>, <span class="st">"HNF1B.PDAC.GSE64557"</span>, <span class="st">"TP53.IMR-90_SENE.GSE53491"</span>, </span>
+<span>  <span class="st">"MBD2.HeLa.GSE41006"</span>, <span class="st">"E2F4.GM12878.ENCSR000DYY"</span>, <span class="st">"TEAD4.SK-N-SH.ENCSR000BUQ"</span>, </span>
+<span>  <span class="st">"BRD4.HUVEC-C_TNF.GSE53998"</span>, <span class="st">"NIPBL.Hep-G2.GSE76893"</span>, <span class="st">"BRD4.HUVEC-C_TNF_JQ1.GSE53998"</span>, </span>
+<span>  <span class="st">"BRD4.HUVEC-C_modGFP.GSE93030"</span>, <span class="st">"RELA.SGBS.GSE64233"</span>, <span class="st">"MYBL2.K-562.ENCSR162IEM"</span>, </span>
+<span>  <span class="st">"RBPJ.GSC8-11.GSE74557"</span>, <span class="st">"ZNF334.HEK293T.GSE78099"</span><span class="op">)</span></span>
+<span><span class="va">mae_microarray</span> <span class="op">&lt;-</span> <span class="fu"><a href="../../reference/addSignatures.html">addSignatures</a></span><span class="op">(</span><span class="va">mae_microarray</span>, </span>
+<span>                                remap <span class="op">=</span> <span class="va">remap_promoters_f5</span><span class="op">[</span>, <span class="va">selected_signatures</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">mae_microarray</span> <span class="op">&lt;-</span> <span class="fu"><a href="../../reference/filterSignatures.html">filterSignatures</a></span><span class="op">(</span><span class="va">mae_microarray</span>, min <span class="op">=</span> <span class="fl">0.05</span>, max <span class="op">=</span> <span class="fl">0.95</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="modeling-gene-expression-1">Modeling gene expression<a class="anchor" aria-label="anchor" href="#modeling-gene-expression-1"></a>
 </h3>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># register parallel backend</span></span>
 <span><span class="fu">doMC</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/doMC/man/registerDoMC.html" class="external-link">registerDoMC</a></span><span class="op">(</span>cores <span class="op">=</span> <span class="fl">5L</span><span class="op">)</span></span>
 <span></span>
@@ -1227,7 +1253,7 @@ it. Instead we will use the data as is.</p>
 <div class="section level3">
 <h3 id="exploring-results-1">Exploring results<a class="anchor" aria-label="anchor" href="#exploring-results-1"></a>
 </h3>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">top_signatures</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res_microarray</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">remap</span>, <span class="fl">15</span><span class="op">)</span></span>
 <span><span class="fu">pheatmap</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pheatmap/man/pheatmap.html" class="external-link">pheatmap</a></span><span class="op">(</span></span>
 <span>  mat <span class="op">=</span> <span class="va">top_signatures</span><span class="op">[</span>, <span class="fl">2</span><span class="op">:</span><span class="fl">9</span><span class="op">]</span>,</span>
@@ -1253,7 +1279,7 @@ it. Instead we will use the data as is.</p>
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
     </footer>
