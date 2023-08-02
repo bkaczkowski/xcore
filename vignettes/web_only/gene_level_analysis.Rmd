@@ -17,18 +17,6 @@ knitr::opts_chunk$set(echo = TRUE)
 devtools::load_all()
 ```
 
-# VERSION NOTICE
-
-This vignette uses xcore version 1.2.0, which is still in devel branch of 
-Biocondutor and to be realeased in mid-Octorber. To use it please install
-xcore and xcoredata from the devel branch.
-
-```{r eval=FALSE}
-BiocManager::install(version = "devel")
-BiocManager::install("xcore")
-BiocManager::install("xcoredata")
-```
-
 # Introduction
 
 This vignette extends the 
@@ -67,6 +55,9 @@ epithelial-to-mesenchymal transition experiment conducted in A-549 cell line
 
 ```{r eval=FALSE}
 library("xcore")
+```
+
+```{r}
 library("xcoredata")
 ```
 
@@ -150,13 +141,29 @@ counts_rna_seq_fantom <- translateCounts(counts_rna_seq, dict = symbol2fantom)
 
 ## Processing the counts and molecular signatures
 
+For the purpose of making this vignette compile in a reasonable time we are
+using only a small selection of signatures (`selected_signatures`). Outside the
+scope of this vignette one would rather use the whole set of `remap_promoters_f5` 
+signatures.
+
 ```{r}
 mae_rna_seq <- prepareCountsForRegression(
   counts = counts_rna_seq_fantom,
   design = design,
   base_lvl = "0h"
 )
-mae_rna_seq <- addSignatures(mae_rna_seq, remap = remap_promoters_f5)
+
+selected_signatures <- c(
+  "SSRP1.hiF-T.GSE98758", "BRD3.A-549.GSE119863", "RELA.HDF_NUTLIN.GSE77225", 
+  "SMAD2.hESC_YAP-_activinA_15h.GSE99202", "TET2.Jurkat.GSE85524", "SUPT16H.hiF-T.GSE98758", 
+  "E2F4.MCF-7_ICI.GSE41561", "HNF1B.PDAC.GSE64557", "TP53.IMR-90_SENE.GSE53491", 
+  "MBD2.HeLa.GSE41006", "E2F4.GM12878.ENCSR000DYY", "TEAD4.SK-N-SH.ENCSR000BUQ", 
+  "BRD4.HUVEC-C_TNF.GSE53998", "NIPBL.Hep-G2.GSE76893", "BRD4.HUVEC-C_TNF_JQ1.GSE53998", 
+  "BRD4.HUVEC-C_modGFP.GSE93030", "RELA.SGBS.GSE64233", "MYBL2.K-562.ENCSR162IEM", 
+  "RBPJ.GSC8-11.GSE74557", "ZNF334.HEK293T.GSE78099")
+
+mae_rna_seq <- addSignatures(mae_rna_seq, 
+                             remap = remap_promoters_f5[, selected_signatures])
 mae_rna_seq <- filterSignatures(mae_rna_seq, min = 0.05, max = 0.95)
 ```
 
@@ -165,7 +172,7 @@ mae_rna_seq <- filterSignatures(mae_rna_seq, min = 0.05, max = 0.95)
 As always, depending on infrastructure you are using this step can be time 
 consuming.
 
-```{r message=FALSE, cache=TRUE, cache.lazy=FALSE}
+```{r message=FALSE}
 # register parallel backend
 doMC::registerDoMC(cores = 5L)
 
@@ -279,19 +286,34 @@ Here, our workflow deviates from the previous example. Because, we use the
 pre-processed expression data we don't really want to normalize it. Instead
 we will use the data as is.
 
+For the purpose of making this vignette compile in a reasonable time we are
+using only a small selection of signatures (`selected_signatures`). Outside the
+scope of this vignette one would rather use the whole set of `remap_promoters_f5` 
+signatures.
+
 ```{r}
 mae_microarray <- regressionData(
   expr_mat = counts_fantom,
   design = design,
   base_lvl = "0hr"
 )
-mae_microarray <- addSignatures(mae_microarray, remap = remap_promoters_f5)
+
+selected_signatures <- c(
+  "SSRP1.hiF-T.GSE98758", "BRD3.A-549.GSE119863", "RELA.HDF_NUTLIN.GSE77225", 
+  "SMAD2.hESC_YAP-_activinA_15h.GSE99202", "TET2.Jurkat.GSE85524", "SUPT16H.hiF-T.GSE98758", 
+  "E2F4.MCF-7_ICI.GSE41561", "HNF1B.PDAC.GSE64557", "TP53.IMR-90_SENE.GSE53491", 
+  "MBD2.HeLa.GSE41006", "E2F4.GM12878.ENCSR000DYY", "TEAD4.SK-N-SH.ENCSR000BUQ", 
+  "BRD4.HUVEC-C_TNF.GSE53998", "NIPBL.Hep-G2.GSE76893", "BRD4.HUVEC-C_TNF_JQ1.GSE53998", 
+  "BRD4.HUVEC-C_modGFP.GSE93030", "RELA.SGBS.GSE64233", "MYBL2.K-562.ENCSR162IEM", 
+  "RBPJ.GSC8-11.GSE74557", "ZNF334.HEK293T.GSE78099")
+mae_microarray <- addSignatures(mae_microarray, 
+                                remap = remap_promoters_f5[, selected_signatures])
 mae_microarray <- filterSignatures(mae_microarray, min = 0.05, max = 0.95)
 ```
 
 ## Modeling gene expression
 
-```{r message=FALSE, cache=TRUE, cache.lazy=FALSE}
+```{r message=FALSE}
 # register parallel backend
 doMC::registerDoMC(cores = 5L)
 
