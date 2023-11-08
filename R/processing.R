@@ -17,7 +17,10 @@
 #'   basal expression level. The reference samples to which expression change
 #'   will be compared.
 #' @param drop_base_lvl logical flag indicating if \code{base_lvl} samples
-#'   should be dropped from resulting MultiAssayExperiment object.
+#'   should be dropped from resulting MultiAssayExperiment object. Optionally,
+#'   passing \code{NULL} will set U to zeros and keep the full design. This
+#'   gives an object that can be used only for modeling expression absolute 
+#'   levels.
 #'
 #' @return MultiAssayExperiment object with two experiments:
 #'   \describe{
@@ -61,17 +64,28 @@ regressionData <- function(expr_mat,
   stopifnot("number of rows in design must equal to number of columns in expr_mat" = nrow(design) == ncol(expr_mat))
   stopifnot("design rownames must be the same as expr_mat colnames" = all(rownames(design) == colnames(expr_mat)))
   stopifnot("base_lvl must match to one of design colnames" = sum(colnames(design) == base_lvl) == 1L)
-  stopifnot("drop_base_lvl must be TRUE or FALSE" = isTRUEorFALSE(drop_base_lvl))
+  stopifnot("drop_base_lvl must be TRUE, FALSE" = (isTRUEorFALSE(drop_base_lvl) | is.null(drop_base_lvl)))
 
   groups <- design2factor(design)
 
-  U <- matrix(
-    data = rowMeans(expr_mat[, groups == base_lvl, drop = FALSE]),
-    ncol = 1L,
-    dimnames = list(rownames(expr_mat), "u"))
+  if (is.null(drop_base_lvl)) {
+    U <- matrix(
+      data = 0L,
+      nrow = nrow(expr_mat),
+      ncol = 1L,
+      dimnames = list(rownames(expr_mat), "u"))
+    ymask <- rep(TRUE, length(groups))
+  } else {
+    U <- matrix(
+      data = rowMeans(expr_mat[, groups == base_lvl, drop = FALSE]),
+      ncol = 1L,
+      dimnames = list(rownames(expr_mat), "u"))
 
-  ymask <- if (drop_base_lvl) { groups != base_lvl } else { rep(TRUE, length(groups)) }
-  design[, base_lvl] <- 0 # design without base_lvl
+   if (drop_base_lvl) { 
+       ymask <- groups != base_lvl } else { ymask <- rep(TRUE, length(groups)) }
+    design[, base_lvl] <- 0 # design without base_lvl
+  }
+  
   MultiAssayExperiment::MultiAssayExperiment(
     experiments = MultiAssayExperiment::ExperimentList(
       U = U,
@@ -146,9 +160,9 @@ prepareCountsForRegression <- function(counts,
   stopifnot("number of rows in design must equal to number of columns in counts" = nrow(design) == ncol(counts))
   stopifnot("design rownames must be the same as counts colnames" = all(rownames(design) == colnames(counts)))
   stopifnot("base_lvl must match to one of design colnames" = sum(colnames(design) == base_lvl) == 1L)
-  stopifnot("log2 must be TRUE or FALSE" = isTRUEorFALSE(log2))
+  stopifnot("log2 must be TRUE, FALSE or None" = isTRUEorFALSE(log2))
   stopifnot("pseudo_count must be an positive integer or zero" = is.integer(pseudo_count) && (length(pseudo_count) == 1L) && (pseudo_count >= 0L))
-  stopifnot("drop_base_lvl must be TRUE or FALSE" = isTRUEorFALSE(drop_base_lvl))
+  stopifnot("drop_base_lvl must be TRUE, FALSE or NULL" = (isTRUEorFALSE(drop_base_lvl) | is.null(drop_base_lvl)))
 
   groups <- design2factor(design)
   deglist <- edgeR::DGEList(counts = counts, group = groups)
@@ -383,3 +397,4 @@ filterSignatures <- function(mae,
 
   return(mae)
 }
+

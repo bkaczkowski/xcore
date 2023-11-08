@@ -1,7 +1,7 @@
 ---
-title: "Modeling expression changes at gene level"
+title: "Modeling absolute expression levels at gene level"
 author: "Migdal"
-date: "2/15/2022"
+date: "11/8/2023"
 output:
   html_document:
     self_contained: yes
@@ -150,7 +150,8 @@ signatures.
 mae_rna_seq <- prepareCountsForRegression(
   counts = counts_rna_seq_fantom,
   design = design,
-  base_lvl = "0h"
+  base_lvl = "0h",
+  drop_base_lvl = NULL,
 )
 
 selected_signatures <- c(
@@ -173,16 +174,28 @@ As always, depending on infrastructure you are using this step can be time
 consuming.
 
 ```{r message=FALSE}
+# load negative.binomial
+library(MASS)
+
 # register parallel backend
-doMC::registerDoMC(cores = 5L)
+doMC::registerDoMC(cores = 15L)
 
 # set seed
 set.seed(314159265)
 
-res_rna_seq <- modelGeneExpression(
+res_rna_seq_normal <- modelGeneExpression(
   mae = mae_rna_seq,
   xnames = "remap",
-  nfolds = 5)
+  nfolds = 5,
+  family = "gaussian",
+  pvalues = FALSE)
+
+res_rna_seq_nb <- modelGeneExpression(
+  mae = mae_rna_seq,
+  xnames = "remap",
+  nfolds = 5,
+  family = negative.binomial(theta = 5),
+  pvalues = FALSE)
 ```
 
 ## Exploring results
