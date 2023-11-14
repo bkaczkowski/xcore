@@ -142,12 +142,13 @@ applyOverColumnGroups <- function(mat, groups, f, ...) {
 #' @param statistic function computing goodness of fit statistic. Should accept
 #'   \code{y}, \code{x}, \code{offset} arguments and return
 #'   a numeric vector of the same length. See \code{rsq}, \code{mse} for examples.
+#' @param ...  Other arguments that can be passed to glmnet.
 #'
 #' @return numeric vector of \code{statistic} estimates.
 #'
 #' @importFrom foreach foreach
 #'
-estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = rsq, alpha = 0) {
+estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = rsq, alpha = 0, ...) {
   if (method == "cv") {
     out <- c()
     part <- sample(seq_len(nfold), size = length(y), replace = TRUE)
@@ -157,7 +158,7 @@ estimateStat <- function(x, y, u, s, method = "cv", nfold = 10, statistic = rsq,
         py <- y[part != p_]
         px <- x[part != p_, ]
         poffset <- u[part != p_, ]
-        mod <- glmnet::glmnet(x = px, y = py, offset = poffset, lambda = s, alpha = alpha)
+        mod <- glmnet::glmnet(x = px, y = py, offset = poffset, lambda = s, alpha = alpha, ...)
 
         # evaluate on held-out fold
         py <- y[part == p_]
