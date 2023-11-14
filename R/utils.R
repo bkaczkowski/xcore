@@ -184,7 +184,7 @@ utils::globalVariables("p_")
 #'
 #' @return numeric vector
 #'
-rsq <- function(y, yhat, offset) {
+rsq <- function(y, yhat, px, offset) {
   y <- y - offset
   yhat <- yhat - offset
   1 - (sum((y - yhat)^2) / (var(y) * (length(y) - 1)))
