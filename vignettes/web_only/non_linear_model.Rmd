@@ -153,10 +153,20 @@ mae_rna_seq <- prepareCountsForRegression(
   base_lvl = "0h",
   drop_base_lvl = NULL,
 )
-
 mae_rna_seq <- addSignatures(mae_rna_seq, 
                              remap = remap_promoters_f5)
 mae_rna_seq <- filterSignatures(mae_rna_seq, min = 0.05, max = 0.95)
+
+mae_rna_seq_nb <- prepareCountsForRegression(
+  counts = counts_rna_seq_fantom,
+  design = design,
+  base_lvl = "0h",
+  drop_base_lvl = NULL,
+  log2 = FALSE
+)
+mae_rna_seq_nb <- addSignatures(mae_rna_seq_nb, 
+                             remap = remap_promoters_f5)
+mae_rna_seq_nb <- filterSignatures(mae_rna_seq_nb, min = 0.05, max = 0.95)
 ```
 
 ## Modeling gene expression
@@ -181,7 +191,7 @@ res_rna_seq_normal <- modelGeneExpression(
   family = "gaussian",
   pvalues = FALSE)
 
-res_rna_seq_nb <- modelGeneExpression(
+res_rna_seq_nb_pval <- modelGeneExpression(
   mae = mae_rna_seq,
   xnames = "remap",
   nfolds = 5,
@@ -203,143 +213,119 @@ pheatmap::pheatmap(
 )
 ```
 
-# Microarray data
-## Obtaining the expression data
-
-Here, we have downloaded supplementary data file containing pre-processed data 
-from [GSE17708]() study. This supplementary file is an xls file that needs to
-be loaded to R and converted into matrix before we can use it.
-
-```{r eval=FALSE, echo=FALSE}
-download.file(
-  url = "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE17708&format=file&file=GSE17708%5FKeshamouni%5FTGFB1%5Flogs%2Exls%2Egz", 
-  destfile = "GSE17708_Keshamouni_TGFB1_logs.xls.gz")
-R.utils::gunzip("GSE17708_Keshamouni_TGFB1_logs.xls.gz", remove = TRUE)
-counts_microarray <- readxl::read_excel(
-  path = "GSE17708_Keshamouni_TGFB1_logs.xls", 
-  col_names = TRUE, 
-  skip = 4)
-samples_cols <- grep(pattern = "^V[0-9]", x = colnames(counts_microarray), value = TRUE)
-samples <- c(
-  "0hr_1", "0hr_2", "0hr_3",       # 0hr
-  "0.5hr_1", "0.5hr_2", "0.5hr_3", # 0.5hr
-  "1hr_1", "1hr_2", "1hr_3",       # 1hr
-  "2hr_1", "2hr_2",                # 2hr
-  "4hr_1", "4hr_2", "4hr_3",       # 4hr
-  "8hr_1", "8hr_2", "8hr_3",       # 8hr
-  "16hr_1", "16hr_2", "16hr_3",    # 16hr
-  "24hr_1", "24hr_2", "24hr_3",    # 24hr
-  "72hr_1", "72hr_2", "72hr_3"     # 72hr
-)
-entrez_gene_id <- counts_microarray[["Entrez Gene"]]
-counts_microarray <- counts_microarray %>%
-  dplyr::select(setNames(object = samples_cols, nm = samples)) %>%
-  as.matrix() %>%
-  type.convert(as.is = TRUE) %>%
-  rowsum(group = entrez_gene_id, reorder = FALSE) %>%
-  round()
-mode(counts_microarray) <- "integer"
-
-out_prefix <- system.file("inst", "extdata", package = "xcore")
-save(counts_microarray, file = file.path(out_prefix, "GSE17708.rda"))
-```
-
-Ready to use "counts" matrix (these are not raw counts) can be downloaded from 
-our server.
-
-```{r message=FALSE}
-download.file(url = "https://zdglab.iimcb.gov.pl/mmigdal/GSE17708.rda", 
-              destfile = "GSE17708.rda")
-load("GSE17708.rda")
-```
-
+# Exploring results
 
 ```{r}
-knitr::kable(head(counts_microarray))
+## 0h
+rsq0h <- list()
+j <- grepl("0h", colnames(mae_rna_seq[["Y"]]))
+nm <- "remap"
+rsq0h$normal <- foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+  estimateStat(
+    x = mae_rna_seq[[nm]],
+    y = mae_rna_seq[["Y"]][, j][, i],
+    u = mae_rna_seq[["U"]],
+    s = res_rna_seq_normal[["regression_models"]][[nm]][j][[i]]$lambda.min,
+    statistic = rsq)
+rsq0h$nb <- foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+  estimateStat(
+    x = mae_rna_seq[[nm]],
+    y = mae_rna_seq[["Y"]][, j][, i],
+    u = mae_rna_seq[["U"]],
+    s = res_rna_seq_nb[["regression_models"]][[nm]][j][[i]]$lambda.min,
+    statistic = rsq,
+    family = negative.binomial(theta = 5),
+    type="response")
+
+## 72h
+rsq72h <- list()
+j <- grepl("72h", colnames(mae_rna_seq[["Y"]]))
+nm <- "remap"
+rsq72h$normal <-
+  foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+    estimateStat(
+      x = mae_rna_seq[[nm]],
+      y = mae_rna_seq[["Y"]][, j][, i],
+      u = mae_rna_seq[["U"]],
+      s = res_rna_seq_normal[["regression_models"]][[nm]][j][[i]]$lambda.min,
+      statistic = rsq)  
+rsq72h$nb <-
+  foreach(i = seq_len(sum(j)), .combine = c) %dopar%
+    estimateStat(
+      x = mae_rna_seq[[nm]],
+      y = mae_rna_seq[["Y"]][, j][, i],
+      u = mae_rna_seq[["U"]],
+      s = res_rna_seq_nb[["regression_models"]][[nm]][j][[i]]$lambda.min,
+      statistic = rsq,
+      family = negative.binomial(theta = 5),
+      type="response")
 ```
-
-## Constructing experiment design
-
-Again we construct design matrix, by taking advantage of the patterns present in 
-the sample names.
 
 ```{r}
-cond <- sub(pattern = "_.*", replacement = "", x = colnames(counts_microarray))
-ncond <- cond %>% unique() %>% length()
-design <- diag(ncond)[rep(seq_len(ncond), times = table(cond)[unique(cond)]), ]
-rownames(design) <- colnames(counts_microarray)
-colnames(design) <- unique(cond)
+plotMolecularSignaturesSetComparison <- function() {
+  cex.axis <- 0.8
 
-knitr::kable(design)
-```
+  dev.hold()
+  on.exit(dev.flush())
+  op <- par(no.readonly = TRUE)
+  on.exit(par(op), add = TRUE)
 
-## Translating gene symbols into FANTOM5 core promoters
+  xsel <- c("remap", "chip_atlas", "jaspar", "swissregulon", "remap_randomized")
+  xlabs <- c(
+    "ReMap2020",
+    "ChIP-Atlas",
+    "Jaspar",
+    "SwissRegulon",
+    "randomized\nReMap2020"
+  )
 
-Next, we need to translate expression matrix's row IDs to FANTOM5 core promoters.
-The only difference is that this time we map ENTREZ IDs to FANTOM5 promoters.
+  # define layout
+  graphics::layout(mat = matrix(
+    data = c(1, 2, 1, 3),
+    nrow = 2,
+    ncol = 2
+  ),
+  heights = c(2, 7))
 
-```{r}
-eh <- ExperimentHub::ExperimentHub()
-entrez2fantom <- eh[["EH7699"]]
-counts_fantom <- translateCounts(counts_microarray, dict = entrez2fantom)
-```
+  # title
+  par(mar = c(0.5, 1.1, 1.1, 1.1))
+  plot.new()
+  graphics::text(
+    x = 0.5,
+    y = 0.5,
+    adj = c(0.5, 0.5),
+    labels = expression(atop(
+      "Molecular signatures sets comparison",
+      paste("CV ", R^2, " across replicates, 24h DPI")
+    )),
+    cex = 1.8,
+    font = 2
+  )
 
-## Processing the counts and molecular signatures
+  # boxplots
+  par(mar = c(9.1, 5.1, 2.1, 1.1), font.main = 1, cex.main = 1.1, cex = 1.0)
+  graphics::boxplot(
+    x = rsqA$dpi[xsel],
+    names = xlabs,
+    main = "A-549",
+    ylab = expression(R ^ 2),
+    xlab = "",
+    ylim = c(0, 0.4),
+    las = 2,
+    cex.axis = cex.axis
+  )
+  graphics::boxplot(
+    x = rsqM$dpi[xsel],
+    names = xlabs,
+    main = "MDA-321-D",
+    ylab = expression(R ^ 2),
+    xlab = "",
+    ylim = c(0, 0.4),
+    las = 2,
+    cex.axis = cex.axis
+  )
 
-Here, our workflow deviates from the previous example. Because, we use the 
-pre-processed expression data we don't really want to normalize it. Instead
-we will use the data as is.
+  invisible()
+}
 
-For the purpose of making this vignette compile in a reasonable time we are
-using only a small selection of signatures (`selected_signatures`). Outside the
-scope of this vignette one would rather use the whole set of `remap_promoters_f5` 
-signatures.
-
-```{r}
-mae_microarray <- regressionData(
-  expr_mat = counts_fantom,
-  design = design,
-  base_lvl = "0hr"
-)
-
-selected_signatures <- c(
-  "SSRP1.hiF-T.GSE98758", "BRD3.A-549.GSE119863", "RELA.HDF_NUTLIN.GSE77225", 
-  "SMAD2.hESC_YAP-_activinA_15h.GSE99202", "TET2.Jurkat.GSE85524", "SUPT16H.hiF-T.GSE98758", 
-  "E2F4.MCF-7_ICI.GSE41561", "HNF1B.PDAC.GSE64557", "TP53.IMR-90_SENE.GSE53491", 
-  "MBD2.HeLa.GSE41006", "E2F4.GM12878.ENCSR000DYY", "TEAD4.SK-N-SH.ENCSR000BUQ", 
-  "BRD4.HUVEC-C_TNF.GSE53998", "NIPBL.Hep-G2.GSE76893", "BRD4.HUVEC-C_TNF_JQ1.GSE53998", 
-  "BRD4.HUVEC-C_modGFP.GSE93030", "RELA.SGBS.GSE64233", "MYBL2.K-562.ENCSR162IEM", 
-  "RBPJ.GSC8-11.GSE74557", "ZNF334.HEK293T.GSE78099")
-mae_microarray <- addSignatures(mae_microarray, 
-                                remap = remap_promoters_f5[, selected_signatures])
-mae_microarray <- filterSignatures(mae_microarray, min = 0.05, max = 0.95)
-```
-
-## Modeling gene expression
-
-```{r message=FALSE}
-# register parallel backend
-doMC::registerDoMC(cores = 5L)
-
-# set seed
-set.seed(314159265)
-
-res_microarray <- modelGeneExpression(
-  mae = mae_microarray,
-  xnames = "remap",
-  nfolds = 5)
-```
-
-## Exploring results
-
-```{r warning=FALSE}
-top_signatures <- head(res_microarray$results$remap, 15)
-pheatmap::pheatmap(
-  mat = top_signatures[, 2:9],
-  labels_row = top_signatures$name,
-  cluster_cols = FALSE,
-  color = colorRampPalette(c("blue", "white", "red"))(35),
-  breaks = seq(from = -0.05, to = 0.05, length.out = 36),
-  main = "TGFꞵ EMT in A-549 cell line (GSE17708)\nReMap2020 molecular signatures activity"
-)
-```
+plotMolecularSignaturesSetComparison()
