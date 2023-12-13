@@ -1,5 +1,6 @@
 on:
   schedule:
+    - cron: "45 5 * * *"
 
 name: syncronise-bioconductor-release
 
@@ -17,7 +18,7 @@ jobs:
 
       - name: Make PR
         run: |
-          BIOC_REMOTE='git@git.bioconductor.org:packages/xcore'
+          BIOC_REMOTE='https://git.bioconductor.org/packages/xcore'
           MAIN_BRANCH='master'
           COMMIT_TITLE='New Bioconductor release'
           gitlog() {
