@@ -1,6 +1,6 @@
 on:
   schedule:
-    - cron: "45 5 * * *"
+    - cron: "30 8 * * *"
 
 name: syncronise-bioconductor-release
 
@@ -27,9 +27,11 @@ jobs:
           git remote add bioconductor ${BIOC_REMOTE}
           git fetch bioconductor
           BIOC_TAG=`gitlog bioconductor/master -1`
+          echo ${BIOC_TAG}
           COMMIT_BODY=`git --no-pager log bioconductor/master --pretty=format:'%s' -1`
           gitlog ${MAIN_BRANCH}
+          gitlog ${MAIN_BRANCH} | grep -q -e ${BIOC_TAG} && echo "already merged"
           gitlog ${MAIN_BRANCH} | grep -q -e ${BIOC_TAG} && exit 0
           git checkout bioconductor/master
-          gh pr create --base master --title ${COMMIT_TITLE} --body ${COMMIT_BODY}
+          gh pr create --base master --title "${COMMIT_TITLE}" --body "${COMMIT_BODY}"
           
